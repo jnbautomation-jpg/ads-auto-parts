@@ -1,0 +1,226 @@
+// Prisma schema for ADS Auto Parts (Orlando) — inventory + public catalog.
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Multi-tenancy
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  products      Product[]
+  suppliers     Supplier[]
+  stockMovements StockMovement[]
+  inquiries     Inquiry[]
+
+  @@map("organizations")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+// Mirrors a Supabase Auth user (auth.users.id) with app-level role/org data.
+model User {
+  id             String   @id // Supabase Auth user id (uuid)
+  organizationId String
+  email          String
+  role           UserRole @default(STAFF)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+// Extensible on purpose: add new body-part categories here as the catalog grows.
+enum PartType {
+  DOOR
+  HOOD
+  TAILGATE
+  TRUNK
+  LIFTGATE
+  REAR_BODY_PANEL
+  QUARTER_PANEL
+  FENDER
+  BUMPER
+}
+
+enum PartPosition {
+  FRONT_LEFT
+  FRONT_RIGHT
+  REAR_LEFT
+  REAR_RIGHT
+  FRONT
+  REAR
+}
+
+enum PartCondition {
+  A
+  B
+  C
+}
+
+model Supplier {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  contact        String?
+  phone          String?
+  email          String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     Product[]
+
+  @@index([organizationId])
+  @@map("suppliers")
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  organizationId String
+
+  // Auto-generated, unique per org (e.g. ACC-18-DR-L). Never a manufacturer part number —
+  // this dealer's parts aren't identified by one. Fit + part type is the real identity.
+  sku String
+
+  partType PartType
+
+  // Vehicle fit — a part is frequently valid across a run of model years, not just one.
+  make      String
+  model     String
+  yearStart Int
+  yearEnd   Int
+
+  position PartPosition?
+
+  color     String?
+  paintCode String?
+
+  // Warehouse bin code (e.g. "H16", "A23") — where staff physically find the part.
+  binLocation String?
+
+  condition      PartCondition
+  conditionNotes String?
+
+  // New aftermarket parts built to certified fit & finish standards — never
+  // used salvage. Shown as a badge in the admin UI and public catalog.
+  capaCertified Boolean @default(false)
+
+  quantity      Int @default(0)
+  reorderPoint  Int @default(2)
+
+  cost  Decimal @db.Decimal(10, 2)
+  price Decimal @db.Decimal(10, 2)
+
+  photos String[]
+
+  isPublic Boolean @default(false)
+
+  supplierId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  stockMovements StockMovement[]
+  inquiries      Inquiry[]
+
+  @@unique([organizationId, sku])
+  // Public catalog / staff filtering by vehicle fit.
+  @@index([organizationId, make, model, yearStart, yearEnd])
+  // Filtering by part type.
+  @@index([organizationId, partType])
+  // Low-stock lookups ("at or below reorder point"): fetch by org, then compare
+  // quantity <= reorderPoint in the query — this index makes that scan cheap.
+  @@index([organizationId, quantity])
+  @@index([supplierId])
+  @@map("products")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory audit trail
+// ---------------------------------------------------------------------------
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model StockMovement {
+  id                String            @id @default(cuid())
+  organizationId    String
+  productId         String
+  type              StockMovementType
+  quantityChange    Int
+  resultingQuantity Int
+  userId            String?
+  note              String?
+  createdAt         DateTime          @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([productId])
+  @@map("stock_movements")
+}
+
+// ---------------------------------------------------------------------------
+// Public catalog leads
+// ---------------------------------------------------------------------------
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+model Inquiry {
+  id             String        @id @default(cuid())
+  organizationId String
+  productId      String?
+  name           String
+  phone          String?
+  email          String?
+  message        String?
+  status         InquiryStatus @default(NEW)
+  createdAt      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([productId])
+  @@map("inquiries")
+}

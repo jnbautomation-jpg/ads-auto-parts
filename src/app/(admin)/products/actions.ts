@@ -1,0 +1,134 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { requireAuthContext } from "@/lib/auth";
+import { generateSkuBase } from "@/lib/sku";
+import { Prisma } from "@/generated/prisma/client";
+import type { PartType, PartPosition, PartCondition } from "@/generated/prisma/enums";
+
+export type ProductFormState = { error?: string };
+
+export async function saveProduct(
+  _prevState: ProductFormState,
+  formData: FormData,
+): Promise<ProductFormState> {
+  const { organization } = await requireAuthContext();
+
+  const id = String(formData.get("id") || "");
+  const partType = String(formData.get("partType")) as PartType;
+  const positionRaw = String(formData.get("position") || "");
+  const position = positionRaw ? (positionRaw as PartPosition) : null;
+  const make = String(formData.get("make") || "").trim();
+  const model = String(formData.get("model") || "").trim();
+  const yearStart = Number(formData.get("yearStart"));
+  const yearEnd = Number(formData.get("yearEnd"));
+  const color = String(formData.get("color") || "").trim() || null;
+  const paintCode = String(formData.get("paintCode") || "").trim() || null;
+  const binLocation = String(formData.get("binLocation") || "").trim().toUpperCase() || null;
+  const condition = String(formData.get("condition")) as PartCondition;
+  const conditionNotes = String(formData.get("conditionNotes") || "").trim() || null;
+  const quantity = Number(formData.get("quantity"));
+  const reorderPoint = Number(formData.get("reorderPoint"));
+  const cost = Number(formData.get("cost"));
+  const price = Number(formData.get("price"));
+  const capaCertified = formData.get("capaCertified") === "on";
+  const isPublic = formData.get("isPublic") === "on";
+  const supplierId = String(formData.get("supplierId") || "") || null;
+
+  let photos: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("photos") || "[]"));
+    if (Array.isArray(parsed)) photos = parsed.filter((p) => typeof p === "string");
+  } catch {
+    photos = [];
+  }
+
+  if (!make || !model) return { error: "Make and model are required." };
+  if (!Number.isInteger(yearStart) || !Number.isInteger(yearEnd) || yearStart < 1900 || yearEnd < yearStart) {
+    return { error: "Enter a valid year range (year end must be on or after year start)." };
+  }
+  if (!Number.isInteger(quantity) || quantity < 0) return { error: "Quantity must be zero or greater." };
+  if (!Number.isInteger(reorderPoint) || reorderPoint < 0) {
+    return { error: "Reorder point must be zero or greater." };
+  }
+  if (!Number.isFinite(cost) || cost < 0) return { error: "Cost must be a non-negative number." };
+  if (!Number.isFinite(price) || price < 0) return { error: "Price must be a non-negative number." };
+
+  if (supplierId) {
+    const supplier = await prisma.supplier.findFirst({
+      where: { id: supplierId, organizationId: organization.id },
+    });
+    if (!supplier) return { error: "Selected supplier was not found." };
+  }
+
+  let sku = String(formData.get("sku") || "").trim();
+  if (!sku) sku = generateSkuBase({ model, yearStart, yearEnd, partType, position });
+  if (!sku) return { error: "Couldn't auto-generate a code — fill in make, model, years, and part type." };
+
+  // quantity is intentionally excluded here: on create it's the starting
+  // stock level, but on update it must never come from this form — the
+  // quantity input is disabled while editing, and disabled inputs aren't
+  // submitted, so trusting a "quantity" field here would zero it out.
+  // Quantity changes only happen through recordStockMovement's transaction.
+  const data = {
+    organizationId: organization.id,
+    sku,
+    partType,
+    make,
+    model,
+    yearStart,
+    yearEnd,
+    position,
+    color,
+    paintCode,
+    binLocation,
+    condition,
+    conditionNotes,
+    capaCertified,
+    reorderPoint,
+    cost,
+    price,
+    photos,
+    isPublic,
+    supplierId,
+  };
+
+  try {
+    if (id) {
+      const existing = await prisma.product.findFirst({ where: { id, organizationId: organization.id } });
+      if (!existing) return { error: "Product not found." };
+      await prisma.product.update({ where: { id }, data });
+    } else {
+      await prisma.product.create({ data: { ...data, quantity } });
+    }
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return { error: `Code "${sku}" is already in use in this org — edit it and save again.` };
+    }
+    throw err;
+  }
+
+  revalidatePath("/products");
+  revalidatePath("/dashboard");
+  if (id) revalidatePath(`/products/${id}`);
+
+  redirect(id ? `/products/${id}` : "/products");
+}
+
+export async function toggleProductVisibility(formData: FormData) {
+  const { organization } = await requireAuthContext();
+  const id = String(formData.get("id"));
+  const nextValue = formData.get("next") === "true";
+
+  // updateMany (not update) so the organizationId filter is enforced at the
+  // query level — a tampered id from another org simply matches zero rows.
+  await prisma.product.updateMany({
+    where: { id, organizationId: organization.id },
+    data: { isPublic: nextValue },
+  });
+
+  revalidatePath("/products");
+  revalidatePath(`/products/${id}`);
+}
