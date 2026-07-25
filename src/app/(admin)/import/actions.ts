@@ -11,8 +11,10 @@ import {
   type FailedInventoryRow,
   type FlaggedInventoryRow,
   type ParsedInventoryRow,
+  type PartTypeCount,
 } from "@/lib/inventory-import";
 import { generateSkuBase } from "@/lib/sku";
+import { formatPartType } from "@/lib/format";
 import { PartPosition, PartType } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -23,12 +25,22 @@ export type PreviewState = {
   error?: string;
   sheets?: string[];
   partType?: PartType;
+  // First part type detected from the sheet's title/section rows, so the
+  // client can pre-fill the category dropdown when it needs to ask again
+  // (e.g. no titles were detectable and a manual fallback is required).
+  suggestedPartType?: PartType;
   preview?: {
-    partType: PartType;
     sheetName: string;
     rows: ParsedInventoryRow[];
     flagged: FlaggedInventoryRow[];
     failed: FailedInventoryRow[];
+    partTypeBreakdown: PartTypeCount[];
+    // True when the sheet had no in-sheet part-type titles at all, so every
+    // row's category came from the manually-selected fallback.
+    usedFallback: boolean;
+    // Set when in-sheet titles were found but disagree with the manually
+    // selected category — the in-sheet titles still win.
+    partTypeWarning?: string;
   };
 };
 
@@ -43,11 +55,14 @@ export async function previewImport(_prevState: PreviewState, formData: FormData
     return { error: "Choose a file first." };
   }
 
+  // Now only a fallback: the parser detects a part type per row from the
+  // sheet's own title/section rows (see inventory-import.ts). This is only
+  // required when the sheet turns out to have no detectable titles at all.
   const partTypeRaw = String(formData.get("partType") || "");
-  if (!PART_TYPES.has(partTypeRaw)) {
-    return { error: "Choose a part type." };
+  if (partTypeRaw && !PART_TYPES.has(partTypeRaw)) {
+    return { error: "Invalid part type." };
   }
-  const partType = partTypeRaw as PartType;
+  const manualPartType = partTypeRaw ? (partTypeRaw as PartType) : null;
 
   const sheetNameRaw = String(formData.get("sheetName") || "");
 
@@ -69,7 +84,7 @@ export async function previewImport(_prevState: PreviewState, formData: FormData
     const match = sheets.find((s) => s.name === sheetNameRaw);
     if (!match) {
       // Ask the client to render a sheet picker and resubmit the same file.
-      return { sheets: sheets.map((s) => s.name), partType };
+      return { sheets: sheets.map((s) => s.name), partType: manualPartType ?? undefined };
     }
     sheet = match;
   }
@@ -78,6 +93,7 @@ export async function previewImport(_prevState: PreviewState, formData: FormData
     return { error: `Sheet "${sheet.name}" needs a title row, a header row, and at least one data row.` };
   }
 
+  const titleRow = sheet.rows[0];
   const headerRow = sheet.rows[1];
   const missing = missingRequiredColumns(buildColumnIndex(headerRow));
   if (missing.length > 0) {
@@ -85,15 +101,37 @@ export async function previewImport(_prevState: PreviewState, formData: FormData
   }
 
   const dataRows = sheet.rows.slice(2);
-  const { parsed, flagged, failed } = parseInventorySheet(dataRows, headerRow);
+  const { parsed, flagged, failed, detectedPartTypes } = parseInventorySheet(dataRows, headerRow, titleRow, manualPartType);
+
+  if (detectedPartTypes.length === 0 && !manualPartType) {
+    return {
+      error: `Sheet "${sheet.name}" has no detectable part-type titles (e.g. "DOORS") — choose a category to continue.`,
+      sheets: sheets.length > 1 ? sheets.map((s) => s.name) : undefined,
+    };
+  }
+
+  let partTypeWarning: string | undefined;
+  if (detectedPartTypes.length > 0 && manualPartType && !detectedPartTypes.includes(manualPartType)) {
+    const detectedLabels = detectedPartTypes.map(formatPartType).join(", ");
+    partTypeWarning = `Sheet titles say ${detectedLabels} — using that instead of the selected "${formatPartType(manualPartType)}".`;
+  }
+
+  const breakdownMap = new Map<PartType, number>();
+  for (const row of parsed) {
+    breakdownMap.set(row.partType, (breakdownMap.get(row.partType) ?? 0) + 1);
+  }
+  const partTypeBreakdown: PartTypeCount[] = Array.from(breakdownMap, ([partType, count]) => ({ partType, count }));
 
   return {
+    suggestedPartType: detectedPartTypes[0] ?? manualPartType ?? undefined,
     preview: {
-      partType,
       sheetName: sheet.name,
       rows: parsed,
       flagged,
       failed,
+      partTypeBreakdown,
+      usedFallback: detectedPartTypes.length === 0,
+      partTypeWarning,
     },
   };
 }
@@ -108,13 +146,8 @@ export type CommitResult = {
 // reviewed the preview and hit "Confirm import". This is still a public
 // Server Action endpoint like any other, so every row is re-validated here
 // rather than trusting what previewImport handed back to the client.
-export async function commitImport(rows: ParsedInventoryRow[], partTypeRaw: PartType): Promise<CommitResult> {
+export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitResult> {
   const { organization } = await requireAuthContext();
-
-  if (!PART_TYPES.has(partTypeRaw)) {
-    return { error: "Invalid part type." };
-  }
-  const partType = partTypeRaw;
 
   if (!Array.isArray(rows) || rows.length === 0) {
     return { error: "No rows to import." };
@@ -130,6 +163,7 @@ export async function commitImport(rows: ParsedInventoryRow[], partTypeRaw: Part
     const yearStart = Number(row?.yearStart);
     const yearEnd = Number(row?.yearEnd);
     const positionRaw = row?.position ?? null;
+    const partTypeRaw = String(row?.partType ?? "");
     const quantity = Number(row?.quantity);
     const cost = Number(row?.cost);
     const price = Number(row?.price);
@@ -141,6 +175,10 @@ export async function commitImport(rows: ParsedInventoryRow[], partTypeRaw: Part
     }
     if (!Number.isInteger(yearStart) || !Number.isInteger(yearEnd) || yearEnd < yearStart) {
       skipped.push({ row: rowNum, reason: "Invalid year range." });
+      continue;
+    }
+    if (!PART_TYPES.has(partTypeRaw)) {
+      skipped.push({ row: rowNum, reason: "Invalid or missing part type." });
       continue;
     }
     if (positionRaw !== null && !POSITIONS.has(positionRaw)) {
@@ -157,6 +195,8 @@ export async function commitImport(rows: ParsedInventoryRow[], partTypeRaw: Part
     }
 
     const position = positionRaw as PartPosition | null;
+    const partType = partTypeRaw as PartType;
+    const conditionNotes = row?.note ? String(row.note).trim() || null : null;
 
     valid.push({
       organizationId: organization.id,
@@ -168,6 +208,7 @@ export async function commitImport(rows: ParsedInventoryRow[], partTypeRaw: Part
       yearEnd,
       position,
       condition: "A",
+      conditionNotes,
       quantity,
       cost,
       price,

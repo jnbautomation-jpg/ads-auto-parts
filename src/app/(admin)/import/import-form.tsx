@@ -35,6 +35,18 @@ export function ImportForm() {
   const [commitPending, startCommit] = useTransition();
   const [commitResult, setCommitResult] = useState<CommitResult | null>(null);
 
+  // Part type is now auto-detected per row from the sheet's own title/
+  // section rows — the dropdown is just a fallback + a starting guess.
+  // Pre-fill it from the sheet once we know what it contains, but only if
+  // the user hasn't already picked something themselves. Render-phase state
+  // adjustment (React's documented pattern for this) rather than an effect,
+  // since this only needs to run when `state` itself changes.
+  const [lastSuggested, setLastSuggested] = useState<PartType | undefined>(undefined);
+  if (state.suggestedPartType && state.suggestedPartType !== lastSuggested) {
+    setLastSuggested(state.suggestedPartType);
+    if (!partType) setPartType(state.suggestedPartType);
+  }
+
   function setFile(file: File | null) {
     if (!inputRef.current) return;
     if (file) {
@@ -61,7 +73,7 @@ export function ImportForm() {
   function handleConfirm() {
     if (!preview) return;
     startCommit(async () => {
-      const result = await commitImport(preview.rows, preview.partType);
+      const result = await commitImport(preview.rows);
       setCommitResult(result);
     });
   }
@@ -110,15 +122,14 @@ export function ImportForm() {
 
           <div className="flex flex-wrap items-end gap-3">
             <label className={`${labelClass} w-full md:w-[220px]`}>
-              PART TYPE
+              PART TYPE (FALLBACK)
               <select
                 name="partType"
                 value={partType}
                 onChange={(e) => setPartType(e.target.value as PartType)}
                 className={inputClass}
-                required
               >
-                <option value="">Choose part type…</option>
+                <option value="">Auto-detect from sheet…</option>
                 {PART_TYPES.map((pt) => (
                   <option key={pt} value={pt}>
                     {formatPartType(pt)}
@@ -149,7 +160,7 @@ export function ImportForm() {
 
             <button
               type="submit"
-              disabled={pending || !fileName || !partType || Boolean(state.sheets && !sheetName)}
+              disabled={pending || !fileName || Boolean(state.sheets && !sheetName)}
               className={`${buttonPrimaryClass} w-full md:w-auto`}
             >
               {pending ? "PARSING…" : "PARSE FILE"}
@@ -166,20 +177,37 @@ export function ImportForm() {
         </form>
       ) : (
         <div className="flex flex-col gap-3">
-          <div className={`${cardClass} flex flex-wrap items-center gap-4 px-3.5 py-2.5`}>
-            <div className="text-sm">
-              <span className="font-semibold text-[#15803d]">{preview.rows.length} ready</span>
-              {" · "}
-              <span className="font-semibold text-[#B45309]">{preview.flagged.length} flagged</span>
-              {" · "}
-              <span className="font-semibold text-[#B4231F]">{preview.failed.length} failed</span>
+          <div className={cardClass}>
+            <div className="flex flex-wrap items-center gap-4 px-3.5 py-2.5">
+              <div className="text-sm">
+                <span className="font-semibold text-[#15803d]">{preview.rows.length} ready</span>
+                {" · "}
+                <span className="font-semibold text-[#B45309]">{preview.flagged.length} flagged</span>
+                {" · "}
+                <span className="font-semibold text-[#B4231F]">{preview.failed.length} failed</span>
+              </div>
+              <div className={mutedClass}>
+                sheet &quot;{preview.sheetName}&quot;
+                {preview.usedFallback ? " · category from dropdown (no titles detected in sheet)" : ""}
+              </div>
+              <button type="button" onClick={reset} className={`${buttonSecondaryClass} w-full md:ml-auto md:w-auto`}>
+                START OVER
+              </button>
             </div>
-            <div className={mutedClass}>
-              {formatPartType(preview.partType)} · sheet &quot;{preview.sheetName}&quot;
-            </div>
-            <button type="button" onClick={reset} className={`${buttonSecondaryClass} w-full md:ml-auto md:w-auto`}>
-              START OVER
-            </button>
+            {preview.partTypeBreakdown.length > 0 ? (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-black/8 px-3.5 py-2 text-sm text-[#444]">
+                {preview.partTypeBreakdown.map((b) => (
+                  <span key={b.partType}>
+                    <span className="font-semibold">{formatPartType(b.partType)}:</span> {b.count}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {preview.partTypeWarning ? (
+              <p className="border-t border-[#B45309]/20 bg-[#B45309]/[0.06] px-3.5 py-2 text-xs text-[#B45309]">
+                {preview.partTypeWarning}
+              </p>
+            ) : null}
           </div>
 
           {preview.rows.length > 0 ? (
@@ -208,7 +236,7 @@ export function ImportForm() {
                         model: r.model,
                         yearStart: r.yearStart,
                         yearEnd: r.yearEnd,
-                        partType: preview.partType,
+                        partType: r.partType,
                         position: r.position,
                       })}
                     </div>
@@ -231,7 +259,7 @@ export function ImportForm() {
                         model: r.model,
                         yearStart: r.yearStart,
                         yearEnd: r.yearEnd,
-                        partType: preview.partType,
+                        partType: r.partType,
                         position: r.position,
                       })}
                     </div>
