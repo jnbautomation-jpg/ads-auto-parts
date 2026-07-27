@@ -132,3 +132,41 @@ export async function toggleProductVisibility(formData: FormData) {
   revalidatePath("/products");
   revalidatePath(`/products/${id}`);
 }
+
+export type BulkDeleteResult = { deleted: number } | { error: string };
+
+// Called directly from the client (not a <form> action) so the row-selection
+// UI can show a pending state and surface an error inline.
+export async function bulkDeleteProducts(ids: string[]): Promise<BulkDeleteResult> {
+  const { organization } = await requireAuthContext();
+
+  const requestedIds = Array.from(new Set((ids ?? []).filter((id): id is string => typeof id === "string" && id.length > 0)));
+  if (requestedIds.length === 0) return { error: "No products selected." };
+
+  const deleted = await prisma.$transaction(async (tx) => {
+    // Re-scope to this org inside the transaction — a tampered id from
+    // another org just won't be among the rows actually deleted.
+    const owned = await tx.product.findMany({
+      where: { id: { in: requestedIds }, organizationId: organization.id },
+      select: { id: true },
+    });
+    const ownedIds = owned.map((p) => p.id);
+    if (ownedIds.length === 0) return 0;
+
+    // FK order: stock movements first, inquiries detached (not deleted —
+    // they're customer leads, kept on record without the product link),
+    // then the products themselves.
+    await tx.stockMovement.deleteMany({ where: { productId: { in: ownedIds }, organizationId: organization.id } });
+    await tx.inquiry.updateMany({
+      where: { productId: { in: ownedIds }, organizationId: organization.id },
+      data: { productId: null },
+    });
+    const result = await tx.product.deleteMany({ where: { id: { in: ownedIds }, organizationId: organization.id } });
+    return result.count;
+  });
+
+  revalidatePath("/products");
+  revalidatePath("/dashboard");
+
+  return { deleted };
+}

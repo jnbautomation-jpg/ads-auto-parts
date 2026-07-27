@@ -527,8 +527,13 @@ function ContactSection() {
               </div>
               <div className={`hidden lg:flex ${contactRowClass}`}>
                 <span className={contactLabelClass}>HOURS</span>
-                <span className="font-[family-name:var(--font-barlow)] text-[14px] font-medium">
-                  Mon–Fri · call to confirm
+                <span className="flex flex-col items-end gap-1 text-right">
+                  <span className="font-[family-name:var(--font-barlow)] text-[14px] font-medium">
+                    Mon–Fri 9 AM–5 PM · Sat–Sun Closed
+                  </span>
+                  <span className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold tracking-[0.02em] text-[#E31E24]">
+                    Phone available 24/7
+                  </span>
                 </span>
               </div>
             </div>
@@ -584,7 +589,8 @@ function SiteFooter() {
             <a href={`mailto:${EMAIL}`} className="hover:text-white">
               {EMAIL}
             </a>
-            <div className="text-[#666] lg:text-[#777]">Mon–Fri · call to confirm current hours</div>
+            <div className="text-[#666] lg:text-[#777]">Mon–Fri 9 AM–5 PM · Sat–Sun Closed</div>
+            <div className="font-semibold text-[#E31E24]">Phone available 24/7</div>
           </div>
         </div>
 
