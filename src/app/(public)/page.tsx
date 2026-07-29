@@ -102,6 +102,12 @@ const contactLabelClass =
 const sectionHeadingClass =
   "font-[family-name:var(--font-oswald)] text-[24px] font-semibold uppercase tracking-[0.14em] lg:text-[36px]";
 
+// Offsets the browser's built-in anchor scroll (native jump on click and on
+// initial load with a #hash) so a section's top lands below the sticky
+// header instead of underneath it. Values match the header's rendered
+// height per breakpoint plus a little breathing room.
+const sectionScrollMtClass = "scroll-mt-[72px] lg:scroll-mt-[92px]";
+
 function TopBar() {
   return (
     <div className="bg-[#E31E24] px-3 py-2.5 text-center font-[family-name:var(--font-barlow)] text-[11px] font-semibold tracking-[0.12em] text-white lg:text-[12px] lg:tracking-[0.16em]">
@@ -279,7 +285,7 @@ function Hero() {
 
 function BrowseByPart() {
   return (
-    <div id="parts" className="px-4 py-14 lg:px-14 lg:py-[110px]">
+    <div id="parts" className={`px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}>
       <div className="mx-auto flex max-w-[1060px] flex-col gap-4 lg:gap-8">
         <Reveal>
           <div className="flex items-baseline justify-between">
@@ -338,7 +344,10 @@ function BrowseByPart() {
 
 function WhyADS() {
   return (
-    <div id="why" className="relative border-t border-white/6 bg-[#0C0C0C] px-4 py-14 lg:px-14 lg:py-[110px]">
+    <div
+      id="why"
+      className={`relative border-t border-white/6 bg-[#0C0C0C] px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}
+    >
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.04]"
         style={{
@@ -399,7 +408,7 @@ function WhyADS() {
 
 function DeliverySection() {
   return (
-    <div id="delivery" className="border-t border-white/6 px-4 py-14 lg:px-14 lg:py-[110px]">
+    <div id="delivery" className={`border-t border-white/6 px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}>
       <div className="mx-auto flex max-w-[1060px] flex-col gap-6 lg:gap-8">
         <Reveal>
           <h2 className={sectionHeadingClass}>Delivery &amp; pickup</h2>
@@ -485,7 +494,10 @@ function DeliverySection() {
 
 function ContactSection() {
   return (
-    <div id="contact" className="border-t border-white/6 bg-[#0C0C0C] px-4 py-14 lg:px-14 lg:py-[110px]">
+    <div
+      id="contact"
+      className={`border-t border-white/6 bg-[#0C0C0C] px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}
+    >
       <div className="mx-auto flex max-w-[1060px] flex-col gap-6 lg:gap-8">
         <Reveal>
           <h2 className={sectionHeadingClass}>

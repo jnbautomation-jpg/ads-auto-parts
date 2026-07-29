@@ -183,6 +183,18 @@ export function ProductList({ products }: { products: ProductRow[] }) {
           {products.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-[#8a8a8a]">No products match these filters.</p>
           ) : (
+            <label className="flex min-h-11 items-center gap-2.5 border-b border-black/5 px-4 font-[family-name:var(--font-barlow)] text-[13px] font-medium text-[#555]">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                aria-label="Select all products"
+                className="h-[18px] w-[18px] accent-[#E31E24]"
+              />
+              Select all
+            </label>
+          )}
+          {products.length === 0 ? null : (
             products.map((product) => {
               const low = product.quantity <= product.reorderPoint;
               return (

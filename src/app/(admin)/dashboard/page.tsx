@@ -64,13 +64,13 @@ export default async function DashboardPage() {
         {cards.map((card) => (
           <div
             key={card.label}
-            className={`${cardClass} flex flex-col gap-1 px-4 py-3.5 ${card.flag ? "border-t-2 border-t-[#F59E0B]" : ""}`}
+            className={`${cardClass} flex min-w-0 flex-col gap-1 px-4 py-3.5 ${card.flag ? "border-t-2 border-t-[#F59E0B]" : ""}`}
           >
-            <div className="font-[family-name:var(--font-oswald)] text-[10.5px] font-semibold tracking-[0.18em] text-[#8a8a8a]">
+            <div className="truncate font-[family-name:var(--font-oswald)] text-[10.5px] font-semibold tracking-[0.18em] text-[#8a8a8a]">
               {card.label}
             </div>
             <div
-              className={`font-[family-name:var(--font-oswald)] text-[26px] font-semibold tracking-[0.04em] ${
+              className={`truncate font-[family-name:var(--font-oswald)] text-[26px] font-semibold tracking-[0.04em] ${
                 card.flag ? "text-[#B45309]" : "text-black"
               }`}
             >
