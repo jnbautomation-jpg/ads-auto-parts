@@ -23,6 +23,12 @@ export type ParsedInventoryRow = {
   // e.g. a dual "399/375" price cell — first number used as cost/price,
   // second recorded here rather than failing the row.
   note: string | null;
+  // Set only for an unsplit "/" row whose quantity is unambiguous (a single
+  // shared count for the whole row, not a per-vehicle split): the vehicle(s)
+  // beyond the primary make/model above, sharing this row's year range,
+  // position, and quantity. One Product gets one VehicleFit per entry here
+  // plus one for the primary fit.
+  additionalVehicles?: FlaggedVehicle[];
 };
 
 export type FlaggedVehicle = { make: string; model: string };
@@ -384,16 +390,6 @@ export function parseInventorySheet(
       position = mapped;
     }
 
-    let quantity = 0;
-    if (qtyRaw !== "") {
-      const n = Number(qtyRaw);
-      if (!Number.isInteger(n) || n < 0) {
-        failed.push({ rowNum, raw, reason: `Invalid QTY "${qtyRaw}".` });
-        return;
-      }
-      quantity = n;
-    }
-
     // Dual "399/375" cells never fail the row — the first number is used,
     // the second (if any) is carried as an informational note. A genuinely
     // missing/unparseable price still blocks commit, but only gets the row
@@ -422,19 +418,59 @@ export function parseInventorySheet(
       const { make: explicitRightMake, rest: rightRest } = stripMakePrefix(rightRaw);
       const rightMake = explicitRightMake ?? currentMake;
       const rightModel = canonicalizeModel(titleCase(rightRest));
+      const leftModel = finalizeModel(left.model);
 
-      const reasonParts = [`Row covers 2 vehicles ("${modelRaw}") — split and enter manually.`];
-      if (priceIssue) reasonParts.push(priceIssue);
-      if (priceNote) reasonParts.push(priceNote);
+      // Unlike the single-vehicle path, an unparseable/dual QTY here doesn't
+      // fail the row — it just means we can't tell how this row's count
+      // splits between the two vehicles, so it still needs a human, but as a
+      // flag (with both vehicles preserved for reference) rather than a drop.
+      let quantity = 0;
+      let quantityAmbiguous = false;
+      if (qtyRaw !== "") {
+        const n = Number(qtyRaw);
+        if (!Number.isInteger(n) || n < 0) {
+          quantityAmbiguous = true;
+        } else {
+          quantity = n;
+        }
+      }
 
-      flagged.push({
+      if (quantityAmbiguous || priceIssue) {
+        const reasonParts: string[] = [];
+        if (quantityAmbiguous) {
+          reasonParts.push(
+            `QTY "${qtyRaw}" doesn't say how it splits between the 2 vehicles in "${modelRaw}" — enter manually.`,
+          );
+        }
+        if (priceIssue) reasonParts.push(priceIssue);
+        if (priceNote) reasonParts.push(priceNote);
+
+        flagged.push({
+          rowNum,
+          raw,
+          reason: reasonParts.join(" "),
+          vehicles: [
+            { make: currentMake, model: leftModel },
+            { make: rightMake, model: rightModel },
+          ],
+          yearStart: left.yearStart,
+          yearEnd: left.yearEnd,
+          position,
+          partType,
+          quantity,
+          cost,
+          price,
+          binLocation,
+        });
+        return;
+      }
+
+      // Unambiguous shared quantity: one product, fit to both vehicles.
+      parsed.push({
         rowNum,
-        raw,
-        reason: reasonParts.join(" "),
-        vehicles: [
-          { make: currentMake, model: finalizeModel(left.model) },
-          { make: rightMake, model: rightModel },
-        ],
+        make: currentMake,
+        model: leftModel,
+        additionalVehicles: [{ make: rightMake, model: rightModel }],
         yearStart: left.yearStart,
         yearEnd: left.yearEnd,
         position,
@@ -443,8 +479,19 @@ export function parseInventorySheet(
         cost,
         price,
         binLocation,
+        note: priceNote,
       });
       return;
+    }
+
+    let quantity = 0;
+    if (qtyRaw !== "") {
+      const n = Number(qtyRaw);
+      if (!Number.isInteger(n) || n < 0) {
+        failed.push({ rowNum, raw, reason: `Invalid QTY "${qtyRaw}".` });
+        return;
+      }
+      quantity = n;
     }
 
     const yearModel = parseYearModel(modelRaw);

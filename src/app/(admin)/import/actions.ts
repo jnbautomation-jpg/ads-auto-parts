@@ -153,7 +153,14 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
     return { error: "No rows to import." };
   }
 
-  const valid: Prisma.ProductCreateManyInput[] = [];
+  type PendingProduct = Omit<Prisma.ProductUncheckedCreateInput, "sku"> & {
+    sku?: string;
+    // Vehicles beyond the primary make/model above — each becomes its own
+    // VehicleFit row sharing this row's year range and position.
+    additionalVehicles: { make: string; model: string }[];
+  };
+
+  const valid: PendingProduct[] = [];
   const skipped: { row: number; reason: string }[] = [];
 
   for (const row of rows ?? []) {
@@ -198,9 +205,15 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
     const partType = partTypeRaw as PartType;
     const conditionNotes = row?.note ? String(row.note).trim() || null : null;
 
+    const additionalVehicles = Array.isArray(row?.additionalVehicles)
+      ? row.additionalVehicles
+          .map((v) => ({ make: String(v?.make ?? "").trim(), model: String(v?.model ?? "").trim() }))
+          .filter((v) => v.make && v.model)
+      : [];
+
     valid.push({
       organizationId: organization.id,
-      sku: "", // filled in per-row inside the transaction, once we know the collision-safe suffix
+      // sku filled in per-row inside the transaction, once we know the collision-safe suffix
       partType,
       make,
       model,
@@ -213,6 +226,7 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
       cost,
       price,
       binLocation,
+      additionalVehicles,
     });
   }
 
@@ -226,7 +240,14 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
       );
 
       for (const item of valid) {
-        const base = { model: item.model, yearStart: item.yearStart, yearEnd: item.yearEnd, partType: item.partType, position: item.position };
+        const { additionalVehicles, ...productFields } = item;
+        const base = {
+          model: productFields.model,
+          yearStart: productFields.yearStart,
+          yearEnd: productFields.yearEnd,
+          partType: productFields.partType,
+          position: productFields.position,
+        };
         let sku = generateSkuBase(base);
         let suffix = 2;
         while (existingSkus.has(sku)) {
@@ -234,11 +255,40 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
           suffix++;
         }
         existingSkus.add(sku);
-        item.sku = sku;
-      }
 
-      await tx.product.createMany({ data: valid });
-      created = valid.length;
+        // Every product gets one VehicleFit per vehicle it fits — the
+        // primary one (mirroring its own make/model/years/position) plus one
+        // more per unsplit "/" row vehicle, all sharing this row's year
+        // range, position, and quantity (the shared count that made the
+        // multi-vehicle row unambiguous in the first place).
+        await tx.product.create({
+          data: {
+            ...productFields,
+            sku,
+            vehicleFits: {
+              create: [
+                {
+                  organizationId: organization.id,
+                  make: productFields.make,
+                  model: productFields.model,
+                  yearStart: productFields.yearStart,
+                  yearEnd: productFields.yearEnd,
+                  position: productFields.position,
+                },
+                ...additionalVehicles.map((v) => ({
+                  organizationId: organization.id,
+                  make: v.make,
+                  model: v.model,
+                  yearStart: productFields.yearStart,
+                  yearEnd: productFields.yearEnd,
+                  position: productFields.position,
+                })),
+              ],
+            },
+          },
+        });
+        created++;
+      }
     });
   }
 

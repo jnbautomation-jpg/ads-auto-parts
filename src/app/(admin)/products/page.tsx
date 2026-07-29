@@ -37,6 +37,16 @@ export default async function ProductsPage({
             { make: { contains: q, mode: "insensitive" as const } },
             { model: { contains: q, mode: "insensitive" as const } },
             { sku: { contains: q, mode: "insensitive" as const } },
+            {
+              vehicleFits: {
+                some: {
+                  OR: [
+                    { make: { contains: q, mode: "insensitive" as const } },
+                    { model: { contains: q, mode: "insensitive" as const } },
+                  ],
+                },
+              },
+            },
           ],
         }
       : {}),

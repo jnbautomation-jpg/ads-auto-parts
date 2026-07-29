@@ -99,9 +99,45 @@ export async function saveProduct(
     if (id) {
       const existing = await prisma.product.findFirst({ where: { id, organizationId: organization.id } });
       if (!existing) return { error: "Product not found." };
-      await prisma.product.update({ where: { id }, data });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.product.update({ where: { id }, data });
+
+        // Keep the fit this form represents in sync in VehicleFit too —
+        // match by the product's *prior* fit fields so a multi-vehicle
+        // product's other fits (added via import) are left untouched. If
+        // nothing matches, add a fit rather than guessing which row to
+        // overwrite.
+        const matchingFit = await tx.vehicleFit.findFirst({
+          where: {
+            productId: id,
+            organizationId: organization.id,
+            make: existing.make,
+            model: existing.model,
+            yearStart: existing.yearStart,
+            yearEnd: existing.yearEnd,
+            position: existing.position,
+          },
+        });
+        if (matchingFit) {
+          await tx.vehicleFit.update({
+            where: { id: matchingFit.id },
+            data: { make, model, yearStart, yearEnd, position },
+          });
+        } else {
+          await tx.vehicleFit.create({
+            data: { organizationId: organization.id, productId: id, make, model, yearStart, yearEnd, position },
+          });
+        }
+      });
     } else {
-      await prisma.product.create({ data: { ...data, quantity } });
+      await prisma.product.create({
+        data: {
+          ...data,
+          quantity,
+          vehicleFits: { create: { organizationId: organization.id, make, model, yearStart, yearEnd, position } },
+        },
+      });
     }
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {

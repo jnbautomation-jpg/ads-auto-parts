@@ -23,6 +23,7 @@ model Organization {
 
   users         User[]
   products      Product[]
+  vehicleFits   VehicleFit[]
   suppliers     Supplier[]
   stockMovements StockMovement[]
   inquiries     Inquiry[]
@@ -151,11 +152,13 @@ model Product {
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  vehicleFits    VehicleFit[]
   stockMovements StockMovement[]
   inquiries      Inquiry[]
 
   @@unique([organizationId, sku])
-  // Public catalog / staff filtering by vehicle fit.
+  // Public catalog / staff filtering by vehicle fit. Still used for the
+  // primary fit above — full multi-vehicle search goes through VehicleFit.
   @@index([organizationId, make, model, yearStart, yearEnd])
   // Filtering by part type.
   @@index([organizationId, partType])
@@ -164,6 +167,32 @@ model Product {
   @@index([organizationId, quantity])
   @@index([supplierId])
   @@map("products")
+}
+
+// Every product has at least one VehicleFit (kept in sync with the primary
+// make/model/yearStart/yearEnd/position above by the single-fit admin form).
+// Parts that fit more than one vehicle — a shared bumper cover, e.g. — get a
+// second row here instead of a second Product. Search matches across all of
+// a product's fits, not just its primary one.
+model VehicleFit {
+  id             String @id @default(cuid())
+  organizationId String
+  productId      String
+
+  make      String
+  model     String
+  yearStart Int
+  yearEnd   Int
+
+  position PartPosition?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Vehicle-fit search (admin + public catalog).
+  @@index([organizationId, make, model, yearStart, yearEnd])
+  @@index([productId])
+  @@map("vehicle_fits")
 }
 
 // ---------------------------------------------------------------------------
