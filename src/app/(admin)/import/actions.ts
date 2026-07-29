@@ -222,6 +222,10 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
       yearEnd,
       position,
       condition: "A",
+      // Imported parts go live on the public catalog immediately, matching
+      // the manual add-form's default — staff can still hide individual
+      // items afterward via the per-product toggle.
+      isPublic: true,
       conditionNotes,
       quantity,
       cost,
