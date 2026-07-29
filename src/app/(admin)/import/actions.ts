@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createId } from "@paralleldrive/cuid2";
 import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
 import { readWorkbookSheets, type WorkbookSheet } from "@/lib/workbook";
@@ -239,6 +240,19 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
         ),
       );
 
+      // IDs are generated here (matching Prisma's own @default(cuid())
+      // algorithm) instead of left to the DB, so vehicle_fits rows can name
+      // their productId up front. A sequential product.create per row (one
+      // nested inside the other) means one round trip per row — fine for a
+      // handful of rows, but a real several-hundred-row sheet blows well
+      // past the interactive-transaction timeout. Two createMany calls keep
+      // this to 2 round trips total while staying inside one transaction:
+      // vehicle_fits still can't reference a product that isn't there,
+      // because the product rows are written (and visible within this same
+      // transaction) first.
+      const products: Prisma.ProductCreateManyInput[] = [];
+      const vehicleFits: Prisma.VehicleFitCreateManyInput[] = [];
+
       for (const item of valid) {
         const { additionalVehicles, ...productFields } = item;
         const base = {
@@ -256,39 +270,38 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
         }
         existingSkus.add(sku);
 
+        const productId = createId();
+        products.push({ ...productFields, id: productId, sku });
+
         // Every product gets one VehicleFit per vehicle it fits — the
         // primary one (mirroring its own make/model/years/position) plus one
         // more per unsplit "/" row vehicle, all sharing this row's year
-        // range, position, and quantity (the shared count that made the
-        // multi-vehicle row unambiguous in the first place).
-        await tx.product.create({
-          data: {
-            ...productFields,
-            sku,
-            vehicleFits: {
-              create: [
-                {
-                  organizationId: organization.id,
-                  make: productFields.make,
-                  model: productFields.model,
-                  yearStart: productFields.yearStart,
-                  yearEnd: productFields.yearEnd,
-                  position: productFields.position,
-                },
-                ...additionalVehicles.map((v) => ({
-                  organizationId: organization.id,
-                  make: v.make,
-                  model: v.model,
-                  yearStart: productFields.yearStart,
-                  yearEnd: productFields.yearEnd,
-                  position: productFields.position,
-                })),
-              ],
-            },
-          },
+        // range and position.
+        vehicleFits.push({
+          organizationId: organization.id,
+          productId,
+          make: productFields.make,
+          model: productFields.model,
+          yearStart: productFields.yearStart,
+          yearEnd: productFields.yearEnd,
+          position: productFields.position,
         });
-        created++;
+        for (const v of additionalVehicles) {
+          vehicleFits.push({
+            organizationId: organization.id,
+            productId,
+            make: v.make,
+            model: v.model,
+            yearStart: productFields.yearStart,
+            yearEnd: productFields.yearEnd,
+            position: productFields.position,
+          });
+        }
       }
+
+      await tx.product.createMany({ data: products });
+      await tx.vehicleFit.createMany({ data: vehicleFits });
+      created = products.length;
     });
   }
 

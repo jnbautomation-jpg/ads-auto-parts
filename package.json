@@ -13,6 +13,7 @@
     "reset:products": "tsx scripts/reset-products.ts"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^3.3.0",
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
     "@supabase/ssr": "^0.12.3",
