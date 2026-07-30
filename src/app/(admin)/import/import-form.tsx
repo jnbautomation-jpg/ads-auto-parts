@@ -1,8 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useRef, useState, useTransition } from "react";
-import { previewImport, commitImport, type PreviewState, type CommitResult } from "./actions";
+import { useActionState, useMemo, useRef, useState, useTransition } from "react";
+import {
+  listImportTabs,
+  previewTabs,
+  commitImport,
+  type TabListState,
+  type TabsPreviewState,
+  type TabPreview,
+  type CommitResult,
+} from "./actions";
 import { generateSkuBase } from "@/lib/sku";
 import { formatFit, formatMoney, formatPartType, formatPosition } from "@/lib/format";
 import { PartType } from "@/generated/prisma/enums";
@@ -11,41 +19,46 @@ import {
   buttonSecondaryClass,
   cardClass,
   inputClass,
-  labelClass,
   mutedClass,
   tableHeaderRowClass,
   tableRowClass,
 } from "@/lib/admin-ui";
 
 const PART_TYPES = Object.values(PartType);
-const ROW_COLS = "grid-cols-[1fr_70px_55px_75px_75px_80px_150px]";
+const ROW_COLS = "grid-cols-[110px_1fr_70px_55px_75px_75px_80px_150px]";
+
+type Step = "upload" | "pick" | "preview";
 
 export function ImportForm() {
-  const [state, formAction, pending] = useActionState<PreviewState, FormData>(previewImport, {});
   const [fileName, setFileName] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [partType, setPartType] = useState<PartType | "">("");
-  const [sheetName, setSheetName] = useState("");
-  // Tracks which previewImport response (by object identity) "Start Over"
-  // dismissed. A fresh previewImport call always produces a new `state`
-  // object, so the comparison naturally un-dismisses without an effect.
-  const [dismissedState, setDismissedState] = useState<PreviewState | null>(null);
+
+  const [listState, listAction, listPending] = useActionState<TabListState, FormData>(listImportTabs, {});
+  const [previewState, previewAction, previewPending] = useActionState<TabsPreviewState, FormData>(previewTabs, {});
+
+  const [step, setStep] = useState<Step>("upload");
+
+  // sheetName -> checked / chosen part type. Seeded from listState the first
+  // time it arrives; edits after that are the user's own.
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [tabType, setTabType] = useState<Record<string, string>>({});
+  const [seededFor, setSeededFor] = useState<TabListState | null>(null);
+  if (listState !== seededFor && listState.sheets) {
+    setSeededFor(listState);
+    const nextChecked: Record<string, boolean> = {};
+    const nextType: Record<string, string> = {};
+    for (const s of listState.sheets) {
+      nextChecked[s.name] = true;
+      nextType[s.name] = s.suggestedType ?? "";
+    }
+    setChecked(nextChecked);
+    setTabType(nextType);
+    setStep("pick");
+  }
 
   const [commitPending, startCommit] = useTransition();
   const [commitResult, setCommitResult] = useState<CommitResult | null>(null);
-
-  // Part type is now auto-detected per row from the sheet's own title/
-  // section rows — the dropdown is just a fallback + a starting guess.
-  // Pre-fill it from the sheet once we know what it contains, but only if
-  // the user hasn't already picked something themselves. Render-phase state
-  // adjustment (React's documented pattern for this) rather than an effect,
-  // since this only needs to run when `state` itself changes.
-  const [lastSuggested, setLastSuggested] = useState<PartType | undefined>(undefined);
-  if (state.suggestedPartType && state.suggestedPartType !== lastSuggested) {
-    setLastSuggested(state.suggestedPartType);
-    if (!partType) setPartType(state.suggestedPartType);
-  }
 
   function setFile(file: File | null) {
     if (!inputRef.current) return;
@@ -62,28 +75,47 @@ export function ImportForm() {
 
   function reset() {
     setFile(null);
-    setPartType("");
-    setSheetName("");
+    setStep("upload");
+    setSeededFor(null);
+    setChecked({});
+    setTabType({});
     setCommitResult(null);
-    setDismissedState(state);
   }
 
-  const preview = dismissedState === state ? undefined : state.preview;
+  function handleParseSelected() {
+    if (!inputRef.current?.files?.[0]) return;
+    const selections = Object.entries(checked)
+      .filter(([, isChecked]) => isChecked)
+      .map(([sheetName]) => ({ sheetName, partType: tabType[sheetName] || "" }));
+    if (selections.length === 0) return;
+
+    const formData = new FormData();
+    formData.set("file", inputRef.current.files[0]);
+    formData.set("selections", JSON.stringify(selections));
+    setStep("preview");
+    previewAction(formData);
+  }
+
+  const tabs = useMemo(() => previewState.tabs ?? [], [previewState.tabs]);
+  const allRows = useMemo(() => tabs.flatMap((t) => t.rows.map((r) => ({ ...r, sheetName: t.sheetName }))), [tabs]);
+  const allFlagged = useMemo(() => tabs.flatMap((t) => t.flagged.map((f) => ({ ...f, sheetName: t.sheetName }))), [tabs]);
+  const allFailed = useMemo(() => tabs.flatMap((t) => t.failed.map((f) => ({ ...f, sheetName: t.sheetName }))), [tabs]);
 
   function handleConfirm() {
-    if (!preview) return;
+    if (allRows.length === 0) return;
     startCommit(async () => {
-      const result = await commitImport(preview.rows);
+      const result = await commitImport(allRows);
       setCommitResult(result);
     });
   }
 
   const alreadyCommitted = Boolean(commitResult && !commitResult.error);
+  const checkedCount = Object.values(checked).filter(Boolean).length;
 
   return (
     <div className="flex flex-col gap-3">
-      {!preview ? (
-        <form action={formAction} className="flex flex-col gap-3">
+      {step === "upload" ? (
+        <form action={listAction} className="flex flex-col gap-3">
           <div
             role="button"
             tabIndex={0}
@@ -120,101 +152,141 @@ export function ImportForm() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-3">
-            <label className={`${labelClass} w-full md:w-[220px]`}>
-              PART TYPE (FALLBACK)
-              <select
-                name="partType"
-                value={partType}
-                onChange={(e) => setPartType(e.target.value as PartType)}
-                className={inputClass}
-              >
-                <option value="">Auto-detect from sheet…</option>
-                {PART_TYPES.map((pt) => (
-                  <option key={pt} value={pt}>
-                    {formatPartType(pt)}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <button
+            type="submit"
+            disabled={listPending || !fileName}
+            className={`${buttonPrimaryClass} w-full md:w-auto`}
+          >
+            {listPending ? "READING…" : "READ TABS"}
+          </button>
 
-            {state.sheets ? (
-              <label className={`${labelClass} w-full md:w-[220px]`}>
-                SHEET / TAB
-                <select
-                  name="sheetName"
-                  value={sheetName}
-                  onChange={(e) => setSheetName(e.target.value)}
-                  className={inputClass}
-                  required
-                >
-                  <option value="">Choose sheet…</option>
-                  {state.sheets.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
+          {listState.error ? (
+            <p className="border border-[#E31E24]/30 bg-[#E31E24]/[0.06] px-3 py-2 text-sm text-[#B4231F]">{listState.error}</p>
+          ) : null}
+        </form>
+      ) : null}
 
+      {step === "pick" && listState.sheets ? (
+        <div className="flex flex-col gap-3">
+          <div className={cardClass}>
+            <div className="border-b border-black/8 px-3.5 py-2.5 font-[family-name:var(--font-oswald)] text-xs font-semibold tracking-[0.16em]">
+              {fileName.toUpperCase()} — {listState.sheets.length} TAB{listState.sheets.length === 1 ? "" : "S"} FOUND
+            </div>
+            <p className={`${mutedClass} px-3.5 pt-2`}>
+              Pick the tabs to import (all checked by default) and confirm each one&apos;s part type — pre-filled
+              from the tab name, but a per-row TYPE column (when a tab has one) can still override it for individual
+              rows.
+            </p>
+            <div className="flex flex-col gap-2 px-3.5 py-3">
+              {listState.sheets.map((s) => (
+                <div key={s.name} className="flex flex-wrap items-center gap-3 border-b border-black/5 pb-2 last:border-b-0">
+                  <label className="flex min-w-[220px] flex-1 items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked[s.name] ?? false}
+                      onChange={(e) => setChecked((prev) => ({ ...prev, [s.name]: e.target.checked }))}
+                    />
+                    <span className="font-medium">{s.name}</span>
+                  </label>
+                  <select
+                    value={tabType[s.name] ?? ""}
+                    onChange={(e) => setTabType((prev) => ({ ...prev, [s.name]: e.target.value }))}
+                    className={`${inputClass} w-auto`}
+                  >
+                    <option value="">Auto-detect from sheet…</option>
+                    {PART_TYPES.map((pt) => (
+                      <option key={pt} value={pt}>
+                        {formatPartType(pt)}
+                      </option>
+                    ))}
+                  </select>
+                  {!s.suggestedType && !tabType[s.name] ? (
+                    <span className="text-xs text-[#B45309]">Couldn&apos;t guess a type from this tab name — pick one.</span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
             <button
-              type="submit"
-              disabled={pending || !fileName || Boolean(state.sheets && !sheetName)}
+              type="button"
+              onClick={handleParseSelected}
+              disabled={checkedCount === 0 || previewPending}
               className={`${buttonPrimaryClass} w-full md:w-auto`}
             >
-              {pending ? "PARSING…" : "PARSE FILE"}
+              {previewPending ? "PARSING…" : `PARSE ${checkedCount} SELECTED TAB${checkedCount === 1 ? "" : "S"}`}
+            </button>
+            <button type="button" onClick={reset} className={`${buttonSecondaryClass} w-full md:w-auto`}>
+              START OVER
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {step === "preview" && previewPending ? <p className={mutedClass}>Parsing selected tabs…</p> : null}
+
+      {step === "preview" && previewState.error ? (
+        <p className="border border-[#E31E24]/30 bg-[#E31E24]/[0.06] px-3 py-2 text-sm text-[#B4231F]">{previewState.error}</p>
+      ) : null}
+
+      {step === "preview" && !previewPending && tabs.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="text-sm">
+              <span className="font-semibold text-[#15803d]">{allRows.length} ready</span>
+              {" · "}
+              <span className="font-semibold text-[#B45309]">{allFlagged.length} flagged</span>
+              {" · "}
+              <span className="font-semibold text-[#B4231F]">{allFailed.length} failed</span>
+              {" · "}
+              <span className={mutedClass}>across {tabs.length} tab{tabs.length === 1 ? "" : "s"}</span>
+            </div>
+            <button type="button" onClick={reset} className={`${buttonSecondaryClass} ml-auto`}>
+              START OVER
             </button>
           </div>
 
-          {state.sheets ? (
-            <p className={mutedClass}>This workbook has multiple sheets — pick the one to import.</p>
-          ) : null}
-
-          {state.error ? (
-            <p className="border border-[#E31E24]/30 bg-[#E31E24]/[0.06] px-3 py-2 text-sm text-[#B4231F]">{state.error}</p>
-          ) : null}
-        </form>
-      ) : (
-        <div className="flex flex-col gap-3">
+          {/* Per-tab, per-part-type breakdown */}
           <div className={cardClass}>
-            <div className="flex flex-wrap items-center gap-4 px-3.5 py-2.5">
-              <div className="text-sm">
-                <span className="font-semibold text-[#15803d]">{preview.rows.length} ready</span>
-                {" · "}
-                <span className="font-semibold text-[#B45309]">{preview.flagged.length} flagged</span>
-                {" · "}
-                <span className="font-semibold text-[#B4231F]">{preview.failed.length} failed</span>
-              </div>
-              <div className={mutedClass}>
-                sheet &quot;{preview.sheetName}&quot;
-                {preview.usedFallback ? " · category from dropdown (no titles detected in sheet)" : ""}
-              </div>
-              <button type="button" onClick={reset} className={`${buttonSecondaryClass} w-full md:ml-auto md:w-auto`}>
-                START OVER
-              </button>
+            <div className="border-b border-black/8 px-3.5 py-2.5 font-[family-name:var(--font-oswald)] text-xs font-semibold tracking-[0.16em]">
+              PER-TAB BREAKDOWN
             </div>
-            {preview.partTypeBreakdown.length > 0 ? (
-              <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-black/8 px-3.5 py-2 text-sm text-[#444]">
-                {preview.partTypeBreakdown.map((b) => (
-                  <span key={b.partType}>
-                    <span className="font-semibold">{formatPartType(b.partType)}:</span> {b.count}
-                  </span>
-                ))}
+            {tabs.map((t: TabPreview) => (
+              <div key={t.sheetName} className="flex flex-col gap-1 border-b border-black/5 px-3.5 py-2.5 last:border-b-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-semibold">{t.sheetName}</span>
+                  {t.skippedReason ? (
+                    <span className="text-xs text-[#B4231F]">Skipped — {t.skippedReason}</span>
+                  ) : (
+                    <span className="text-sm">
+                      <span className="font-semibold text-[#15803d]">{t.rows.length} ready</span>
+                      {" · "}
+                      <span className="font-semibold text-[#B45309]">{t.flagged.length} flagged</span>
+                      {" · "}
+                      <span className="font-semibold text-[#B4231F]">{t.failed.length} failed</span>
+                    </span>
+                  )}
+                </div>
+                {t.partTypeBreakdown.length > 0 ? (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#444]">
+                    {t.partTypeBreakdown.map((b) => (
+                      <span key={b.partType}>
+                        <span className="font-semibold">{formatPartType(b.partType)}:</span> {b.count}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-            {preview.partTypeWarning ? (
-              <p className="border-t border-[#B45309]/20 bg-[#B45309]/[0.06] px-3.5 py-2 text-xs text-[#B45309]">
-                {preview.partTypeWarning}
-              </p>
-            ) : null}
+            ))}
           </div>
 
-          {preview.rows.length > 0 ? (
+          {allRows.length > 0 ? (
             <div className={cardClass}>
               {/* Desktop dense table */}
               <div className="hidden md:block">
                 <div className={`${tableHeaderRowClass} ${ROW_COLS}`}>
+                  <div>TAB</div>
                   <div>VEHICLE FIT</div>
                   <div>POS</div>
                   <div className="text-right">QTY</div>
@@ -223,8 +295,9 @@ export function ImportForm() {
                   <div>BIN</div>
                   <div>SKU</div>
                 </div>
-                {preview.rows.map((r) => (
-                  <div key={r.rowNum} className={`${tableRowClass} ${ROW_COLS}`}>
+                {allRows.map((r) => (
+                  <div key={`${r.sheetName}-${r.rowNum}`} className={`${tableRowClass} ${ROW_COLS}`}>
+                    <div className="truncate text-[#666]">{r.sheetName}</div>
                     <div className="truncate">{formatFit(r.make, r.model, r.yearStart, r.yearEnd)}</div>
                     <div className="text-[#666]">{r.position ? formatPosition(r.position) : "—"}</div>
                     <div className="text-right">{r.quantity}</div>
@@ -246,14 +319,15 @@ export function ImportForm() {
 
               {/* Mobile stacked cards */}
               <div className="flex flex-col md:hidden">
-                {preview.rows.map((r) => (
-                  <div key={r.rowNum} className="flex flex-col gap-1 border-b border-black/5 px-3.5 py-2.5 last:border-b-0">
+                {allRows.map((r) => (
+                  <div key={`${r.sheetName}-${r.rowNum}`} className="flex flex-col gap-1 border-b border-black/5 px-3.5 py-2.5 last:border-b-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-semibold">{formatFit(r.make, r.model, r.yearStart, r.yearEnd)}</div>
                       <div className="shrink-0 text-[13px] text-[#666]">
                         {r.position ? formatPosition(r.position) : "—"}
                       </div>
                     </div>
+                    <div className="text-[11px] text-[#8a8a8a]">{r.sheetName}</div>
                     <div className="truncate font-mono text-[11px] text-[#8a8a8a]">
                       {generateSkuBase({
                         model: r.model,
@@ -275,15 +349,15 @@ export function ImportForm() {
             </div>
           ) : null}
 
-          {preview.flagged.length > 0 ? (
+          {allFlagged.length > 0 ? (
             <div className={cardClass}>
               <div className="border-b border-black/8 px-3.5 py-2 font-[family-name:var(--font-oswald)] text-xs font-semibold tracking-[0.14em] text-[#B45309]">
-                FLAGGED — NEEDS MANUAL REVIEW ({preview.flagged.length})
+                FLAGGED — NEEDS MANUAL REVIEW ({allFlagged.length})
               </div>
               <ul className="flex flex-col gap-1.5 px-3.5 py-2.5 font-[family-name:var(--font-barlow)] text-xs text-[#555]">
-                {preview.flagged.map((f) => (
-                  <li key={f.rowNum}>
-                    Row {f.rowNum}: {f.reason}{" "}
+                {allFlagged.map((f) => (
+                  <li key={`${f.sheetName}-${f.rowNum}`}>
+                    <span className="text-[#8a8a8a]">[{f.sheetName}]</span> Row {f.rowNum}: {f.reason}{" "}
                     <span className="text-[#8a8a8a]">
                       ({f.vehicles.map((v) => `${v.make} ${v.model}`).join(" / ")})
                     </span>
@@ -293,15 +367,16 @@ export function ImportForm() {
             </div>
           ) : null}
 
-          {preview.failed.length > 0 ? (
+          {allFailed.length > 0 ? (
             <div className={cardClass}>
               <div className="border-b border-black/8 px-3.5 py-2 font-[family-name:var(--font-oswald)] text-xs font-semibold tracking-[0.14em] text-[#B4231F]">
-                FAILED TO PARSE ({preview.failed.length})
+                FAILED TO PARSE ({allFailed.length})
               </div>
               <ul className="flex flex-col gap-1.5 px-3.5 py-2.5 font-[family-name:var(--font-barlow)] text-xs text-[#555]">
-                {preview.failed.map((f) => (
-                  <li key={f.rowNum}>
-                    Row {f.rowNum}: {f.reason} <span className="text-[#8a8a8a]">— &quot;{f.raw}&quot;</span>
+                {allFailed.map((f) => (
+                  <li key={`${f.sheetName}-${f.rowNum}`}>
+                    <span className="text-[#8a8a8a]">[{f.sheetName}]</span> Row {f.rowNum}: {f.reason}{" "}
+                    <span className="text-[#8a8a8a]">— &quot;{f.raw}&quot;</span>
                   </li>
                 ))}
               </ul>
@@ -311,11 +386,11 @@ export function ImportForm() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              disabled={preview.rows.length === 0 || commitPending || alreadyCommitted}
+              disabled={allRows.length === 0 || commitPending || alreadyCommitted}
               onClick={handleConfirm}
               className={`${buttonPrimaryClass} w-full md:w-auto`}
             >
-              {commitPending ? "IMPORTING…" : `CONFIRM IMPORT (${preview.rows.length})`}
+              {commitPending ? "IMPORTING…" : `CONFIRM IMPORT (${allRows.length})`}
             </button>
           </div>
 
@@ -345,7 +420,7 @@ export function ImportForm() {
             </div>
           ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

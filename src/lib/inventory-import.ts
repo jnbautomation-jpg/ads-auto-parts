@@ -6,6 +6,14 @@
 // and a MODEL cell that embeds the year range in one of two formats. Pure —
 // no DB/Prisma access — so the same logic runs identically during preview
 // and can be unit-tested in isolation.
+//
+// The workbook has ~12 tabs (DOOR INV, TRUNK ETC, TAILGATE, REAR BODY
+// PANELS, HOODS, QUARTER PANEL, FENDER, BUMPERS, GRILLE, hinges, RADIATOR
+// SUPPORT, reinforcement bar) with different column sets and column order —
+// columns are always looked up by header name (buildColumnIndex), never
+// position. A tab's own name is the part-type fallback (resolveTabPartType);
+// a per-row TYPE column, when present, overrides it for just that row (a
+// tab like "TRUNK ETC" can mix TRUNK and LIFTGATE rows).
 import { PartPosition, PartType } from "@/generated/prisma/enums";
 
 export type ParsedInventoryRow = {
@@ -62,13 +70,17 @@ export type InventoryParseResult = {
   parsed: ParsedInventoryRow[];
   flagged: FlaggedInventoryRow[];
   failed: FailedInventoryRow[];
-  // Part types actually found via title/section rows in the sheet itself —
-  // excludes any fallbackPartType contribution — in first-seen order.
-  // Empty means the sheet had no detectable part-type titles at all.
+  // Part types actually found via title/section rows or a per-row TYPE
+  // column in the sheet itself — excludes any fallbackPartType contribution
+  // — in first-seen order. Empty means the sheet had no detectable
+  // part-type signal at all.
   detectedPartTypes: PartType[];
 };
 
-const REQUIRED_COLUMNS = ["location", "model", "side", "qty", "cost", "shop"] as const;
+// Only MODEL/QTY/COST/SHOP are structurally required — LOCATION and SIDE
+// are legitimately absent on some tabs (both are nullable in the schema)
+// and the row-level parsing already tolerates a missing column for either.
+const REQUIRED_COLUMNS = ["model", "qty", "cost", "shop"] as const;
 
 const SIDE_LOOKUP: Record<string, PartPosition> = {
   LF: "FRONT_LEFT",
@@ -117,6 +129,9 @@ const SECTION_MAKES = new Set([
 
 // Singular forms only — matchPartTypeTitle() also tries stripping a trailing
 // "S" so "DOORS", "QUARTER PANELS", etc. match without listing every plural.
+// Used for strict single-cell section-title-row detection (detectPartTypeTitleRow),
+// which deliberately requires an exact-ish match since it fires on any lone
+// non-blank cell in a row.
 const PART_TYPE_TITLES: Record<string, PartType> = {
   DOOR: "DOOR",
   HOOD: "HOOD",
@@ -128,7 +143,51 @@ const PART_TYPE_TITLES: Record<string, PartType> = {
   "QUARTER PANEL": "QUARTER_PANEL",
   FENDER: "FENDER",
   BUMPER: "BUMPER",
+  GRILLE: "GRILLE",
+  GRILL: "GRILLE",
+  HINGE: "HINGE",
+  "RADIATOR SUPPORT": "RADIATOR_SUPPORT",
+  "REINFORCEMENT BAR": "REINFORCEMENT_BAR",
+  REINFORCEMENT: "REINFORCEMENT_BAR",
 };
+
+// Loose keyword matching for tab names and per-row TYPE column values, which
+// come decorated ("DOOR INV", "TRUNK ETC", "REAR BODY PANELS", lowercase
+// "hinges", etc.) rather than as a clean single-cell title. Order doesn't
+// matter — none of these keywords overlap.
+const PART_TYPE_ALIASES: [RegExp, PartType][] = [
+  [/\bdoors?\b/i, "DOOR"],
+  [/\bhoods?\b/i, "HOOD"],
+  [/\btailgates?\b/i, "TAILGATE"],
+  [/\btrunks?\b/i, "TRUNK"],
+  [/\bliftgates?\b/i, "LIFTGATE"],
+  [/\brear\s*body/i, "REAR_BODY_PANEL"],
+  [/\bquarter\s*panels?/i, "QUARTER_PANEL"],
+  [/\bfenders?\b/i, "FENDER"],
+  [/\bbumpers?\b/i, "BUMPER"],
+  [/\bgrill(e)?s?\b/i, "GRILLE"],
+  [/\bhinges?\b/i, "HINGE"],
+  [/\bradiator\s*support/i, "RADIATOR_SUPPORT"],
+  [/\breinforcement(\s*bars?)?\b/i, "REINFORCEMENT_BAR"],
+];
+
+// Resolves free text (a tab name or a TYPE-column cell) to a PartType via
+// keyword matching — tolerant of extra words ("DOOR INV", "TRUNK ETC"),
+// case, and plurals. Returns null when nothing recognizable is found.
+export function matchPartTypeLoose(text: string): PartType | null {
+  const normalized = normalizeWhitespace(text.replace(/_/g, " "));
+  if (!normalized) return null;
+  for (const [re, type] of PART_TYPE_ALIASES) {
+    if (re.test(normalized)) return type;
+  }
+  return null;
+}
+
+// Derives a tab's default part type from its own name — used as the
+// fallbackPartType seed so most tabs never need a manual category pick.
+export function resolveTabPartType(sheetName: string): PartType | null {
+  return matchPartTypeLoose(sheetName);
+}
 
 function normalizeWhitespace(s: string): string {
   return s.replace(/\s+/g, " ").trim();
@@ -279,6 +338,37 @@ function parseMoneyMaybeDual(cell: string): { value: number | null; note: string
   return { value: Number.isFinite(n) ? n : null, note: null };
 }
 
+// Handles junk riding along with a price, e.g. "346 (not in stock)" — the
+// leading number is still used as the value, but the annotation always gets
+// flagged for a human to see rather than silently dropped.
+function parseMoneyCell(cell: string): { value: number | null; note: string | null; flagged: boolean } {
+  const trimmed = cell.trim();
+  const parenMatch = trimmed.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  if (parenMatch) {
+    const [, before, annotation] = parenMatch;
+    const dual = parseMoneyMaybeDual(before);
+    const annotationNote = `Source noted "${annotation.trim()}" on this price.`;
+    return {
+      value: dual.value,
+      note: dual.note ? `${annotationNote} ${dual.note}` : annotationNote,
+      flagged: true,
+    };
+  }
+  const dual = parseMoneyMaybeDual(trimmed);
+  return { value: dual.value, note: dual.note, flagged: false };
+}
+
+// Handles non-numeric QTY text (e.g. "out" meaning out of stock) — treated
+// as 0 on hand, but always flagged so a human confirms rather than the
+// sheet's actual count silently disappearing.
+function parseQuantityCell(cell: string): { value: number; flagged: boolean; reason: string | null } {
+  const trimmed = cell.trim();
+  if (trimmed === "") return { value: 0, flagged: false, reason: null };
+  const n = Number(trimmed);
+  if (Number.isInteger(n) && n >= 0) return { value: n, flagged: false, reason: null };
+  return { value: 0, flagged: true, reason: `QTY "${trimmed}" isn't a number — treated as 0, confirm.` };
+}
+
 export type InventoryColumnIndex = Record<string, number>;
 
 export function buildColumnIndex(headerRow: string[]): InventoryColumnIndex {
@@ -294,6 +384,16 @@ export function missingRequiredColumns(index: InventoryColumnIndex): string[] {
   return REQUIRED_COLUMNS.filter((c) => !(c in index));
 }
 
+// Header names vary slightly across tabs ("TYPE" vs "PART TYPE", "Partslink
+// number" vs "Partslink") — find the first column whose normalized header
+// contains the given token, rather than requiring an exact key match.
+function findColumnContaining(index: InventoryColumnIndex, token: string): number | undefined {
+  for (const [key, col] of Object.entries(index)) {
+    if (key.includes(token)) return col;
+  }
+  return undefined;
+}
+
 // `dataRows` excludes both the title row and the header row — callers pass
 // the header row separately so the row-number math (row 1 = title, row 2 =
 // header, data starts at row 3) is done in exactly one place. `titleRow` is
@@ -301,8 +401,10 @@ export function missingRequiredColumns(index: InventoryColumnIndex): string[] {
 // since that's often where a single-category sheet's category actually
 // lives (e.g. a centered "DOORS" heading), not in the data area.
 // `fallbackPartType` seeds the current part type when nothing in the sheet
-// names one — the manually-selected category from the import form — and
-// also fills any gap before the first in-sheet part-type title is found.
+// names one — normally the tab's own name (resolveTabPartType), or the
+// manually-selected category from the import form — and also fills any gap
+// before the first in-sheet part-type title is found. A per-row TYPE column,
+// when present and non-blank, overrides the fallback for just that row.
 export function parseInventorySheet(
   dataRows: string[][],
   headerRow: string[],
@@ -316,6 +418,8 @@ export function parseInventorySheet(
   const qtyCol = index["qty"];
   const costCol = index["cost"];
   const shopCol = index["shop"];
+  const typeCol = index["type"] ?? findColumnContaining(index, "part type");
+  const partslinkCol = findColumnContaining(index, "partslink");
 
   const parsed: ParsedInventoryRow[] = [];
   const flagged: FlaggedInventoryRow[] = [];
@@ -358,10 +462,12 @@ export function parseInventorySheet(
     const costRaw = get(costCol).trim();
     const shopRaw = get(shopCol).trim();
     const locationRaw = get(locationCol).trim();
+    const typeRaw = normalizeWhitespace(get(typeCol));
+    const partslinkRaw = normalizeWhitespace(get(partslinkCol));
 
-    if (!modelRaw && !sideRaw && !qtyRaw && !costRaw && !shopRaw && !locationRaw) return; // fully blank row
+    if (!modelRaw && !sideRaw && !qtyRaw && !costRaw && !shopRaw && !locationRaw && !typeRaw) return; // fully blank row
 
-    if (!sideRaw && SECTION_MAKES.has(modelRaw.toUpperCase())) {
+    if (!sideRaw && !typeRaw && SECTION_MAKES.has(modelRaw.toUpperCase())) {
       currentMake = MAKE_LABELS[modelRaw.toUpperCase()];
       return;
     }
@@ -374,11 +480,38 @@ export function parseInventorySheet(
       failed.push({ rowNum, raw, reason: "No make section row found above this row." });
       return;
     }
-    if (!currentPartType) {
-      failed.push({ rowNum, raw, reason: "No part-type section row found above this row." });
+
+    // A per-row TYPE column overrides the section/tab fallback for just
+    // this row — a tab like "TRUNK ETC" mixes TRUNK and Liftgate rows this
+    // way. An unrecognized TYPE value doesn't fail the row (the fallback
+    // still applies) but does get flagged so a human confirms the guess.
+    let partType = currentPartType;
+    let typeReason: string | null = null;
+    if (typeRaw) {
+      const resolved = matchPartTypeLoose(typeRaw);
+      if (resolved) {
+        partType = resolved;
+        markDetected(resolved);
+      } else {
+        typeReason = `Unrecognized TYPE "${typeRaw}" — kept ${partType ?? "no"} fallback, confirm.`;
+      }
+    }
+
+    if (!partType) {
+      failed.push({ rowNum, raw, reason: "No part-type section row, TYPE column, or tab fallback found for this row." });
       return;
     }
-    const partType = currentPartType;
+
+    // A description/reference column (e.g. "Partslink number") naming a
+    // different part type than the one this row resolved to — flagged for
+    // manual review rather than guessing which signal is right.
+    let conflictReason: string | null = null;
+    if (partslinkRaw) {
+      const hinted = matchPartTypeLoose(partslinkRaw);
+      if (hinted && hinted !== partType) {
+        conflictReason = `Partslink text "${partslinkRaw}" suggests ${hinted}, but this row resolved to ${partType} — needs manual review.`;
+      }
+    }
 
     let position: PartPosition | null = null;
     if (sideRaw) {
@@ -393,10 +526,14 @@ export function parseInventorySheet(
     // Dual "399/375" cells never fail the row — the first number is used,
     // the second (if any) is carried as an informational note. A genuinely
     // missing/unparseable price still blocks commit, but only gets the row
-    // flagged for manual review rather than dropped as a hard failure.
-    const costResult = parseMoneyMaybeDual(costRaw);
-    const priceResult = parseMoneyMaybeDual(shopRaw);
+    // flagged for manual review rather than dropped as a hard failure. A
+    // parenthetical annotation ("346 (not in stock)") still extracts the
+    // leading number but always flags — that note is too important to lose
+    // silently the way the dual-price note is.
+    const costResult = parseMoneyCell(costRaw);
+    const priceResult = parseMoneyCell(shopRaw);
     const priceNote = [costResult.note, priceResult.note].filter(Boolean).join(" ") || null;
+    const priceAnnotated = costResult.flagged || priceResult.flagged;
     const priceIssue =
       costResult.value === null || costResult.value < 0
         ? `Missing or invalid COST "${costRaw}".`
@@ -424,27 +561,21 @@ export function parseInventorySheet(
       // fail the row — it just means we can't tell how this row's count
       // splits between the two vehicles, so it still needs a human, but as a
       // flag (with both vehicles preserved for reference) rather than a drop.
-      let quantity = 0;
-      let quantityAmbiguous = false;
-      if (qtyRaw !== "") {
-        const n = Number(qtyRaw);
-        if (!Number.isInteger(n) || n < 0) {
-          quantityAmbiguous = true;
-        } else {
-          quantity = n;
-        }
+      const qtyResult = parseQuantityCell(qtyRaw);
+      const quantity = qtyResult.value;
+
+      const reasonParts: string[] = [];
+      if (qtyResult.flagged) {
+        reasonParts.push(
+          `QTY "${qtyRaw}" doesn't say how it splits between the 2 vehicles in "${modelRaw}" — enter manually.`,
+        );
       }
+      if (priceIssue) reasonParts.push(priceIssue);
+      if (priceAnnotated && priceNote) reasonParts.push(priceNote);
+      if (typeReason) reasonParts.push(typeReason);
+      if (conflictReason) reasonParts.push(conflictReason);
 
-      if (quantityAmbiguous || priceIssue) {
-        const reasonParts: string[] = [];
-        if (quantityAmbiguous) {
-          reasonParts.push(
-            `QTY "${qtyRaw}" doesn't say how it splits between the 2 vehicles in "${modelRaw}" — enter manually.`,
-          );
-        }
-        if (priceIssue) reasonParts.push(priceIssue);
-        if (priceNote) reasonParts.push(priceNote);
-
+      if (reasonParts.length > 0) {
         flagged.push({
           rowNum,
           raw,
@@ -479,20 +610,13 @@ export function parseInventorySheet(
         cost,
         price,
         binLocation,
-        note: priceNote,
+        note: priceNote && !priceAnnotated ? priceNote : null,
       });
       return;
     }
 
-    let quantity = 0;
-    if (qtyRaw !== "") {
-      const n = Number(qtyRaw);
-      if (!Number.isInteger(n) || n < 0) {
-        failed.push({ rowNum, raw, reason: `Invalid QTY "${qtyRaw}".` });
-        return;
-      }
-      quantity = n;
-    }
+    const qtyResult = parseQuantityCell(qtyRaw);
+    const quantity = qtyResult.value;
 
     const yearModel = parseYearModel(modelRaw);
     if (!yearModel) {
@@ -501,16 +625,19 @@ export function parseInventorySheet(
     }
     const finalModel = finalizeModel(yearModel.model);
 
-    if (priceIssue || yearModel.singleYear) {
-      const reasonParts: string[] = [];
-      if (yearModel.singleYear) {
-        reasonParts.push(
-          `Single year "${yearModel.yearStart}" with no explicit range in "${modelRaw}" — confirm and enter manually.`,
-        );
-      }
-      if (priceIssue) reasonParts.push(priceIssue);
-      if (priceNote) reasonParts.push(priceNote);
+    const reasonParts: string[] = [];
+    if (yearModel.singleYear) {
+      reasonParts.push(
+        `Single year "${yearModel.yearStart}" with no explicit range in "${modelRaw}" — confirm and enter manually.`,
+      );
+    }
+    if (priceIssue) reasonParts.push(priceIssue);
+    if (priceAnnotated && priceNote) reasonParts.push(priceNote);
+    if (qtyResult.flagged && qtyResult.reason) reasonParts.push(qtyResult.reason);
+    if (typeReason) reasonParts.push(typeReason);
+    if (conflictReason) reasonParts.push(conflictReason);
 
+    if (reasonParts.length > 0) {
       flagged.push({
         rowNum,
         raw,

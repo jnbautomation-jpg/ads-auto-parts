@@ -12,6 +12,10 @@ const PARTS = [
   "Liftgates",
   "Quarter Panels",
   "Rear Body Panels",
+  "Grilles",
+  "Hinges",
+  "Radiator Supports",
+  "Reinforcement Bars",
 ];
 
 const fieldClass =

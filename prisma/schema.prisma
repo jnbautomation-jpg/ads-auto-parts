@@ -69,6 +69,10 @@ enum PartType {
   QUARTER_PANEL
   FENDER
   BUMPER
+  GRILLE
+  HINGE
+  RADIATOR_SUPPORT
+  REINFORCEMENT_BAR
 }
 
 enum PartPosition {

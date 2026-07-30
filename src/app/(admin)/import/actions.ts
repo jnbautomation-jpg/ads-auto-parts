@@ -9,63 +9,40 @@ import {
   buildColumnIndex,
   missingRequiredColumns,
   parseInventorySheet,
+  resolveTabPartType,
   type FailedInventoryRow,
   type FlaggedInventoryRow,
   type ParsedInventoryRow,
   type PartTypeCount,
 } from "@/lib/inventory-import";
 import { generateSkuBase } from "@/lib/sku";
-import { formatPartType } from "@/lib/format";
 import { PartPosition, PartType } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 
 const PART_TYPES = new Set<string>(Object.values(PartType));
 const POSITIONS = new Set<string>(Object.values(PartPosition));
 
-export type PreviewState = {
+// Single clear rule for now, easy to change later: these part types are
+// always sourced CAPA certified, everything else isn't.
+const CAPA_PART_TYPES = new Set<PartType>(["FENDER", "BUMPER", "HOOD"]);
+
+export type TabListState = {
   error?: string;
-  sheets?: string[];
-  partType?: PartType;
-  // First part type detected from the sheet's title/section rows, so the
-  // client can pre-fill the category dropdown when it needs to ask again
-  // (e.g. no titles were detectable and a manual fallback is required).
-  suggestedPartType?: PartType;
-  preview?: {
-    sheetName: string;
-    rows: ParsedInventoryRow[];
-    flagged: FlaggedInventoryRow[];
-    failed: FailedInventoryRow[];
-    partTypeBreakdown: PartTypeCount[];
-    // True when the sheet had no in-sheet part-type titles at all, so every
-    // row's category came from the manually-selected fallback.
-    usedFallback: boolean;
-    // Set when in-sheet titles were found but disagree with the manually
-    // selected category — the in-sheet titles still win.
-    partTypeWarning?: string;
-  };
+  // One entry per sheet in the workbook, in file order. suggestedType comes
+  // from the tab's own name (e.g. "TRUNK ETC" -> TRUNK) — null when nothing
+  // recognizable is in the name, so the picker has to ask.
+  sheets?: { name: string; suggestedType: PartType | null }[];
 };
 
-// Phase 1: parse the uploaded file and stage results for review. Never
-// writes to the DB — that only happens in commitImport, after a human has
-// looked at the preview.
-export async function previewImport(_prevState: PreviewState, formData: FormData): Promise<PreviewState> {
+// Phase 1: just enough of the workbook to render the tab picker — every
+// sheet's name and a guessed part type from it. Cheap; doesn't parse rows.
+export async function listImportTabs(_prevState: TabListState, formData: FormData): Promise<TabListState> {
   await requireAuthContext();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a file first." };
   }
-
-  // Now only a fallback: the parser detects a part type per row from the
-  // sheet's own title/section rows (see inventory-import.ts). This is only
-  // required when the sheet turns out to have no detectable titles at all.
-  const partTypeRaw = String(formData.get("partType") || "");
-  if (partTypeRaw && !PART_TYPES.has(partTypeRaw)) {
-    return { error: "Invalid part type." };
-  }
-  const manualPartType = partTypeRaw ? (partTypeRaw as PartType) : null;
-
-  const sheetNameRaw = String(formData.get("sheetName") || "");
 
   const buffer = await file.arrayBuffer();
   let sheets: WorkbookSheet[];
@@ -78,63 +55,125 @@ export async function previewImport(_prevState: PreviewState, formData: FormData
     return { error: "That file has no sheets." };
   }
 
-  let sheet: WorkbookSheet;
-  if (sheets.length === 1) {
-    sheet = sheets[0];
-  } else {
-    const match = sheets.find((s) => s.name === sheetNameRaw);
-    if (!match) {
-      // Ask the client to render a sheet picker and resubmit the same file.
-      return { sheets: sheets.map((s) => s.name), partType: manualPartType ?? undefined };
+  return { sheets: sheets.map((s) => ({ name: s.name, suggestedType: resolveTabPartType(s.name) })) };
+}
+
+export type TabSelection = { sheetName: string; partType: string };
+
+export type TabPreview = {
+  sheetName: string;
+  // The fallback type this tab was parsed with (from the picker — tab-name
+  // guess or a manual override). Individual rows can still resolve to a
+  // different type via their own TYPE column value.
+  partType: PartType | null;
+  rows: ParsedInventoryRow[];
+  flagged: FlaggedInventoryRow[];
+  failed: FailedInventoryRow[];
+  partTypeBreakdown: PartTypeCount[];
+  // Non-empty means this tab was skipped entirely — too short, or missing a
+  // structurally required column (MODEL/QTY/COST/SHOP).
+  skippedReason?: string;
+};
+
+export type TabsPreviewState = {
+  error?: string;
+  tabs?: TabPreview[];
+};
+
+// Phase 2: parse every tab the user selected in the picker, each with its
+// own (possibly overridden) fallback part type. One tab at a time is just
+// selections.length === 1 — same code path either way. Never writes to the
+// DB — that only happens in commitImport, once a human has reviewed every
+// tab's breakdown.
+export async function previewTabs(_prevState: TabsPreviewState, formData: FormData): Promise<TabsPreviewState> {
+  await requireAuthContext();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose a file first." };
+  }
+
+  let selections: TabSelection[];
+  try {
+    selections = JSON.parse(String(formData.get("selections") || "[]"));
+  } catch {
+    return { error: "Invalid tab selection." };
+  }
+  if (!Array.isArray(selections) || selections.length === 0) {
+    return { error: "Choose at least one tab to import." };
+  }
+
+  const buffer = await file.arrayBuffer();
+  let sheets: WorkbookSheet[];
+  try {
+    sheets = readWorkbookSheets(buffer, file.name);
+  } catch {
+    return { error: "Couldn't read that file — is it a valid .xlsx, .xls, or .csv?" };
+  }
+
+  const tabs: TabPreview[] = [];
+
+  for (const selection of selections) {
+    const sheet = sheets.find((s) => s.name === selection?.sheetName);
+    if (!sheet) continue;
+
+    const manualType = PART_TYPES.has(selection.partType) ? (selection.partType as PartType) : null;
+
+    if (sheet.rows.length < 3) {
+      tabs.push({
+        sheetName: sheet.name,
+        partType: manualType,
+        rows: [],
+        flagged: [],
+        failed: [],
+        partTypeBreakdown: [],
+        skippedReason: "Needs a title row, a header row, and at least one data row.",
+      });
+      continue;
     }
-    sheet = match;
+
+    const titleRow = sheet.rows[0];
+    const headerRow = sheet.rows[1];
+    const missing = missingRequiredColumns(buildColumnIndex(headerRow));
+    if (missing.length > 0) {
+      tabs.push({
+        sheetName: sheet.name,
+        partType: manualType,
+        rows: [],
+        flagged: [],
+        failed: [],
+        partTypeBreakdown: [],
+        skippedReason: `Missing column(s): ${missing.join(", ")}.`,
+      });
+      continue;
+    }
+
+    const dataRows = sheet.rows.slice(2);
+    const { parsed, flagged, failed, detectedPartTypes } = parseInventorySheet(dataRows, headerRow, titleRow, manualType);
+
+    if (detectedPartTypes.length === 0 && !manualType) {
+      tabs.push({
+        sheetName: sheet.name,
+        partType: null,
+        rows: [],
+        flagged: [],
+        failed: [],
+        partTypeBreakdown: [],
+        skippedReason: `No detectable part type (from the tab name, a section title, or a TYPE column) — pick a category for this tab and re-parse.`,
+      });
+      continue;
+    }
+
+    const breakdownMap = new Map<PartType, number>();
+    for (const row of parsed) {
+      breakdownMap.set(row.partType, (breakdownMap.get(row.partType) ?? 0) + 1);
+    }
+    const partTypeBreakdown: PartTypeCount[] = Array.from(breakdownMap, ([partType, count]) => ({ partType, count }));
+
+    tabs.push({ sheetName: sheet.name, partType: manualType, rows: parsed, flagged, failed, partTypeBreakdown });
   }
 
-  if (sheet.rows.length < 3) {
-    return { error: `Sheet "${sheet.name}" needs a title row, a header row, and at least one data row.` };
-  }
-
-  const titleRow = sheet.rows[0];
-  const headerRow = sheet.rows[1];
-  const missing = missingRequiredColumns(buildColumnIndex(headerRow));
-  if (missing.length > 0) {
-    return { error: `Sheet "${sheet.name}" is missing column(s): ${missing.join(", ")}.` };
-  }
-
-  const dataRows = sheet.rows.slice(2);
-  const { parsed, flagged, failed, detectedPartTypes } = parseInventorySheet(dataRows, headerRow, titleRow, manualPartType);
-
-  if (detectedPartTypes.length === 0 && !manualPartType) {
-    return {
-      error: `Sheet "${sheet.name}" has no detectable part-type titles (e.g. "DOORS") — choose a category to continue.`,
-      sheets: sheets.length > 1 ? sheets.map((s) => s.name) : undefined,
-    };
-  }
-
-  let partTypeWarning: string | undefined;
-  if (detectedPartTypes.length > 0 && manualPartType && !detectedPartTypes.includes(manualPartType)) {
-    const detectedLabels = detectedPartTypes.map(formatPartType).join(", ");
-    partTypeWarning = `Sheet titles say ${detectedLabels} — using that instead of the selected "${formatPartType(manualPartType)}".`;
-  }
-
-  const breakdownMap = new Map<PartType, number>();
-  for (const row of parsed) {
-    breakdownMap.set(row.partType, (breakdownMap.get(row.partType) ?? 0) + 1);
-  }
-  const partTypeBreakdown: PartTypeCount[] = Array.from(breakdownMap, ([partType, count]) => ({ partType, count }));
-
-  return {
-    suggestedPartType: detectedPartTypes[0] ?? manualPartType ?? undefined,
-    preview: {
-      sheetName: sheet.name,
-      rows: parsed,
-      flagged,
-      failed,
-      partTypeBreakdown,
-      usedFallback: detectedPartTypes.length === 0,
-      partTypeWarning,
-    },
-  };
+  return { tabs };
 }
 
 export type CommitResult = {
@@ -226,6 +265,7 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
       // the manual add-form's default — staff can still hide individual
       // items afterward via the per-product toggle.
       isPublic: true,
+      capaCertified: CAPA_PART_TYPES.has(partType),
       conditionNotes,
       quantity,
       cost,

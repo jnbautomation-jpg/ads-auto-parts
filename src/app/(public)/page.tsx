@@ -37,6 +37,10 @@ const PARTS = [
   "Liftgates",
   "Quarter Panels",
   "Rear Body Panels",
+  "Grilles",
+  "Hinges",
+  "Radiator Supports",
+  "Reinforcement Bars",
 ];
 
 const TILES = [
@@ -48,6 +52,10 @@ const TILES = [
   { name: "Liftgates", note: "SUVs & hatchbacks", slug: "liftgates", ph: "liftgate photo" },
   { name: "Quarter Panels", note: "Full & partial", slug: "quarter-panels", ph: "quarter panel photo" },
   { name: "Rear Body Panels", note: "Rear body & valance", slug: "rear-body-panels", ph: "rear panel photo" },
+  { name: "Grilles", note: "Chrome & sport styles", slug: "grilles", ph: "grille photo" },
+  { name: "Hinges", note: "Door & hood hardware", slug: "hinges", ph: "hinge photo" },
+  { name: "Radiator Supports", note: "Core support assemblies", slug: "radiator-support", ph: "radiator support photo" },
+  { name: "Reinforcement Bars", note: "Bumper & body reinforcement", slug: "reinforcement-bars", ph: "reinforcement bar photo" },
 ];
 
 const WHY = [
@@ -291,7 +299,7 @@ function BrowseByPart() {
           <div className="flex items-baseline justify-between">
             <h2 className={sectionHeadingClass}>Browse by part</h2>
             <div className="hidden font-[family-name:var(--font-barlow-condensed)] text-[12px] font-semibold tracking-[0.3em] text-[#E31E24] lg:block">
-              8 CATEGORIES · ALL NEW · NO SALVAGE
+              {TILES.length} CATEGORIES · ALL NEW · NO SALVAGE
             </div>
           </div>
         </Reveal>

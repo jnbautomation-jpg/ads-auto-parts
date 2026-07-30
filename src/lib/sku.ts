@@ -10,6 +10,10 @@ const PART_TYPE_CODE: Record<PartType, string> = {
   QUARTER_PANEL: "QP",
   FENDER: "FD",
   BUMPER: "BP",
+  GRILLE: "GR",
+  HINGE: "HG",
+  RADIATOR_SUPPORT: "RS",
+  REINFORCEMENT_BAR: "RN",
 };
 
 const POSITION_CODE: Record<PartPosition, string> = {
