@@ -48,7 +48,8 @@ export async function listImportTabs(_prevState: TabListState, formData: FormDat
   let sheets: WorkbookSheet[];
   try {
     sheets = readWorkbookSheets(buffer, file.name);
-  } catch {
+  } catch (err) {
+    console.error("[import] listImportTabs: readWorkbookSheets failed", err);
     return { error: "Couldn't read that file — is it a valid .xlsx, .xls, or .csv?" };
   }
   if (sheets.length === 0) {
@@ -96,7 +97,8 @@ export async function previewTabs(_prevState: TabsPreviewState, formData: FormDa
   let selections: TabSelection[];
   try {
     selections = JSON.parse(String(formData.get("selections") || "[]"));
-  } catch {
+  } catch (err) {
+    console.error("[import] previewTabs: failed to parse selections", err);
     return { error: "Invalid tab selection." };
   }
   if (!Array.isArray(selections) || selections.length === 0) {
@@ -107,7 +109,8 @@ export async function previewTabs(_prevState: TabsPreviewState, formData: FormDa
   let sheets: WorkbookSheet[];
   try {
     sheets = readWorkbookSheets(buffer, file.name);
-  } catch {
+  } catch (err) {
+    console.error("[import] previewTabs: readWorkbookSheets failed", err);
     return { error: "Couldn't read that file — is it a valid .xlsx, .xls, or .csv?" };
   }
 

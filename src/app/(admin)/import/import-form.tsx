@@ -32,6 +32,7 @@ type Step = "upload" | "pick" | "preview";
 export function ImportForm() {
   const [fileName, setFileName] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [listState, listAction, listPending] = useActionState<TabListState, FormData>(listImportTabs, {});
@@ -59,6 +60,7 @@ export function ImportForm() {
 
   const [commitPending, startCommit] = useTransition();
   const [commitResult, setCommitResult] = useState<CommitResult | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
 
   function setFile(file: File | null) {
     if (!inputRef.current) return;
@@ -71,6 +73,7 @@ export function ImportForm() {
       inputRef.current.value = "";
       setFileName("");
     }
+    setSelectedFile(file);
   }
 
   function reset() {
@@ -80,17 +83,32 @@ export function ImportForm() {
     setChecked({});
     setTabType({});
     setCommitResult(null);
+    setParseError(null);
+    setSelectedFile(null);
   }
 
   function handleParseSelected() {
-    if (!inputRef.current?.files?.[0]) return;
+    setParseError(null);
+
+    if (!selectedFile) {
+      const message = "Couldn't find the uploaded file anymore — click START OVER and re-upload.";
+      console.error("[import] handleParseSelected: no file in state", {
+        hasSelectedFile: selectedFile != null,
+      });
+      setParseError(message);
+      return;
+    }
     const selections = Object.entries(checked)
       .filter(([, isChecked]) => isChecked)
       .map(([sheetName]) => ({ sheetName, partType: tabType[sheetName] || "" }));
-    if (selections.length === 0) return;
+    if (selections.length === 0) {
+      console.error("[import] handleParseSelected: no tabs selected");
+      setParseError("Choose at least one tab to import.");
+      return;
+    }
 
     const formData = new FormData();
-    formData.set("file", inputRef.current.files[0]);
+    formData.set("file", selectedFile);
     formData.set("selections", JSON.stringify(selections));
     setStep("preview");
     previewAction(formData);
@@ -221,6 +239,10 @@ export function ImportForm() {
               START OVER
             </button>
           </div>
+
+          {parseError ? (
+            <p className="border border-[#E31E24]/30 bg-[#E31E24]/[0.06] px-3 py-2 text-sm text-[#B4231F]">{parseError}</p>
+          ) : null}
         </div>
       ) : null}
 
