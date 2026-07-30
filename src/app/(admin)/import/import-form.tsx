@@ -61,6 +61,7 @@ export function ImportForm() {
   const [commitPending, startCommit] = useTransition();
   const [commitResult, setCommitResult] = useState<CommitResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   function setFile(file: File | null) {
     if (!inputRef.current) return;
@@ -111,7 +112,9 @@ export function ImportForm() {
     formData.set("file", selectedFile);
     formData.set("selections", JSON.stringify(selections));
     setStep("preview");
-    previewAction(formData);
+    startTransition(() => {
+      previewAction(formData);
+    });
   }
 
   const tabs = useMemo(() => previewState.tabs ?? [], [previewState.tabs]);
@@ -230,10 +233,10 @@ export function ImportForm() {
             <button
               type="button"
               onClick={handleParseSelected}
-              disabled={checkedCount === 0 || previewPending}
+              disabled={checkedCount === 0 || isPending || previewPending}
               className={`${buttonPrimaryClass} w-full md:w-auto`}
             >
-              {previewPending ? "PARSING…" : `PARSE ${checkedCount} SELECTED TAB${checkedCount === 1 ? "" : "S"}`}
+              {isPending || previewPending ? "PARSING…" : `PARSE ${checkedCount} SELECTED TAB${checkedCount === 1 ? "" : "S"}`}
             </button>
             <button type="button" onClick={reset} className={`${buttonSecondaryClass} w-full md:w-auto`}>
               START OVER

@@ -56,7 +56,15 @@ export async function listImportTabs(_prevState: TabListState, formData: FormDat
     return { error: "That file has no sheets." };
   }
 
-  return { sheets: sheets.map((s) => ({ name: s.name, suggestedType: resolveTabPartType(s.name) })) };
+  // A CSV upload's sheet is always named the generic "CSV" (see
+  // readWorkbookSheets) — the descriptive name lives in the file itself, so
+  // fall back to guessing from that when the sheet's own name gives nothing.
+  return {
+    sheets: sheets.map((s) => ({
+      name: s.name,
+      suggestedType: resolveTabPartType(s.name) ?? resolveTabPartType(file.name),
+    })),
+  };
 }
 
 export type TabSelection = { sheetName: string; partType: string };

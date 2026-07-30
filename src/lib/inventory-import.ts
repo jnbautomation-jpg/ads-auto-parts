@@ -183,10 +183,22 @@ export function matchPartTypeLoose(text: string): PartType | null {
   return null;
 }
 
+// Strips noise from a tab or uploaded-file name that has nothing to do with
+// the part type itself — a file extension, a browser's "(1)"-style
+// duplicate-download suffix, and the literal word INV — before handing the
+// text to matchPartTypeLoose. Dropdown-guess only; row-level TYPE-column
+// values go through matchPartTypeLoose directly and never see this.
+function stripNameNoise(text: string): string {
+  return text
+    .replace(/\.(csv|xlsx|xls)$/i, "")
+    .replace(/\(\s*\d+\s*\)/g, " ")
+    .replace(/\binv\b/gi, " ");
+}
+
 // Derives a tab's default part type from its own name — used as the
 // fallbackPartType seed so most tabs never need a manual category pick.
 export function resolveTabPartType(sheetName: string): PartType | null {
-  return matchPartTypeLoose(sheetName);
+  return matchPartTypeLoose(stripNameNoise(sheetName));
 }
 
 function normalizeWhitespace(s: string): string {
