@@ -11,6 +11,7 @@ import {
   type TabPreview,
   type CommitResult,
 } from "./actions";
+import type { FailedInventoryRow, FlaggedInventoryRow } from "@/lib/inventory-import";
 import { generateSkuBase } from "@/lib/sku";
 import { formatFit, formatMoney, formatPartType, formatPosition } from "@/lib/format";
 import { PartType } from "@/generated/prisma/enums";
@@ -28,6 +29,42 @@ const PART_TYPES = Object.values(PartType);
 const ROW_COLS = "grid-cols-[110px_1fr_70px_55px_75px_75px_80px_150px]";
 
 type Step = "upload" | "pick" | "preview";
+
+function csvCell(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+// Manual-review worklist for the rows the importer wouldn't commit —
+// flagged (needs a human decision) and failed (couldn't parse at all) —
+// each with its tab, row number, the raw cell values, and why. Display-only
+// in the UI isn't enough for this: staff need a file they can open and work
+// through offline. Purely client-side — the preview data already has
+// everything needed, no extra round trip to the server.
+function buildReviewWorklistCsv(
+  flagged: (FlaggedInventoryRow & { sheetName: string })[],
+  failed: (FailedInventoryRow & { sheetName: string })[],
+): string {
+  const header = ["Tab", "Row", "Status", "Vehicles", "Reason", "Raw Cells"];
+  const lines = [header.join(",")];
+  for (const f of flagged) {
+    const vehicles = f.vehicles.map((v) => `${v.make} ${v.model}`).join(" / ");
+    lines.push([f.sheetName, String(f.rowNum), "FLAGGED", vehicles, f.reason, f.raw].map(csvCell).join(","));
+  }
+  for (const f of failed) {
+    lines.push([f.sheetName, String(f.rowNum), "FAILED", "", f.reason, f.raw].map(csvCell).join(","));
+  }
+  return lines.join("\r\n");
+}
+
+function downloadTextFile(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function ImportForm() {
   const [fileName, setFileName] = useState("");
@@ -128,6 +165,11 @@ export function ImportForm() {
       const result = await commitImport(allRows);
       setCommitResult(result);
     });
+  }
+
+  function handleDownloadWorklist() {
+    const csv = buildReviewWorklistCsv(allFlagged, allFailed);
+    downloadTextFile(`import-review-worklist-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8;");
   }
 
   const alreadyCommitted = Boolean(commitResult && !commitResult.error);
@@ -267,9 +309,16 @@ export function ImportForm() {
               {" · "}
               <span className={mutedClass}>across {tabs.length} tab{tabs.length === 1 ? "" : "s"}</span>
             </div>
-            <button type="button" onClick={reset} className={`${buttonSecondaryClass} ml-auto`}>
-              START OVER
-            </button>
+            <div className="ml-auto flex items-center gap-3">
+              {allFlagged.length + allFailed.length > 0 ? (
+                <button type="button" onClick={handleDownloadWorklist} className={buttonSecondaryClass}>
+                  DOWNLOAD REVIEW WORKLIST ({allFlagged.length + allFailed.length})
+                </button>
+              ) : null}
+              <button type="button" onClick={reset} className={buttonSecondaryClass}>
+                START OVER
+              </button>
+            </div>
           </div>
 
           {/* Per-tab, per-part-type breakdown */}

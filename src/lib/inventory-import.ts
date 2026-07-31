@@ -82,18 +82,73 @@ export type InventoryParseResult = {
 // and the row-level parsing already tolerates a missing column for either.
 const REQUIRED_COLUMNS = ["model", "qty", "cost", "shop"] as const;
 
-const SIDE_LOOKUP: Record<string, PartPosition> = {
-  LF: "FRONT_LEFT",
-  RF: "FRONT_RIGHT",
-  LR: "REAR_LEFT",
-  RR: "REAR_RIGHT",
+// Per-part-type SIDE-column vocabulary. Each inner map is an exact-match
+// lookup (uppercased, whitespace-collapsed base text — see
+// splitSideQualifier) — never substring/contains — so a misaligned
+// description cell (e.g. "COVER, FR (W/O SNSR HO)...") can't accidentally
+// resolve just because it contains a recognized fragment. A part type with
+// no entry here takes no SIDE value at all: any non-blank SIDE cell for it
+// still fails rather than being silently ignored.
+const POSITION_VOCAB: Partial<Record<PartType, Record<string, PartPosition>>> = {
+  DOOR: {
+    LF: "FRONT_LEFT",
+    RF: "FRONT_RIGHT",
+    LR: "REAR_LEFT",
+    RR: "REAR_RIGHT",
+  },
+  FENDER: {
+    // Client-confirmed: this shop's fenders are always front fenders — LH/RH
+    // (the real column values) and L/R (kept for any tab still using the
+    // short form) both mean front-left/front-right, never rear.
+    L: "FRONT_LEFT",
+    R: "FRONT_RIGHT",
+    LH: "FRONT_LEFT",
+    RH: "FRONT_RIGHT",
+  },
+  QUARTER_PANEL: {
+    // Client-confirmed: same as FENDER — quarter panels are always front.
+    LH: "FRONT_LEFT",
+    RH: "FRONT_RIGHT",
+  },
+  BUMPER: {
+    FRONT: "FRONT",
+    REAR: "REAR",
+  },
+  GRILLE: {
+    FRONT: "FRONT",
+  },
+  // HOOD: no entry — hoods carry no position; a non-blank SIDE cell fails.
+  // The remaining tabs (TAILGATE, TRUNK, LIFTGATE, REAR_BODY_PANEL, HINGE,
+  // RADIATOR_SUPPORT, REINFORCEMENT_BAR) have no reviewed real SIDE-column
+  // data yet — left unmapped rather than guessed. Add entries once real
+  // values are seen.
 };
+
+// The schema's PartPosition enum has no separate upper/lower granularity
+// (see prisma/schema.prisma) — a SIDE cell like "front (upper)" or "Front
+// lower" resolves to plain FRONT, with the upper/lower qualifier carried as
+// a flagged note instead of silently dropped (same pattern parseMoneyCell
+// uses for a parenthetical price annotation). This only strips an exact
+// trailing "(upper)"/"(lower)" or bare trailing upper/lower word — never a
+// substring scan — so it can't misfire on unrelated parenthetical content
+// like "(W/O SNSR HO)".
+const SIDE_QUALIFIER_RE = /^(.*?)\s*(?:\(\s*(upper|lower)\s*\)|\b(upper|lower)\b)$/i;
+
+function splitSideQualifier(sideText: string): { base: string; qualifier: string | null } {
+  const match = sideText.match(SIDE_QUALIFIER_RE);
+  if (!match) return { base: sideText, qualifier: null };
+  const qualifier = (match[2] ?? match[3])?.toLowerCase() ?? null;
+  const base = normalizeWhitespace(match[1]);
+  if (!qualifier || !base) return { base: sideText, qualifier: null };
+  return { base, qualifier };
+}
 
 // Used both to detect a make section-header row and to spot an explicit make
 // token at the start of the second half of a multi-vehicle "/" split (e.g.
 // GMC, which never appears as its own section but shows up inline).
 const MAKE_LABELS: Record<string, string> = {
   CHEVROLET: "Chevrolet",
+  CHEVY: "Chevrolet", // shop abbreviation, confirmed against real BUMPERS data
   FORD: "Ford",
   HONDA: "Honda",
   HYUNDAI: "Hyundai",
@@ -106,13 +161,17 @@ const MAKE_LABELS: Record<string, string> = {
   TESLA: "Tesla",
   TOYOTA: "Toyota",
   VW: "VW",
+  VOLKSWAGEN: "Volkswagen",
   GMC: "GMC",
+  CHRYSLER: "Chrysler",
+  MITSUBISHI: "Mitsubishi",
 };
 
 // The subset that can appear as a standalone section row carrying the make
 // forward onto rows beneath it.
 const SECTION_MAKES = new Set([
   "CHEVROLET",
+  "CHEVY",
   "FORD",
   "HONDA",
   "HYUNDIA",
@@ -125,6 +184,9 @@ const SECTION_MAKES = new Set([
   "TESLA",
   "TOYOTA",
   "VW",
+  "VOLKSWAGEN",
+  "CHRYSLER",
+  "MITSUBISHI",
 ]);
 
 // Singular forms only — matchPartTypeTitle() also tries stripping a trailing
@@ -226,6 +288,22 @@ function detectPartTypeTitleRow(cells: string[]): PartType | null {
   const nonBlank = cells.map((c) => normalizeWhitespace((c ?? "").toString())).filter(Boolean);
   if (nonBlank.length !== 1) return null;
   return matchPartTypeTitle(nonBlank[0]);
+}
+
+// A make section row can land in any column, not just MODEL (e.g. bumpers'
+// "|| CHEVY ||||" has leading blank cells shifting the make token over) —
+// and, unlike a part-type title row, can carry unrelated stray content
+// alongside the make token (e.g. bumpers' ["", "HONDA", "", "", "", "15",
+// "", ""], where "15" is leftover residue in some other cell). So this
+// doesn't require the row to have exactly one non-blank cell — it scans
+// every cell for a KNOWN make token specifically (exact match against
+// SECTION_MAKES) and only fires when exactly one cell matches.
+function detectMakeSectionRow(cells: string[]): string | null {
+  const matches = cells
+    .map((c) => normalizeWhitespace((c ?? "").toString()).toUpperCase())
+    .filter((c) => SECTION_MAKES.has(c));
+  if (matches.length !== 1) return null;
+  return MAKE_LABELS[matches[0]];
 }
 
 function titleCase(s: string): string {
@@ -383,17 +461,41 @@ function parseQuantityCell(cell: string): { value: number; flagged: boolean; rea
 
 export type InventoryColumnIndex = Record<string, number>;
 
+// Header label variants that mean the same column as the canonical key —
+// e.g. the hinges tab labels its sell-price column "sell" instead of SHOP.
+const HEADER_ALIASES: Record<string, string> = {
+  sell: "shop",
+};
+
 export function buildColumnIndex(headerRow: string[]): InventoryColumnIndex {
   const index: InventoryColumnIndex = {};
   headerRow.forEach((cell, i) => {
     const key = normalizeWhitespace(cell).toLowerCase();
-    if (key) index[key] = i;
+    if (!key) return;
+    index[key] = i;
+    const aliasKey = HEADER_ALIASES[key];
+    if (aliasKey && !(aliasKey in index)) index[aliasKey] = i;
   });
   return index;
 }
 
 export function missingRequiredColumns(index: InventoryColumnIndex): string[] {
   return REQUIRED_COLUMNS.filter((c) => !(c in index));
+}
+
+// Real tabs don't agree on which row actually holds the column headers —
+// some have an extra blank or Partslink-only row between the title and the
+// header. Scans the first few rows for the one that looks like a header
+// (matches at least 3 of the 4 required concepts — MODEL/QTY/COST/SHOP,
+// including the "sell" alias) rather than assuming a fixed row. Returns the
+// 0-based row index, or null if nothing in the scanned rows qualifies.
+export function findHeaderRowIndex(rows: string[][], maxScan = 5): number | null {
+  for (let i = 0; i < Math.min(maxScan, rows.length); i++) {
+    const index = buildColumnIndex(rows[i]);
+    const hitCount = REQUIRED_COLUMNS.filter((c) => c in index).length;
+    if (hitCount >= 3) return i;
+  }
+  return null;
 }
 
 // Header names vary slightly across tabs ("TYPE" vs "PART TYPE", "Partslink
@@ -407,11 +509,14 @@ function findColumnContaining(index: InventoryColumnIndex, token: string): numbe
 }
 
 // `dataRows` excludes both the title row and the header row — callers pass
-// the header row separately so the row-number math (row 1 = title, row 2 =
-// header, data starts at row 3) is done in exactly one place. `titleRow` is
-// row 1 itself: its lone cell (if any) is checked for a part-type title too,
-// since that's often where a single-category sheet's category actually
-// lives (e.g. a centered "DOORS" heading), not in the data area.
+// the header row separately, and `dataStartRow` (the 1-based Excel row
+// number the first entry of `dataRows` corresponds to) so the row-number
+// math is done in exactly one place. Real tabs don't all put the header on
+// row 2 — callers locate it themselves (see findHeaderRowIndex) — so this
+// no longer assumes a fixed offset. `titleRow` is row 1 itself: its lone
+// cell (if any) is checked for a part-type title too, since that's often
+// where a single-category sheet's category actually lives (e.g. a centered
+// "DOORS" heading), not in the data area.
 // `fallbackPartType` seeds the current part type when nothing in the sheet
 // names one — normally the tab's own name (resolveTabPartType), or the
 // manually-selected category from the import form — and also fills any gap
@@ -422,6 +527,7 @@ export function parseInventorySheet(
   headerRow: string[],
   titleRow: string[] = [],
   fallbackPartType: PartType | null = null,
+  dataStartRow: number = 3,
 ): InventoryParseResult {
   const index = buildColumnIndex(headerRow);
   const locationCol = index["location"];
@@ -453,7 +559,7 @@ export function parseInventorySheet(
   let currentPartType: PartType | null = titleHint ?? fallbackPartType;
 
   dataRows.forEach((cells, i) => {
-    const rowNum = i + 3;
+    const rowNum = dataStartRow + i;
     const get = (c: number | undefined) => (c === undefined ? "" : (cells[c] ?? "")).toString();
     const raw = cells.join(" | ").trim();
 
@@ -468,6 +574,15 @@ export function parseInventorySheet(
       return;
     }
 
+    // Make section row — same "lone non-blank cell, any column" shape as a
+    // part-type title row above, so it's checked the same way and just as
+    // early, before the blank-row bail below can swallow it.
+    const makeSection = detectMakeSectionRow(cells);
+    if (makeSection) {
+      currentMake = makeSection;
+      return;
+    }
+
     const modelRaw = normalizeWhitespace(get(modelCol));
     const sideRaw = normalizeWhitespace(get(sideCol));
     const qtyRaw = get(qtyCol).trim();
@@ -478,11 +593,6 @@ export function parseInventorySheet(
     const partslinkRaw = normalizeWhitespace(get(partslinkCol));
 
     if (!modelRaw && !sideRaw && !qtyRaw && !costRaw && !shopRaw && !locationRaw && !typeRaw) return; // fully blank row
-
-    if (!sideRaw && !typeRaw && SECTION_MAKES.has(modelRaw.toUpperCase())) {
-      currentMake = MAKE_LABELS[modelRaw.toUpperCase()];
-      return;
-    }
 
     if (!modelRaw) {
       failed.push({ rowNum, raw, reason: "MODEL cell is empty." });
@@ -525,14 +635,27 @@ export function parseInventorySheet(
       }
     }
 
+    // An unrecognized SIDE value (a free-text part description like "COVER,
+    // FR (W/O SNSR HO)..." riding in the SIDE column, a typo like "frony",
+    // or anything else that isn't an exact vocabulary token) never fails the
+    // row outright — it's flagged for a human to set the position manually,
+    // the same way an unrecognized TYPE value is. Matching stays exact
+    // (POSITION_VOCAB lookup, never substring/contains) — the point is to
+    // stop guessing, not to fail harder; a false-positive match on garbage
+    // text would be worse than asking a human.
     let position: PartPosition | null = null;
+    let sideReason: string | null = null;
     if (sideRaw) {
-      const mapped = SIDE_LOOKUP[sideRaw.toUpperCase()];
+      const { base, qualifier } = splitSideQualifier(sideRaw);
+      const mapped = POSITION_VOCAB[partType]?.[base.toUpperCase()];
       if (!mapped) {
-        failed.push({ rowNum, raw, reason: `Unrecognized SIDE "${sideRaw}".` });
-        return;
+        sideReason = `Unrecognized SIDE "${sideRaw}" — not a known position for ${partType}, set manually.`;
+      } else {
+        position = mapped;
+        if (qualifier) {
+          sideReason = `SIDE "${sideRaw}" specified a ${qualifier.toUpperCase()} qualifier — no separate upper/lower position field exists yet, recorded as ${mapped} only, confirm placement.`;
+        }
       }
-      position = mapped;
     }
 
     // Dual "399/375" cells never fail the row — the first number is used,
@@ -560,42 +683,64 @@ export function parseInventorySheet(
     if (modelRaw.includes("/")) {
       const [leftRaw, rightRaw] = modelRaw.split("/").map((s) => s.trim());
       const left = parseYearModel(leftRaw);
-      if (!left) {
-        failed.push({ rowNum, raw, reason: `Could not find a year range in "${leftRaw}".` });
-        return;
-      }
-      const { make: explicitRightMake, rest: rightRest } = stripMakePrefix(rightRaw);
-      const rightMake = explicitRightMake ?? currentMake;
-      const rightModel = canonicalizeModel(titleCase(rightRest));
-      const leftModel = finalizeModel(left.model);
+      // Only treat "/" as a multi-vehicle separator when the left side
+      // parses as a real year+model — e.g. "18-24 Equinox/GMC Terrain".
+      // When it doesn't (e.g. "HD CVIC H/B 2022-2026", where "H/B" is a
+      // body-style abbreviation, not a vehicle boundary), this isn't a
+      // split at all — fall through and parse the whole modelRaw as one
+      // vehicle below instead of failing the row.
+      if (left) {
+        const { make: explicitRightMake, rest: rightRest } = stripMakePrefix(rightRaw);
+        const rightMake = explicitRightMake ?? currentMake;
+        const rightModel = canonicalizeModel(titleCase(rightRest));
+        const leftModel = finalizeModel(left.model);
 
-      // Unlike the single-vehicle path, an unparseable/dual QTY here doesn't
-      // fail the row — it just means we can't tell how this row's count
-      // splits between the two vehicles, so it still needs a human, but as a
-      // flag (with both vehicles preserved for reference) rather than a drop.
-      const qtyResult = parseQuantityCell(qtyRaw);
-      const quantity = qtyResult.value;
+        // Unlike the single-vehicle path, an unparseable/dual QTY here doesn't
+        // fail the row — it just means we can't tell how this row's count
+        // splits between the two vehicles, so it still needs a human, but as a
+        // flag (with both vehicles preserved for reference) rather than a drop.
+        const qtyResult = parseQuantityCell(qtyRaw);
+        const quantity = qtyResult.value;
 
-      const reasonParts: string[] = [];
-      if (qtyResult.flagged) {
-        reasonParts.push(
-          `QTY "${qtyRaw}" doesn't say how it splits between the 2 vehicles in "${modelRaw}" — enter manually.`,
-        );
-      }
-      if (priceIssue) reasonParts.push(priceIssue);
-      if (priceAnnotated && priceNote) reasonParts.push(priceNote);
-      if (typeReason) reasonParts.push(typeReason);
-      if (conflictReason) reasonParts.push(conflictReason);
+        const reasonParts: string[] = [];
+        if (qtyResult.flagged) {
+          reasonParts.push(
+            `QTY "${qtyRaw}" doesn't say how it splits between the 2 vehicles in "${modelRaw}" — enter manually.`,
+          );
+        }
+        if (priceIssue) reasonParts.push(priceIssue);
+        if (priceAnnotated && priceNote) reasonParts.push(priceNote);
+        if (typeReason) reasonParts.push(typeReason);
+        if (conflictReason) reasonParts.push(conflictReason);
+        if (sideReason) reasonParts.push(sideReason);
 
-      if (reasonParts.length > 0) {
-        flagged.push({
+        if (reasonParts.length > 0) {
+          flagged.push({
+            rowNum,
+            raw,
+            reason: reasonParts.join(" "),
+            vehicles: [
+              { make: currentMake, model: leftModel },
+              { make: rightMake, model: rightModel },
+            ],
+            yearStart: left.yearStart,
+            yearEnd: left.yearEnd,
+            position,
+            partType,
+            quantity,
+            cost,
+            price,
+            binLocation,
+          });
+          return;
+        }
+
+        // Unambiguous shared quantity: one product, fit to both vehicles.
+        parsed.push({
           rowNum,
-          raw,
-          reason: reasonParts.join(" "),
-          vehicles: [
-            { make: currentMake, model: leftModel },
-            { make: rightMake, model: rightModel },
-          ],
+          make: currentMake,
+          model: leftModel,
+          additionalVehicles: [{ make: rightMake, model: rightModel }],
           yearStart: left.yearStart,
           yearEnd: left.yearEnd,
           position,
@@ -604,27 +749,10 @@ export function parseInventorySheet(
           cost,
           price,
           binLocation,
+          note: priceNote && !priceAnnotated ? priceNote : null,
         });
         return;
       }
-
-      // Unambiguous shared quantity: one product, fit to both vehicles.
-      parsed.push({
-        rowNum,
-        make: currentMake,
-        model: leftModel,
-        additionalVehicles: [{ make: rightMake, model: rightModel }],
-        yearStart: left.yearStart,
-        yearEnd: left.yearEnd,
-        position,
-        partType,
-        quantity,
-        cost,
-        price,
-        binLocation,
-        note: priceNote && !priceAnnotated ? priceNote : null,
-      });
-      return;
     }
 
     const qtyResult = parseQuantityCell(qtyRaw);
@@ -648,6 +776,7 @@ export function parseInventorySheet(
     if (qtyResult.flagged && qtyResult.reason) reasonParts.push(qtyResult.reason);
     if (typeReason) reasonParts.push(typeReason);
     if (conflictReason) reasonParts.push(conflictReason);
+    if (sideReason) reasonParts.push(sideReason);
 
     if (reasonParts.length > 0) {
       flagged.push({

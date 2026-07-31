@@ -7,6 +7,7 @@ import { requireAuthContext } from "@/lib/auth";
 import { readWorkbookSheets, type WorkbookSheet } from "@/lib/workbook";
 import {
   buildColumnIndex,
+  findHeaderRowIndex,
   missingRequiredColumns,
   parseInventorySheet,
   resolveTabPartType,
@@ -25,6 +26,23 @@ const POSITIONS = new Set<string>(Object.values(PartPosition));
 // Single clear rule for now, easy to change later: these part types are
 // always sourced CAPA certified, everything else isn't.
 const CAPA_PART_TYPES = new Set<PartType>(["FENDER", "BUMPER", "HOOD"]);
+
+// The master workbook has a stray non-inventory tab (an invoice template,
+// not a parts sheet) — never shown as an importable tab at all.
+const IGNORED_TABS = new Set(["SHEET1"]);
+
+// hinges / RADIATOR SUPPORT / reinforcement bar don't share the standard
+// title+header+data-rows shape the other 9 tabs do (fused title/header
+// rows, no MODEL/QTY header, a price column literally called "sell" with
+// no consistent position, tiny row counts) — deliberately not supported by
+// the automated importer rather than special-cased. Listed (normalized:
+// trimmed + uppercased, since the real tab names carry trailing spaces —
+// e.g. "hinges ") so staff still see them and know to import by hand.
+const UNSUPPORTED_TABS = new Set(["HINGES", "RADIATOR SUPPORT", "REINFORCEMENT BAR"]);
+
+function normalizeTabName(name: string): string {
+  return name.trim().toUpperCase();
+}
 
 export type TabListState = {
   error?: string;
@@ -52,6 +70,7 @@ export async function listImportTabs(_prevState: TabListState, formData: FormDat
     console.error("[import] listImportTabs: readWorkbookSheets failed", err);
     return { error: "Couldn't read that file — is it a valid .xlsx, .xls, or .csv?" };
   }
+  sheets = sheets.filter((s) => !IGNORED_TABS.has(normalizeTabName(s.name)));
   if (sheets.length === 0) {
     return { error: "That file has no sheets." };
   }
@@ -121,6 +140,7 @@ export async function previewTabs(_prevState: TabsPreviewState, formData: FormDa
     console.error("[import] previewTabs: readWorkbookSheets failed", err);
     return { error: "Couldn't read that file — is it a valid .xlsx, .xls, or .csv?" };
   }
+  sheets = sheets.filter((s) => !IGNORED_TABS.has(normalizeTabName(s.name)));
 
   const tabs: TabPreview[] = [];
 
@@ -130,7 +150,7 @@ export async function previewTabs(_prevState: TabsPreviewState, formData: FormDa
 
     const manualType = PART_TYPES.has(selection.partType) ? (selection.partType as PartType) : null;
 
-    if (sheet.rows.length < 3) {
+    if (UNSUPPORTED_TABS.has(normalizeTabName(sheet.name))) {
       tabs.push({
         sheetName: sheet.name,
         partType: manualType,
@@ -138,13 +158,30 @@ export async function previewTabs(_prevState: TabsPreviewState, formData: FormDa
         flagged: [],
         failed: [],
         partTypeBreakdown: [],
-        skippedReason: "Needs a title row, a header row, and at least one data row.",
+        skippedReason: "This tab's layout doesn't match the standard tabs — not supported by the automated importer, import it manually.",
       });
       continue;
     }
 
-    const titleRow = sheet.rows[0];
-    const headerRow = sheet.rows[1];
+    // Real tabs don't agree on which row holds the column headers — some
+    // have an extra blank or Partslink-only row between the title and the
+    // header (see findHeaderRowIndex). Data starts on whichever row follows.
+    const titleRow = sheet.rows[0] ?? [];
+    const headerRowIndex = findHeaderRowIndex(sheet.rows);
+    if (headerRowIndex === null) {
+      tabs.push({
+        sheetName: sheet.name,
+        partType: manualType,
+        rows: [],
+        flagged: [],
+        failed: [],
+        partTypeBreakdown: [],
+        skippedReason: "Couldn't find a header row (MODEL/QTY/COST/SHOP or a recognized variant) in the first few rows.",
+      });
+      continue;
+    }
+
+    const headerRow = sheet.rows[headerRowIndex];
     const missing = missingRequiredColumns(buildColumnIndex(headerRow));
     if (missing.length > 0) {
       tabs.push({
@@ -159,8 +196,14 @@ export async function previewTabs(_prevState: TabsPreviewState, formData: FormDa
       continue;
     }
 
-    const dataRows = sheet.rows.slice(2);
-    const { parsed, flagged, failed, detectedPartTypes } = parseInventorySheet(dataRows, headerRow, titleRow, manualType);
+    const dataRows = sheet.rows.slice(headerRowIndex + 1);
+    const { parsed, flagged, failed, detectedPartTypes } = parseInventorySheet(
+      dataRows,
+      headerRow,
+      titleRow,
+      manualType,
+      headerRowIndex + 2,
+    );
 
     if (detectedPartTypes.length === 0 && !manualType) {
       tabs.push({
