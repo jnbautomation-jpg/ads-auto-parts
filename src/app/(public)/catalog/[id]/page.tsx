@@ -50,7 +50,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
 
       <div className="mx-auto grid max-w-[1360px] grid-cols-1 gap-8 px-4 py-6 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:px-10 lg:py-10">
         <div className="flex flex-col gap-3">
-          <PhotoGallery photos={product.photos} alt={`${fitLabel} — ${title}`} />
+          <PhotoGallery photos={product.photos} alt={`${fitLabel} — ${title}`} partType={product.partType} />
 
           <div className="mt-3 flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-5 lg:p-6">
             <span className="font-[family-name:var(--font-oswald)] text-[12px] tracking-[0.22em] text-[#E31E24]">

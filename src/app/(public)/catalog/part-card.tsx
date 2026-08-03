@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
+import { getPartTypeImage } from "@/lib/part-images";
 
 const PHOTO_PLACEHOLDER = {
   backgroundImage: "repeating-linear-gradient(45deg,#1E1E1E 0,#1E1E1E 12px,#232323 12px,#232323 24px)",
@@ -31,6 +32,7 @@ export function PartCard({ product }: { product: PartCardData }) {
     ? `${formatPartType(product.partType)} — ${formatPosition(product.position)}`
     : formatPartType(product.partType);
   const photo = product.photos[0];
+  const defaultImage = getPartTypeImage(product.partType);
 
   return (
     <Link
@@ -39,11 +41,14 @@ export function PartCard({ product }: { product: PartCardData }) {
     >
       <div
         className="relative flex min-h-[110px] w-[120px] shrink-0 items-center justify-center overflow-hidden border-r border-white/10 sm:aspect-[4/3] sm:w-full sm:border-r-0 sm:border-b"
-        style={photo ? undefined : PHOTO_PLACEHOLDER}
+        style={photo || defaultImage ? undefined : PHOTO_PLACEHOLDER}
       >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo} alt={typePos} className="h-full w-full object-cover" />
+        ) : defaultImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={defaultImage} alt={typePos} className="h-[72%] w-[72%] object-contain opacity-90" />
         ) : (
           <span className="font-mono text-[10px] text-[#5A5A5A]">no photo</span>
         )}

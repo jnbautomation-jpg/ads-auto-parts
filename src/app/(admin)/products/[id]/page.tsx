@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
 import { formatFit, formatMoney, formatPartType, formatPosition } from "@/lib/format";
 import { StockButtons } from "@/components/stock-buttons";
+import { getPartTypeImage } from "@/lib/part-images";
 import {
   buttonSecondaryClass,
   capaBadgeClass,
@@ -104,7 +105,20 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div className={`${cardClass} flex flex-col gap-2.5 px-3.5 py-3`}>
             <div className="font-[family-name:var(--font-oswald)] text-xs font-semibold tracking-[0.16em]">PHOTOS</div>
             {product.photos.length === 0 ? (
-              <p className="text-sm text-[#8a8a8a]">No photos uploaded.</p>
+              (() => {
+                const defaultImage = getPartTypeImage(product.partType);
+                return defaultImage ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex h-[140px] w-[200px] items-center justify-center border border-black/10 bg-[#FAFAFA]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={defaultImage} alt="" className="h-[72%] w-[72%] object-contain" />
+                    </div>
+                    <p className={mutedClass}>No photos uploaded — showing the default {formatPartType(product.partType)} image.</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#8a8a8a]">No photos uploaded.</p>
+                );
+              })()
             ) : (
               <div className="flex flex-wrap gap-2.5">
                 {product.photos.map((url, i) => (
