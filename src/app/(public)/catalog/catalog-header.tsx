@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdsLogoImage } from "@/components/ads-logo";
+import { BrandLogo } from "@/components/brand-logo";
 
 const PHONE_DISPLAY = "(407) 743-4644";
 const PHONE_HREF = "4077434644";
@@ -8,7 +8,7 @@ export function CatalogHeader() {
   return (
     <div className="flex h-[60px] items-center justify-between border-b border-white/10 px-4 lg:h-[72px] lg:px-10">
       <Link href="/">
-        <AdsLogoImage className="h-10 w-auto lg:h-[52px]" />
+        <BrandLogo size="md" />
       </Link>
       <a
         href={`tel:${PHONE_HREF}`}
