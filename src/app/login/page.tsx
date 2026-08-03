@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
+import { AdsLogoImage } from "@/components/ads-logo";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -44,7 +44,7 @@ export default async function LoginPage({
 
       <div className="relative flex w-full max-w-[400px] flex-col items-center gap-6 lg:gap-7">
         <div style={{ animation: "rise 0.5s 0.05s both" }}>
-          <BrandLogo size="md" />
+          <AdsLogoImage className="h-[72px] w-auto lg:h-20" />
         </div>
 
         <div

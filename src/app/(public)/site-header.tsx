@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
+import { AdsLogoImage } from "@/components/ads-logo";
 
 const PHONE_DISPLAY = "(407) 743-4644";
 const PHONE_HREF = "4077434644";
@@ -37,7 +38,9 @@ export function SiteHeader({ heroId }: { heroId: string }) {
         solid ? "border-b border-[#E31E24]/45 bg-[#080808]/97" : "border-b border-white/0 bg-transparent"
       }`}
     >
-      <BrandLogo size="md" />
+      <Link href="/">
+        <AdsLogoImage className="h-11 w-auto lg:h-[52px]" />
+      </Link>
       <div className="hidden items-center gap-9 lg:flex">
         <nav className="flex gap-[30px] font-[family-name:var(--font-barlow)] text-[13px] font-semibold tracking-[0.14em]">
           <a href="#parts" className="text-[#ccc] transition-colors hover:text-white">

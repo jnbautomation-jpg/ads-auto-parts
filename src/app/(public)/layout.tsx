@@ -23,6 +23,12 @@ export const metadata: Metadata = {
   title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
   description:
     "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",
+  openGraph: {
+    title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
+    description:
+      "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",
+    images: ["/ads-logo.jpg"],
+  },
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {

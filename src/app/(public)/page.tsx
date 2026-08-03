@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
+import { AdsLogoImage } from "@/components/ads-logo";
 import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
 import { QuoteForm } from "./quote-form";
@@ -575,7 +575,7 @@ function SiteFooter() {
       <div className="mx-auto flex max-w-[1060px] flex-col gap-5 lg:gap-10">
         <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-[1.4fr_1fr_1fr] lg:gap-10">
           <div className="flex flex-col gap-3.5">
-            <BrandLogo size="sm" />
+            <AdsLogoImage className="h-12 w-auto" />
             <div className="font-[family-name:var(--font-barlow)] text-[13px] leading-[1.6] text-[#888] lg:max-w-[320px]">
               New aftermarket auto body parts — never used salvage. CAPA certified fit and finish, dispatched
               from Orlando within 24 hours.
