@@ -43,19 +43,25 @@ const PARTS = [
   "Reinforcement Bars",
 ];
 
+// img is a direct /public/part-images path, not derived from PART_TYPE_IMAGES
+// (src/lib/part-images.ts) — that map is keyed one-per-PartType, but the
+// "Tailgates & Trunks" tile deliberately spans two enum values (TAILGATE +
+// TRUNK), so each tile names its image explicitly instead.
 const TILES = [
-  { name: "Doors", note: "Front & rear · shells & skins", slug: "doors", ph: "door panel photo" },
-  { name: "Hoods", note: "Steel & aluminum", slug: "hoods", ph: "hood photo" },
-  { name: "Fenders", note: "Left & right", slug: "fenders", ph: "fender photo" },
-  { name: "Bumpers", note: "Covers & reinforcements", slug: "bumpers", ph: "bumper photo" },
-  { name: "Tailgates & Trunks", note: "Trucks & sedans", slug: "tailgates-trunks", ph: "tailgate photo" },
-  { name: "Liftgates", note: "SUVs & hatchbacks", slug: "liftgates", ph: "liftgate photo" },
-  { name: "Quarter Panels", note: "Full & partial", slug: "quarter-panels", ph: "quarter panel photo" },
-  { name: "Rear Body Panels", note: "Rear body & valance", slug: "rear-body-panels", ph: "rear panel photo" },
-  { name: "Grilles", note: "Chrome & sport styles", slug: "grilles", ph: "grille photo" },
-  { name: "Hinges", note: "Door & hood hardware", slug: "hinges", ph: "hinge photo" },
-  { name: "Radiator Supports", note: "Core support assemblies", slug: "radiator-support", ph: "radiator support photo" },
-  { name: "Reinforcement Bars", note: "Bumper & body reinforcement", slug: "reinforcement-bars", ph: "reinforcement bar photo" },
+  { name: "Doors", note: "Front & rear · shells & skins", slug: "doors", img: "/part-images/door.png", alt: "Door" },
+  { name: "Hoods", note: "Steel & aluminum", slug: "hoods", img: "/part-images/hood.png", alt: "Hood" },
+  { name: "Fenders", note: "Left & right", slug: "fenders", img: "/part-images/fender.png", alt: "Fender" },
+  { name: "Bumpers", note: "Covers & reinforcements", slug: "bumpers", img: "/part-images/bumper.png", alt: "Bumper" },
+  { name: "Tailgates & Trunks", note: "Trucks & sedans", slug: "tailgates-trunks", img: "/part-images/tailgate.png", alt: "Tailgate" },
+  // No liftgate.png — a liftgate is a rear hatch and reads the same as a
+  // tailgate, same deliberate reuse as PART_TYPE_IMAGES.LIFTGATE.
+  { name: "Liftgates", note: "SUVs & hatchbacks", slug: "liftgates", img: "/part-images/tailgate.png", alt: "Liftgate" },
+  { name: "Quarter Panels", note: "Full & partial", slug: "quarter-panels", img: "/part-images/quarter-panel.png", alt: "Quarter panel" },
+  { name: "Rear Body Panels", note: "Rear body & valance", slug: "rear-body-panels", img: "/part-images/rear-body-panel.png", alt: "Rear body panel" },
+  { name: "Grilles", note: "Chrome & sport styles", slug: "grilles", img: "/part-images/grille.png", alt: "Grille" },
+  { name: "Hinges", note: "Door & hood hardware", slug: "hinges", img: "/part-images/hinge.png", alt: "Hinge" },
+  { name: "Radiator Supports", note: "Core support assemblies", slug: "radiator-support", img: "/part-images/radiator-support.png", alt: "Radiator support" },
+  { name: "Reinforcement Bars", note: "Bumper & body reinforcement", slug: "reinforcement-bars", img: "/part-images/reinforcement-bar.png", alt: "Reinforcement bar" },
 ];
 
 const WHY = [
@@ -318,13 +324,9 @@ function BrowseByPart() {
                 className="group block overflow-hidden border border-white/8 bg-[#1A1A1A] transition-all duration-300 hover:-translate-y-1 hover:border-[#E31E24]/60 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.85)]"
               >
                 <div className="h-[104px] overflow-hidden bg-[#111] lg:h-[150px]">
-                  <div
-                    className="flex h-full w-full items-center justify-center transition-transform duration-500 ease-out group-hover:scale-105"
-                    style={{
-                      backgroundImage: "repeating-linear-gradient(45deg, #161616 0 10px, #121212 10px 20px)",
-                    }}
-                  >
-                    <span className="font-mono text-[9px] text-[#555] lg:text-[10px]">[{t.ph}]</span>
+                  <div className="flex h-full w-full items-center justify-center transition-transform duration-500 ease-out group-hover:scale-105">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={t.img} alt={t.alt} className="h-[70%] w-[70%] object-contain opacity-90" />
                   </div>
                 </div>
                 <div className="h-0.5 origin-left scale-x-0 bg-[#E31E24] transition-transform duration-[350ms] ease-out group-hover:scale-x-100" />
