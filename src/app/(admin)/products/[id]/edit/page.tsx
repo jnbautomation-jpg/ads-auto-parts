@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
+import { canEditCatalog } from "@/lib/permissions";
 import { ProductForm, type ProductFormValues } from "@/components/product-form";
 import { linkMutedClass, pageHeadingClass } from "@/lib/admin-ui";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) notFound();
 
   const [product, suppliers] = await Promise.all([
     prisma.product.findFirst({ where: { id, organizationId: organization.id } }),

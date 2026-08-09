@@ -35,7 +35,15 @@ export type ProductRow = {
 
 const ROW_COLS = "grid-cols-[24px_152px_100px_1fr_52px_60px_62px_70px_84px_80px]";
 
-export function ProductList({ products }: { products: ProductRow[] }) {
+export function ProductList({
+  products,
+  canEdit,
+  canBulkDelete,
+}: {
+  products: ProductRow[];
+  canEdit: boolean;
+  canBulkDelete: boolean;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +81,7 @@ export function ProductList({ products }: { products: ProductRow[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {selected.size > 0 ? (
+      {canBulkDelete && selected.size > 0 ? (
         <div className={`${cardClass} flex flex-wrap items-center gap-3 px-3.5 py-2.5`}>
           <span className="font-[family-name:var(--font-oswald)] text-xs font-semibold tracking-[0.14em]">
             {selected.size} SELECTED
@@ -100,14 +108,18 @@ export function ProductList({ products }: { products: ProductRow[] }) {
         {/* Desktop dense table */}
         <div className="hidden md:block">
           <div className={`${tableHeaderRowClass} ${ROW_COLS}`}>
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleAll}
-              disabled={products.length === 0}
-              aria-label="Select all products"
-              className="h-4 w-4 accent-[#E31E24]"
-            />
+            {canBulkDelete ? (
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                disabled={products.length === 0}
+                aria-label="Select all products"
+                className="h-4 w-4 accent-[#E31E24]"
+              />
+            ) : (
+              <div />
+            )}
             <div>CODE</div>
             <div>PART</div>
             <div>VEHICLE FIT</div>
@@ -130,13 +142,17 @@ export function ProductList({ products }: { products: ProductRow[] }) {
                     low ? "border-l-[#F59E0B] bg-[#F59E0B]/[0.06]" : "border-l-transparent"
                   } ${selected.has(product.id) ? "bg-[#E31E24]/[0.04]" : ""}`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(product.id)}
-                    onChange={() => toggleOne(product.id)}
-                    aria-label={`Select ${product.sku}`}
-                    className="h-4 w-4 accent-[#E31E24]"
-                  />
+                  {canBulkDelete ? (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(product.id)}
+                      onChange={() => toggleOne(product.id)}
+                      aria-label={`Select ${product.sku}`}
+                      className="h-4 w-4 accent-[#E31E24]"
+                    />
+                  ) : (
+                    <div />
+                  )}
                   <Link href={`/products/${product.id}`} className={`${codeClass} hover:underline`}>
                     {product.sku}
                   </Link>
@@ -154,23 +170,38 @@ export function ProductList({ products }: { products: ProductRow[] }) {
                   </div>
                   <div className="text-right">{formatMoney(product.price)}</div>
                   <div className="flex justify-center">
-                    <form action={toggleProductVisibility}>
-                      <input type="hidden" name="id" value={product.id} />
-                      <input type="hidden" name="next" value={(!product.isPublic).toString()} />
-                      <button
-                        type="submit"
-                        aria-label={product.isPublic ? "Hide from public catalog" : "Show on public catalog"}
-                        className={`relative h-4 w-8 border border-black/15 transition-colors ${
+                    {canEdit ? (
+                      <form action={toggleProductVisibility}>
+                        <input type="hidden" name="id" value={product.id} />
+                        <input type="hidden" name="next" value={(!product.isPublic).toString()} />
+                        <button
+                          type="submit"
+                          aria-label={product.isPublic ? "Hide from public catalog" : "Show on public catalog"}
+                          className={`relative h-4 w-8 border border-black/15 transition-colors ${
+                            product.isPublic ? "bg-black" : "bg-[#e2e2e2]"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-px h-[12px] w-[12px] border border-black/15 bg-white transition-all ${
+                              product.isPublic ? "left-[17px]" : "left-px"
+                            }`}
+                          />
+                        </button>
+                      </form>
+                    ) : (
+                      <span
+                        aria-label={product.isPublic ? "Visible on public catalog" : "Hidden from public catalog"}
+                        className={`relative h-4 w-8 border border-black/15 opacity-50 ${
                           product.isPublic ? "bg-black" : "bg-[#e2e2e2]"
                         }`}
                       >
                         <span
-                          className={`absolute top-px h-[12px] w-[12px] border border-black/15 bg-white transition-all ${
+                          className={`absolute top-px h-[12px] w-[12px] border border-black/15 bg-white ${
                             product.isPublic ? "left-[17px]" : "left-px"
                           }`}
                         />
-                      </button>
-                    </form>
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -182,7 +213,7 @@ export function ProductList({ products }: { products: ProductRow[] }) {
         <div className="flex flex-col md:hidden">
           {products.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-[#8a8a8a]">No products match these filters.</p>
-          ) : (
+          ) : canBulkDelete ? (
             <label className="flex min-h-11 items-center gap-2.5 border-b border-black/5 px-4 font-[family-name:var(--font-barlow)] text-[13px] font-medium text-[#555]">
               <input
                 type="checkbox"
@@ -193,7 +224,7 @@ export function ProductList({ products }: { products: ProductRow[] }) {
               />
               Select all
             </label>
-          )}
+          ) : null}
           {products.length === 0 ? null : (
             products.map((product) => {
               const low = product.quantity <= product.reorderPoint;
@@ -204,15 +235,17 @@ export function ProductList({ products }: { products: ProductRow[] }) {
                     low ? "border-l-[#F59E0B] bg-[#F59E0B]/[0.06]" : "border-l-transparent"
                   } ${selected.has(product.id) ? "bg-[#E31E24]/[0.04]" : ""}`}
                 >
-                  <label className="flex items-center pl-4 pr-1">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(product.id)}
-                      onChange={() => toggleOne(product.id)}
-                      aria-label={`Select ${product.sku}`}
-                      className="h-[18px] w-[18px] accent-[#E31E24]"
-                    />
-                  </label>
+                  {canBulkDelete ? (
+                    <label className="flex items-center pl-4 pr-1">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(product.id)}
+                        onChange={() => toggleOne(product.id)}
+                        aria-label={`Select ${product.sku}`}
+                        className="h-[18px] w-[18px] accent-[#E31E24]"
+                      />
+                    </label>
+                  ) : null}
                   <Link
                     href={`/products/${product.id}`}
                     className="flex flex-1 flex-col gap-1.5 px-3 py-3.5 active:bg-[#f4f4f4]"

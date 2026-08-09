@@ -3,6 +3,7 @@ import { Oswald, Barlow } from "next/font/google";
 import Link from "next/link";
 import { requireAuthContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canEditCatalog, canManageStaff } from "@/lib/permissions";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { signOut } from "./sign-out-action";
 
@@ -35,8 +36,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/dashboard", label: "Dashboard" },
     { href: "/products", label: "Products" },
     { href: "/suppliers", label: "Suppliers" },
-    { href: "/import", label: "Import" },
+    ...(canEditCatalog(user.role) ? [{ href: "/import", label: "Import" }] : []),
     { href: "/inquiries", label: "Inquiries", badge: newInquiries },
+    ...(canManageStaff(user.role) ? [{ href: "/staff", label: "Staff" }] : []),
   ];
 
   return (

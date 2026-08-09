@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
+import { canEditCatalog } from "@/lib/permissions";
 import { formatFit, formatMoney, formatPartType, formatPosition } from "@/lib/format";
 import { StockButtons } from "@/components/stock-buttons";
 import { getPartTypeImage } from "@/lib/part-images";
@@ -20,7 +21,8 @@ const MOVE_COLS = "grid-cols-[110px_70px_60px_90px_1fr]";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  const canEdit = canEditCatalog(user.role);
 
   const product = await prisma.product.findFirst({
     where: { id, organizationId: organization.id },
@@ -70,19 +72,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
         <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-start">
           <StockButtons productId={product.id} />
-          <Link href={`/products/${product.id}/edit`} className={`${buttonSecondaryClass} w-full md:w-auto`}>
-            EDIT
-          </Link>
+          {canEdit ? (
+            <Link href={`/products/${product.id}/edit`} className={`${buttonSecondaryClass} w-full md:w-auto`}>
+              EDIT
+            </Link>
+          ) : null}
         </div>
       </div>
 
-      <form action={toggleProductVisibility} className="-mt-1">
-        <input type="hidden" name="id" value={product.id} />
-        <input type="hidden" name="next" value={(!product.isPublic).toString()} />
-        <button type="submit" className={`${linkMutedClass} text-xs`}>
-          {product.isPublic ? "Hide from public catalog" : "Show on public catalog"}
-        </button>
-      </form>
+      {canEdit ? (
+        <form action={toggleProductVisibility} className="-mt-1">
+          <input type="hidden" name="id" value={product.id} />
+          <input type="hidden" name="next" value={(!product.isPublic).toString()} />
+          <button type="submit" className={`${linkMutedClass} text-xs`}>
+            {product.isPublic ? "Hide from public catalog" : "Show on public catalog"}
+          </button>
+        </form>
+      ) : null}
 
       <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[320px_1fr]">
         <div className={cardClass}>

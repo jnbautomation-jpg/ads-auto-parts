@@ -1,7 +1,13 @@
+import { notFound } from "next/navigation";
+import { requireAuthContext } from "@/lib/auth";
+import { canEditCatalog } from "@/lib/permissions";
 import { cardClass, pageHeadingClass } from "@/lib/admin-ui";
 import { ImportForm } from "./import-form";
 
-export default function ImportPage() {
+export default async function ImportPage() {
+  const { user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) notFound();
+
   return (
     <div className="flex max-w-[880px] flex-col gap-3">
       <h1 className={pageHeadingClass}>Import</h1>

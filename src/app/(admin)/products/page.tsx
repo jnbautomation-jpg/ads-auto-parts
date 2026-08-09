@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { PartType } from "@/generated/prisma/enums";
 import { requireAuthContext } from "@/lib/auth";
+import { canBulkDelete, canEditCatalog } from "@/lib/permissions";
 import { formatPartType } from "@/lib/format";
 import { buttonPrimaryClass, pageHeadingClass } from "@/lib/admin-ui";
 import { ProductFilters } from "@/components/product-filters";
@@ -21,8 +22,10 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
   const params = await searchParams;
+  const canEdit = canEditCatalog(user.role);
+  const canDelete = canBulkDelete(user.role);
 
   const q = params.q?.trim() || undefined;
   const partType = params.partType && PART_TYPES.includes(params.partType as PartType) ? (params.partType as PartType) : undefined;
@@ -77,9 +80,11 @@ export default async function ProductsPage({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h1 className={pageHeadingClass}>Products</h1>
-        <Link href="/products/new" className={buttonPrimaryClass}>
-          + NEW PRODUCT
-        </Link>
+        {canEdit ? (
+          <Link href="/products/new" className={buttonPrimaryClass}>
+            + NEW PRODUCT
+          </Link>
+        ) : null}
       </div>
 
       <ProductFilters
@@ -90,7 +95,7 @@ export default async function ProductsPage({
         resultSummary={`${products.length} of ${totalCount} products`}
       />
 
-      <ProductList products={rows} />
+      <ProductList products={rows} canEdit={canEdit} canBulkDelete={canDelete} />
     </div>
   );
 }

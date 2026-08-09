@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
+import { canEditCatalog } from "@/lib/permissions";
 import { ProductForm } from "@/components/product-form";
 import { linkMutedClass, mutedClass, pageHeadingClass } from "@/lib/admin-ui";
 
 export default async function NewProductPage() {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) notFound();
 
   const suppliers = await prisma.supplier.findMany({
     where: { organizationId: organization.id },

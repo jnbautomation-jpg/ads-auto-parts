@@ -16,6 +16,9 @@ import { NextResponse, type NextRequest } from "next/server";
 //   /suppliers
 //   /import
 //   /inquiries
+//   /staff                     owner-only (checked in the page, not here)
+//   /force-password-change     authenticated, but only reachable while
+//                              must_change_password is set (see below)
 
 // Exact-match roots (checked with `===`, never a prefix — "/" must not swallow
 // every other route).
@@ -68,6 +71,21 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // Staff accounts are created with a temp password and this flag set —
+  // only the admin API (never the user's own session) can clear it, so it's
+  // tamper-proof from the client. Block every other route until it's clear.
+  const mustChangePassword = Boolean(user?.app_metadata?.must_change_password);
+  if (user && mustChangePassword && pathname !== "/force-password-change") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/force-password-change";
+    return NextResponse.redirect(url);
+  }
+  if (user && !mustChangePassword && pathname === "/force-password-change") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

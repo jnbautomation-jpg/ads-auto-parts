@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
 import { generateSkuBase } from "@/lib/sku";
+import { canBulkDelete, canEditCatalog } from "@/lib/permissions";
 import { Prisma } from "@/generated/prisma/client";
 import type { PartType, PartPosition, PartCondition } from "@/generated/prisma/enums";
 
@@ -14,7 +15,8 @@ export async function saveProduct(
   _prevState: ProductFormState,
   formData: FormData,
 ): Promise<ProductFormState> {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) return { error: "You don't have permission to edit products." };
 
   const id = String(formData.get("id") || "");
   const partType = String(formData.get("partType")) as PartType;
@@ -154,7 +156,8 @@ export async function saveProduct(
 }
 
 export async function toggleProductVisibility(formData: FormData) {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) return;
   const id = String(formData.get("id"));
   const nextValue = formData.get("next") === "true";
 
@@ -174,7 +177,8 @@ export type BulkDeleteResult = { deleted: number } | { error: string };
 // Called directly from the client (not a <form> action) so the row-selection
 // UI can show a pending state and surface an error inline.
 export async function bulkDeleteProducts(ids: string[]): Promise<BulkDeleteResult> {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canBulkDelete(user.role)) return { error: "Only the owner can bulk-delete products." };
 
   const requestedIds = Array.from(new Set((ids ?? []).filter((id): id is string => typeof id === "string" && id.length > 0)));
   if (requestedIds.length === 0) return { error: "No products selected." };

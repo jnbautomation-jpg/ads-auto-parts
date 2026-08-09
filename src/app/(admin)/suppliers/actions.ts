@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
+import { canEditCatalog } from "@/lib/permissions";
 
 function field(formData: FormData, name: string): string | null {
   const value = String(formData.get(name) || "").trim();
@@ -10,7 +11,8 @@ function field(formData: FormData, name: string): string | null {
 }
 
 export async function createSupplier(formData: FormData) {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) return;
   const name = field(formData, "name");
   if (!name) return;
 
@@ -29,7 +31,8 @@ export async function createSupplier(formData: FormData) {
 }
 
 export async function updateSupplier(formData: FormData) {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) return;
   const id = String(formData.get("id") || "");
   const name = field(formData, "name");
   if (!id || !name) return;
@@ -49,7 +52,8 @@ export async function updateSupplier(formData: FormData) {
 }
 
 export async function deleteSupplier(formData: FormData) {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) return;
   const id = String(formData.get("id") || "");
   if (!id) return;
 

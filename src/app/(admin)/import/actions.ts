@@ -17,6 +17,7 @@ import {
   type PartTypeCount,
 } from "@/lib/inventory-import";
 import { generateSkuBase } from "@/lib/sku";
+import { canEditCatalog } from "@/lib/permissions";
 import { PartPosition, PartType } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -241,7 +242,8 @@ export type CommitResult = {
 // Server Action endpoint like any other, so every row is re-validated here
 // rather than trusting what previewImport handed back to the client.
 export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitResult> {
-  const { organization } = await requireAuthContext();
+  const { organization, user } = await requireAuthContext();
+  if (!canEditCatalog(user.role)) return { error: "You don't have permission to import products." };
 
   if (!Array.isArray(rows) || rows.length === 0) {
     return { error: "No rows to import." };

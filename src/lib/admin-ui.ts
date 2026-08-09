@@ -37,6 +37,8 @@ export const linkMutedClass = "font-[family-name:var(--font-barlow)] text-sm tex
 
 export const SUPPLIER_COLS = "grid-cols-[1.2fr_1fr_130px_1.3fr_1fr_110px]";
 
+export const STAFF_COLS = "grid-cols-[1.6fr_150px_160px]";
+
 export const capaBadgeClass = (capa: boolean) =>
   `inline-block border px-[5px] py-[2px] font-[family-name:var(--font-oswald)] text-[9.5px] font-semibold tracking-[0.12em] ${
     capa ? "border-black/35 text-black" : "border-transparent text-[#bbb]"
