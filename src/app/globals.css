@@ -72,10 +72,36 @@ html {
     transform: translateX(340%) skewX(-18deg);
   }
 }
-/* `cue` (hero scroll cue) and `pulse-ring` (the decorative fake-map dot) were
-   removed along with the elements that used them. The four above are still
-   referenced by src/app/login/page.tsx, which keeps the original motion
-   language — worth aligning with the public pages in a later pass. */
+@keyframes cue {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* All six keyframes are live again: the landing page was reverted to its
+   pre-restyle state, which uses every one of them (rise/glow on the hero
+   entrance, drift/sweep on the hero textures, cue on the scroll indicator,
+   pulse-ring on the delivery map marker). The login page shares rise, glow,
+   drift and sweep. */
 
 @media (prefers-reduced-motion: reduce) {
   .motion-scope * {
