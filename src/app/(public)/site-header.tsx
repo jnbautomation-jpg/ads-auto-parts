@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
-
-const PHONE_DISPLAY = "(407) 743-4644";
-const PHONE_HREF = "4077434644";
+import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 
 // Transparent over the hero, solidifies with a blurred dark background once
 // the hero has mostly scrolled past — matches the header treatment in the v2

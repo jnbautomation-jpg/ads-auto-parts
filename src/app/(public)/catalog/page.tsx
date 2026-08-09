@@ -3,13 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { PartType } from "@/generated/prisma/enums";
 import { formatPartType, PART_SLUG_TO_TYPES } from "@/lib/format";
+import { ORG_SLUG, PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
+import { bodyClass, eyebrowClass, primaryButtonClass, subHeadingClass } from "@/lib/public-ui";
 import { CatalogHeader } from "./catalog-header";
+import { SiteFooter } from "@/components/site-footer";
 import { PartCard } from "./part-card";
-
-// Single-tenant public site — same lookup as the quote form.
-const ORG_SLUG = "ads-auto-parts";
-const PHONE_DISPLAY = "(407) 743-4644";
-const PHONE_HREF = "4077434644";
 
 // The landing hero form (src/app/(public)/page.tsx) submits `partType` as a
 // marketing label ("Doors", "Tailgates & Trunks", ...), not the PartType enum
@@ -35,12 +33,19 @@ function resolvePartTypes(partTypeParam: string, partSlugParam: string): PartTyp
   if (partTypeParam) {
     if (PART_TYPE_LABEL_MAP[partTypeParam]) return PART_TYPE_LABEL_MAP[partTypeParam];
     if (PART_TYPE_VALUES.has(partTypeParam)) return [partTypeParam as PartType];
+    // A tile slug submitted through the part-type select below. Needed for
+    // categories that span two enum values ("tailgates-trunks"), which have
+    // no single enum option to carry them back through the form.
+    if (PART_SLUG_TO_TYPES[partTypeParam]) return PART_SLUG_TO_TYPES[partTypeParam] as PartType[];
   }
   if (partSlugParam && PART_SLUG_TO_TYPES[partSlugParam]) {
     return PART_SLUG_TO_TYPES[partSlugParam] as PartType[];
   }
   return null;
 }
+
+const bandSelectClass =
+  "min-h-[44px] border border-[#2A2A2A] bg-[#0A0A0A] px-3.5 text-[15px] text-white lg:border-0";
 
 type SearchParams = {
   year?: string;
@@ -178,6 +183,24 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
   const summary = [year, make, model, params.partType].filter(Boolean).join(" · ");
 
+  // The landing tiles link with ?part=<slug>; this form submits ?partType=<enum>.
+  // Both vocabularies have to round-trip through the select — otherwise arriving
+  // from a tile and pressing Search dropped the category and returned the whole
+  // catalog, with the select showing "Part Type" the entire time.
+  const activePartParam = params.partType?.trim() || params.part?.trim() || "";
+  const slugTypes = PART_SLUG_TO_TYPES[activePartParam];
+  const partSelectValue = PART_TYPE_VALUES.has(activePartParam)
+    ? activePartParam
+    : slugTypes?.length === 1
+      ? slugTypes[0]
+      : slugTypes
+        ? activePartParam
+        : "";
+  const multiTypeOption =
+    slugTypes && slugTypes.length > 1
+      ? { value: activePartParam, label: slugTypes.map((t) => formatPartType(t)).join(" & ") }
+      : null;
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
       <CatalogHeader />
@@ -185,19 +208,18 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       {/* search band */}
       <div id="find-your-part" className="border-b border-white/10 bg-[#1A1A1A] px-4 py-6 lg:px-10 lg:py-7">
         <div className="mx-auto flex max-w-[1360px] flex-col gap-3.5">
-          <span className="font-[family-name:var(--font-oswald)] text-[13px] tracking-[0.22em] text-[#E31E24] lg:text-[14px]">
-            FIND YOUR PART
-          </span>
+          <span className={eyebrowClass}>Find your part</span>
           <form
             action="/catalog"
             method="GET"
             className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.2fr_1.2fr_1.4fr_160px] lg:gap-px lg:border lg:border-[#2A2A2A] lg:bg-[#2A2A2A]"
           >
-            <select
-              name="year"
-              defaultValue={year}
-              className="min-h-[44px] border border-[#2A2A2A] bg-[#0A0A0A] px-3.5 text-[15px] text-white lg:border-0"
-            >
+            {/* sr-only labels are position:absolute, so they stay out of the
+                grid's flow and don't consume a column. */}
+            <label htmlFor="band-year" className="sr-only">
+              Year
+            </label>
+            <select id="band-year" name="year" defaultValue={year} className={bandSelectClass}>
               <option value="">Year</option>
               {years.map((y) => (
                 <option key={y} value={y}>
@@ -205,11 +227,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                 </option>
               ))}
             </select>
-            <select
-              name="make"
-              defaultValue={make}
-              className="min-h-[44px] border border-[#2A2A2A] bg-[#0A0A0A] px-3.5 text-[15px] text-white lg:border-0"
-            >
+            <label htmlFor="band-make" className="sr-only">
+              Make
+            </label>
+            <select id="band-make" name="make" defaultValue={make} className={bandSelectClass}>
               <option value="">Make</option>
               {makeCounts.map((m) => (
                 <option key={m.make} value={m.make}>
@@ -217,11 +238,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                 </option>
               ))}
             </select>
-            <select
-              name="model"
-              defaultValue={model}
-              className="min-h-[44px] border border-[#2A2A2A] bg-[#0A0A0A] px-3.5 text-[15px] text-white lg:border-0"
-            >
+            <label htmlFor="band-model" className="sr-only">
+              Model
+            </label>
+            <select id="band-model" name="model" defaultValue={model} className={bandSelectClass}>
               <option value="">Model</option>
               {models.map((m) => (
                 <option key={m} value={m}>
@@ -229,12 +249,19 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                 </option>
               ))}
             </select>
+            <label htmlFor="band-part-type" className="sr-only">
+              Part type
+            </label>
             <select
+              id="band-part-type"
               name="partType"
-              defaultValue={PART_TYPE_VALUES.has(params.partType ?? "") ? params.partType : ""}
-              className="min-h-[44px] border border-[#2A2A2A] bg-[#0A0A0A] px-3.5 text-[15px] text-white lg:border-0"
+              defaultValue={partSelectValue}
+              className={bandSelectClass}
             >
               <option value="">Part Type</option>
+              {multiTypeOption ? (
+                <option value={multiTypeOption.value}>{multiTypeOption.label}</option>
+              ) : null}
               {partTypeOptions.map((pt) => (
                 <option key={pt.value} value={pt.value}>
                   {pt.label}
@@ -243,9 +270,9 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             </select>
             <button
               type="submit"
-              className="col-span-2 min-h-[48px] bg-[#E31E24] font-[family-name:var(--font-oswald)] text-[15px] tracking-[0.2em] text-white transition-colors hover:bg-[#ff3a40] lg:col-span-1"
+              className={`col-span-2 ${primaryButtonClass} lg:col-span-1`}
             >
-              SEARCH
+              Search
             </button>
           </form>
 
@@ -254,9 +281,9 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             <div className="flex gap-2 overflow-x-auto lg:hidden">
               <a
                 href="#find-your-part"
-                className="whitespace-nowrap border border-[#E31E24] bg-[#1A1A1A] px-3 py-2 font-[family-name:var(--font-oswald)] text-[12px] tracking-[0.1em] text-white"
+                className="whitespace-nowrap border border-[#E31E24] bg-[#1A1A1A] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] font-medium text-white"
               >
-                FILTERS
+                Filters
               </a>
               {activeFilterChips.map((chip) => (
                 <Link
@@ -276,9 +303,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         {/* sidebar (desktop only) */}
         <aside className="hidden flex-col gap-8 border-r border-white/10 px-7 py-8 lg:flex">
           <div className="flex flex-col gap-3.5">
-            <span className="border-b border-[#2A2A2A] pb-2.5 font-[family-name:var(--font-oswald)] text-[12px] tracking-[0.22em] text-[#6B6B6B]">
-              MAKE
-            </span>
+            <span className={`border-b border-[#2A2A2A] pb-2.5 ${eyebrowClass}`}>Make</span>
             {makeCounts.map((m) => (
               <Link
                 key={m.make}
@@ -294,15 +319,13 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                   }
                 />
                 {m.make}
-                <span className="ml-auto font-mono text-[12px] text-[#6B6B6B]">{m._count._all}</span>
+                <span className="ml-auto font-mono text-[12px] text-[#9A9A9A]">{m._count._all}</span>
               </Link>
             ))}
           </div>
 
           <div className="flex flex-col gap-3.5">
-            <span className="border-b border-[#2A2A2A] pb-2.5 font-[family-name:var(--font-oswald)] text-[12px] tracking-[0.22em] text-[#6B6B6B]">
-              PART TYPE
-            </span>
+            <span className={`border-b border-[#2A2A2A] pb-2.5 ${eyebrowClass}`}>Part type</span>
             {partTypeOptions.map((pt) => (
               <Link
                 key={pt.value}
@@ -318,7 +341,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                   }
                 />
                 {pt.label}
-                <span className="ml-auto font-mono text-[12px] text-[#6B6B6B]">{pt.count}</span>
+                <span className="ml-auto font-mono text-[12px] text-[#9A9A9A]">{pt.count}</span>
               </Link>
             ))}
           </div>
@@ -342,29 +365,26 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         {/* results */}
         <div className="flex flex-col gap-5 px-4 py-6 lg:px-10 lg:py-8">
           <div className="flex items-baseline justify-between">
-            <span className="font-[family-name:var(--font-oswald)] text-[15px] tracking-[0.14em] lg:text-[16px]">
-              {products.length} {products.length === 1 ? "PART" : "PARTS"} FOUND
+            <span className={subHeadingClass}>
+              {products.length} {products.length === 1 ? "part" : "parts"}
             </span>
-            <span className="hidden text-[13px] text-[#6B6B6B] lg:inline">Sorted by: Newest</span>
           </div>
-          <p className="-mt-2 text-sm text-[#999]">{summary || "Showing everything in stock"}</p>
+          <p className={`-mt-2 ${bodyClass}`}>{summary || "Showing everything in stock"}</p>
 
           {products.length === 0 ? (
             <div className="flex flex-col items-center gap-4 border border-white/10 bg-[#111] px-6 py-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center border border-[#2A2A2A]">
                 <span className="font-[family-name:var(--font-oswald)] text-2xl text-[#E31E24]">0</span>
               </div>
-              <span className="font-[family-name:var(--font-oswald)] text-[19px] tracking-[0.14em]">
-                NO PARTS MATCH
-              </span>
+              <span className={subHeadingClass}>No parts match</span>
               <p className="max-w-sm text-sm text-[#A1A1A1]">
                 We stock more than we list. Call us — if it&apos;s a body part, we can probably get it same-day.
               </p>
               <a
                 href={`tel:${PHONE_HREF}`}
-                className="flex min-h-[48px] items-center justify-center bg-[#E31E24] px-6 font-[family-name:var(--font-oswald)] text-[15px] tracking-[0.14em] text-white transition-colors hover:bg-[#ff3a40]"
+                className={primaryButtonClass}
               >
-                CALL {PHONE_DISPLAY}
+                Call {PHONE_DISPLAY}
               </a>
             </div>
           ) : (
@@ -376,6 +396,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           )}
         </div>
       </div>
+
+      <SiteFooter />
     </div>
   );
 }

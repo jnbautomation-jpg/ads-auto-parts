@@ -1,13 +1,12 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-
-export type QuoteFormState = { success?: boolean; error?: string };
-
 // Single-tenant public site: this org is the only one the landing page ever
 // files leads against. Looked up by slug rather than passed from the client
 // so nothing about the org is exposed to the browser.
-const ORG_SLUG = "ads-auto-parts";
+import { ORG_SLUG } from "@/lib/site";
+
+export type QuoteFormState = { success?: boolean; error?: string };
 
 export async function submitQuoteRequest(
   _prevState: QuoteFormState,

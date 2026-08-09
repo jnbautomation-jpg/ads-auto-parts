@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
 import { getPartTypeImage } from "@/lib/part-images";
+import { badgeClass } from "@/lib/public-ui";
 
 const PHOTO_PLACEHOLDER = {
   backgroundImage: "repeating-linear-gradient(45deg,#1E1E1E 0,#1E1E1E 12px,#232323 12px,#232323 24px)",
@@ -53,8 +54,8 @@ export function PartCard({ product }: { product: PartCardData }) {
           <span className="font-mono text-[10px] text-[#5A5A5A]">no photo</span>
         )}
         {product.capaCertified ? (
-          <span className="absolute left-1.5 top-1.5 border border-[#E31E24] bg-[#0A0A0A] px-1.5 py-0.5 font-[family-name:var(--font-oswald)] text-[9px] tracking-[0.12em] text-[#E31E24] sm:left-2.5 sm:top-2.5 sm:px-2 sm:py-1 sm:text-[10px]">
-            CAPA CERTIFIED
+          <span className={`absolute left-1.5 top-1.5 ${badgeClass} border-[#E31E24] bg-[#0A0A0A] text-[#E31E24] sm:left-2.5 sm:top-2.5`}>
+            CAPA
           </span>
         ) : null}
       </div>
@@ -68,7 +69,7 @@ export function PartCard({ product }: { product: PartCardData }) {
             {formatMoney(product.price as never)}
           </span>
           <span
-            className="border px-2 py-1 font-[family-name:var(--font-oswald)] text-[10px] tracking-[0.12em] sm:px-2.5 sm:text-[11px]"
+            className={badgeClass}
             style={{ borderColor: availability.color, color: availability.color }}
           >
             {availability.label}

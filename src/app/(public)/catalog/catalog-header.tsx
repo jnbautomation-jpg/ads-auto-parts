@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
-
-const PHONE_DISPLAY = "(407) 743-4644";
-const PHONE_HREF = "4077434644";
+import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 
 export function CatalogHeader() {
   return (

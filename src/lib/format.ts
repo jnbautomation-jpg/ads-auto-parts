@@ -63,6 +63,24 @@ export function getAvailability(quantity: number, reorderPoint: number): Availab
 // (see src/app/(public)/page.tsx TILES) — same categories as the hero
 // search form's marketing-label map (catalog/page.tsx PART_TYPE_LABEL_MAP),
 // just keyed by slug instead of label.
+// Public-facing category names for the same slugs as PART_SLUG_TO_TYPES.
+// Plural, because these read as navigation ("Doors"), not as a single part's
+// type label ("Door") — that one comes from PART_TYPE_LABELS above.
+export const PART_SLUG_LABELS: Record<string, string> = {
+  doors: "Doors",
+  hoods: "Hoods",
+  fenders: "Fenders",
+  bumpers: "Bumpers",
+  "tailgates-trunks": "Tailgates & Trunks",
+  liftgates: "Liftgates",
+  "quarter-panels": "Quarter Panels",
+  "rear-body-panels": "Rear Body Panels",
+  grilles: "Grilles",
+  hinges: "Hinges",
+  "radiator-support": "Radiator Supports",
+  "reinforcement-bars": "Reinforcement Bars",
+};
+
 export const PART_SLUG_TO_TYPES: Record<string, string[]> = {
   doors: ["DOOR"],
   hoods: ["HOOD"],

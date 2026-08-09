@@ -1,352 +1,338 @@
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
-import { Reveal } from "@/components/reveal";
-import { CountUp } from "@/components/count-up";
+import { connection } from "next/server";
+import { SiteFooter } from "@/components/site-footer";
+import { prisma } from "@/lib/prisma";
+import { formatPartType, PART_SLUG_LABELS, PART_SLUG_TO_TYPES } from "@/lib/format";
+import {
+  ADDRESS,
+  EMAIL,
+  HOURS_DISPLAY,
+  MAPS_URL,
+  ORG_SLUG,
+  PHONE_DISPLAY,
+  PHONE_HREF,
+  PHONE_NOTE,
+} from "@/lib/site";
+import {
+  bodyClass,
+  eyebrowClass,
+  focusRingClass,
+  h1Class,
+  sectionHeadingClass,
+  subHeadingClass,
+} from "@/lib/public-ui";
 import { QuoteForm } from "./quote-form";
 import { SiteHeader } from "./site-header";
 
-const YEARS = Array.from({ length: 27 }, (_, i) => 2026 - i);
+// Every option in the hero search comes from the catalog itself — never a
+// hardcoded list. The list this replaced offered six makes with zero stock
+// (RAM, Subaru, BMW, Mercedes-Benz, Lexus, Acura) while omitting VW, Tesla
+// and Chrysler, which do have stock, so the site's primary CTA could route a
+// shopper straight into an empty result.
+type Category = { slug: string; label: string; count: number };
 
-const MAKES = [
-  "Toyota",
-  "Honda",
-  "Ford",
-  "Chevrolet",
-  "Nissan",
-  "Hyundai",
-  "Kia",
-  "Dodge",
-  "RAM",
-  "Jeep",
-  "GMC",
-  "Volkswagen",
-  "Subaru",
-  "Mazda",
-  "BMW",
-  "Mercedes-Benz",
-  "Lexus",
-  "Acura",
-];
+type SearchOptions = {
+  makes: string[];
+  years: number[];
+  partTypes: { value: string; label: string; count: number }[];
+  categories: Category[];
+  totalParts: number;
+};
 
-const PARTS = [
-  "Doors",
-  "Hoods",
-  "Fenders",
-  "Bumpers",
-  "Tailgates & Trunks",
-  "Liftgates",
-  "Quarter Panels",
-  "Rear Body Panels",
-  "Grilles",
-  "Hinges",
-  "Radiator Supports",
-  "Reinforcement Bars",
-];
+const EMPTY_OPTIONS: SearchOptions = {
+  makes: [],
+  years: [],
+  partTypes: [],
+  categories: [],
+  totalParts: 0,
+};
 
-// img is a direct /public/part-images path, not derived from PART_TYPE_IMAGES
-// (src/lib/part-images.ts) — that map is keyed one-per-PartType, but the
-// "Tailgates & Trunks" tile deliberately spans two enum values (TAILGATE +
-// TRUNK), so each tile names its image explicitly instead.
-const TILES = [
-  { name: "Doors", note: "Front & rear · shells & skins", slug: "doors", img: "/part-images/door.png", alt: "Door" },
-  { name: "Hoods", note: "Steel & aluminum", slug: "hoods", img: "/part-images/hood.png", alt: "Hood" },
-  { name: "Fenders", note: "Left & right", slug: "fenders", img: "/part-images/fender.png", alt: "Fender" },
-  { name: "Bumpers", note: "Covers & reinforcements", slug: "bumpers", img: "/part-images/bumper.png", alt: "Bumper" },
-  { name: "Tailgates & Trunks", note: "Trucks & sedans", slug: "tailgates-trunks", img: "/part-images/tailgate.png", alt: "Tailgate" },
-  // No liftgate.png — a liftgate is a rear hatch and reads the same as a
-  // tailgate, same deliberate reuse as PART_TYPE_IMAGES.LIFTGATE.
-  { name: "Liftgates", note: "SUVs & hatchbacks", slug: "liftgates", img: "/part-images/tailgate.png", alt: "Liftgate" },
-  { name: "Quarter Panels", note: "Full & partial", slug: "quarter-panels", img: "/part-images/quarter-panel.png", alt: "Quarter panel" },
-  { name: "Rear Body Panels", note: "Rear body & valance", slug: "rear-body-panels", img: "/part-images/rear-body-panel.png", alt: "Rear body panel" },
-  { name: "Grilles", note: "Chrome & sport styles", slug: "grilles", img: "/part-images/grille.png", alt: "Grille" },
-  { name: "Hinges", note: "Door & hood hardware", slug: "hinges", img: "/part-images/hinge.png", alt: "Hinge" },
-  { name: "Radiator Supports", note: "Core support assemblies", slug: "radiator-support", img: "/part-images/radiator-support.png", alt: "Radiator support" },
-  { name: "Reinforcement Bars", note: "Bumper & body reinforcement", slug: "reinforcement-bars", img: "/part-images/reinforcement-bar.png", alt: "Reinforcement bar" },
-];
+async function getSearchOptions(): Promise<SearchOptions> {
+  // Prisma queries would otherwise resolve during prerendering and bake these
+  // counts in at build time — the owner adds stock through the admin UI, not a
+  // deploy, so a statically frozen "330 doors" would go stale immediately.
+  // `connection()` is how Next 16 opts a route into request-time rendering now
+  // that `export const dynamic` / `revalidate` are gone.
+  await connection();
+
+  const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
+  if (!organization) return EMPTY_OPTIONS;
+
+  // Makes and years come from VehicleFit (a part can fit several vehicles);
+  // part types come from Product. Same split the catalog's own search band
+  // uses, so the two forms can't disagree about what's in stock.
+  const publicFitWhere = { organizationId: organization.id, product: { isPublic: true } };
+  const publicProductWhere = { organizationId: organization.id, isPublic: true };
+
+  const [makeRows, yearBounds, partTypeCounts, totalParts] = await Promise.all([
+    prisma.vehicleFit.groupBy({ by: ["make"], where: publicFitWhere, orderBy: { make: "asc" } }),
+    prisma.vehicleFit.aggregate({
+      where: publicFitWhere,
+      _min: { yearStart: true },
+      _max: { yearEnd: true },
+    }),
+    prisma.product.groupBy({
+      by: ["partType"],
+      where: publicProductWhere,
+      _count: { _all: true },
+    }),
+    prisma.product.count({ where: publicProductWhere }),
+  ]);
+
+  const countByType = new Map(partTypeCounts.map((row) => [String(row.partType), row._count._all]));
+
+  const minYear = yearBounds._min.yearStart;
+  const maxYear = yearBounds._max.yearEnd;
+
+  return {
+    makes: makeRows.map((row) => row.make),
+    years:
+      minYear != null && maxYear != null
+        ? Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
+        : [],
+    partTypes: partTypeCounts
+      .map((row) => ({
+        value: String(row.partType),
+        label: formatPartType(String(row.partType)),
+        count: row._count._all,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    // Ordered by real stock depth, so the tile grid below can lead with what
+    // the shop actually has rather than giving 330 doors and 1 grille the same
+    // weight. Categories with no stock never render — three of them (Hinges,
+    // Radiator Supports, Reinforcement Bars) were linking to guaranteed-empty
+    // results because those workbook tabs have never been imported.
+    categories: Object.entries(PART_SLUG_TO_TYPES)
+      .map(([slug, types]) => ({
+        slug,
+        label: PART_SLUG_LABELS[slug] ?? slug,
+        count: types.reduce((sum, type) => sum + (countByType.get(type) ?? 0), 0),
+      }))
+      .filter((c) => c.count > 0)
+      .sort((a, b) => b.count - a.count),
+    totalParts,
+  };
+}
+
+// One image per tile slug — not derived from PART_TYPE_IMAGES, because that map
+// is keyed one-per-PartType and the "Tailgates & Trunks" tile deliberately
+// spans two enum values. alt is empty on purpose: the category name sits
+// directly beside the image, so announcing it twice is noise.
+const TILE_IMAGES: Record<string, string> = {
+  doors: "/part-images/door.webp",
+  hoods: "/part-images/hood.webp",
+  fenders: "/part-images/fender.webp",
+  bumpers: "/part-images/bumper.webp",
+  "tailgates-trunks": "/part-images/tailgate.webp",
+  // A liftgate is a rear hatch and reads the same as a tailgate — the same
+  // deliberate reuse as PART_TYPE_IMAGES.LIFTGATE.
+  liftgates: "/part-images/tailgate.webp",
+  "quarter-panels": "/part-images/quarter-panel.webp",
+  "rear-body-panels": "/part-images/rear-body-panel.webp",
+  grilles: "/part-images/grille.webp",
+  hinges: "/part-images/hinge.webp",
+  "radiator-support": "/part-images/radiator-support.webp",
+  "reinforcement-bars": "/part-images/reinforcement-bar.webp",
+};
+
+// Below this, a category doesn't earn a tile — it gets a text link instead.
+const TILE_MIN_COUNT = 4;
 
 const WHY = [
   {
-    title: "CAPA Certified Quality",
-    body: "New aftermarket parts built to certified fit & finish standards — never used salvage.",
+    title: "New, never salvage",
+    body: "Every part is new aftermarket stock — not pulled from a wrecked car, not refinished.",
   },
   {
-    title: "Same-Day Central FL",
-    body: "Order before 12 PM and it's on your bumper the same day, anywhere in Central Florida.",
+    title: "Same-day across Central Florida",
+    body: "Order before 12 PM and it reaches your shop the same day, anywhere in Central Florida.",
   },
-  { title: "24-Hour Dispatch", body: "Most orders leave our Orlando warehouse within 24 hours of the order." },
-  { title: "Free Delivery In Orlando", body: "No delivery fee on orders within Orlando city limits — every time, no minimum." },
-];
-
-const STATS = [
-  { target: 24, suffix: " HR", label: "DISPATCH" },
-  { target: 12, suffix: " PM", label: "SAME-DAY CUTOFF" },
-  { target: 100, suffix: "%", label: "NEW PARTS" },
-  { target: 8, suffix: "", label: "PART CATEGORIES" },
+  {
+    title: "Dispatched within 24 hours",
+    body: "Most orders leave the Orlando warehouse within a day of being placed.",
+  },
+  {
+    title: "Free delivery in Orlando",
+    body: "No delivery fee inside Orlando city limits — every order, no minimum.",
+  },
 ];
 
 const DELIVERY_STEPS = [
-  { title: "Order by 12 PM", body: "Call, text, or send the quote form with your vehicle and the part you need." },
+  {
+    title: "Order by 12 PM",
+    body: "Call, text, or send the quote form with your vehicle and the part you need.",
+  },
   {
     title: "Dispatched within 24 hours",
     body: "Most orders leave our Orlando warehouse the same day they're placed.",
   },
   {
     title: "Same-day across Central FL",
-    body: "Delivered to your shop or door — free within Orlando — or skip the wait and pick up locally at the warehouse.",
+    body: "Delivered to your shop or door — free within Orlando — or pick up locally at the warehouse.",
   },
 ];
 
-const PHONE_DISPLAY = "(407) 743-4644";
-const PHONE_HREF = "4077434644";
-const EMAIL = "autodoorstorewest@gmail.com";
-const ADDRESS = "6950 Venture Cir, Orlando, FL 32807";
-const MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(ADDRESS)}`;
-
-const selectClass =
-  "h-[52px] w-full border border-white/12 bg-[#111] px-3.5 font-[family-name:var(--font-barlow)] text-[16px] font-medium text-white focus:border-[#E31E24] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none lg:h-[56px]";
-
-const badgeClass =
-  "flex items-center gap-1.5 border border-white/10 px-3 py-[7px] font-[family-name:var(--font-barlow)] text-[10.5px] font-semibold tracking-[0.1em] text-[#ccc] lg:gap-2 lg:px-4 lg:py-[9px] lg:text-[12px]";
+const selectClass = `h-[52px] w-full border border-white/12 bg-[#111] px-3.5 font-[family-name:var(--font-barlow)] text-[16px] font-medium text-white focus:border-[#E31E24] ${focusRingClass} lg:h-[56px]`;
 
 const contactRowClass =
-  "flex items-center justify-between border border-white/8 bg-[#1A1A1A] px-4 py-[15px] text-white transition-colors hover:border-[#E31E24]/60 lg:px-[18px] lg:py-[17px]";
-const contactLabelClass =
-  "font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.22em] text-[#777] lg:text-[12px] lg:tracking-[0.24em]";
-
-const sectionHeadingClass =
-  "font-[family-name:var(--font-oswald)] text-[24px] font-semibold uppercase tracking-[0.14em] lg:text-[36px]";
+  "flex items-center justify-between gap-4 border border-white/8 bg-[#1A1A1A] px-4 py-[15px] text-white transition-colors hover:border-[#E31E24]/60 lg:px-[18px] lg:py-[17px]";
 
 // Offsets the browser's built-in anchor scroll (native jump on click and on
 // initial load with a #hash) so a section's top lands below the sticky
-// header instead of underneath it. Values match the header's rendered
-// height per breakpoint plus a little breathing room.
+// header instead of underneath it.
 const sectionScrollMtClass = "scroll-mt-[72px] lg:scroll-mt-[92px]";
 
-function TopBar() {
-  return (
-    <div className="bg-[#E31E24] px-3 py-2.5 text-center font-[family-name:var(--font-barlow)] text-[11px] font-semibold tracking-[0.12em] text-white lg:text-[12px] lg:tracking-[0.16em]">
-      SAME-DAY DELIVERY ACROSS CENTRAL FLORIDA — ORDER BY 12 PM
-      <span className="hidden lg:inline"> · MOST ORDERS DISPATCHED WITHIN 24 HOURS</span>
-    </div>
-  );
-}
+const sectionClass = `border-t border-white/8 px-4 py-16 lg:px-14 lg:py-24 ${sectionScrollMtClass}`;
 
-function Hero() {
-  const words1 = ["Find", "your", "part."];
-  const words2 = ["Brand", "new.", "Today."];
-
+function Hero({ options }: { options: SearchOptions }) {
   return (
     <div
       id="hero"
-      className="relative -mt-14 flex min-h-[730px] flex-col justify-center overflow-hidden bg-[#0A0A0A] px-4 pb-14 pt-[110px] lg:-mt-[72px] lg:min-h-[880px] lg:px-14 lg:pb-20 lg:pt-[180px]"
+      className="relative -mt-14 flex min-h-[560px] flex-col justify-center overflow-hidden bg-[#0A0A0A] px-4 pb-14 pt-[92px] lg:-mt-[72px] lg:min-h-[640px] lg:px-14 lg:pb-16 lg:pt-[132px]"
     >
-      {/* Carbon-fiber texture, slowly drifting */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-50"
-        style={{
-          backgroundImage:
-            "conic-gradient(from 45deg, #111 25%, #0c0c0c 0 50%, #111 0 75%, #0c0c0c 0)",
-          backgroundSize: "12px 12px",
-          animation: "drift 60s linear infinite alternate",
-        }}
-      />
-      {/* Radial vignette so content stays legible */}
+      {/* The one background layer that does a job: keeps the headline legible
+          against the top of the page. The drifting carbon-fibre weave, the
+          grain noise and the sweeping red light that used to sit here carried
+          no information and delayed the only element anyone came for. */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{ background: "radial-gradient(120% 70% at 50% 0%, transparent 40%, #0A0A0A 90%)" }}
       />
-      {/* Fine grain noise */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.05]"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")",
-        }}
-      />
-      {/* Light sweep */}
-      <div
-        className="pointer-events-none absolute inset-y-0 w-[36%] lg:w-[26%]"
-        style={{
-          background: "linear-gradient(90deg, transparent, rgba(227,30,36,0.07), transparent)",
-          animation: "sweep 9s linear infinite",
-        }}
-      />
 
-      <div className="relative mx-auto flex w-full max-w-[1060px] flex-col gap-[18px] lg:gap-[26px]">
-        <div className="flex items-center gap-2 lg:gap-2.5" style={{ animation: "rise 0.5s 0.05s both" }}>
-          <div className="h-0.5 w-[24px] bg-[#E31E24] lg:w-[34px]" />
-          <div className="font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.28em] text-[#E31E24] lg:text-[13px] lg:tracking-[0.32em]">
-            NEW AFTERMARKET BODY PARTS · ORLANDO, FL
-          </div>
-        </div>
-
-        <h1 className="font-[family-name:var(--font-oswald)] text-[38px] font-bold uppercase leading-[1.1] tracking-[0.05em] lg:max-w-[900px] lg:text-[72px] lg:leading-[1.06]">
-          {words1.map((w, i) => (
-            <span key={w} className="inline-block" style={{ animation: `rise 0.6s ${i * 0.04}s both` }}>
-              {w}
-              {i < words1.length - 1 ? " " : ""}
-            </span>
-          ))}
+      <div className="relative mx-auto flex w-full max-w-[1060px] flex-col gap-5 lg:gap-7">
+        <h1 className={`${h1Class} lg:max-w-[18ch]`}>
+          Find your part.
           <br />
-          {words2.map((w, i) => (
-            <span
-              key={w}
-              className="inline-block text-[#E31E24]"
-              style={{ animation: `rise 0.6s ${0.12 + i * 0.04}s both` }}
-            >
-              {w}
-              {i < words2.length - 1 ? " " : ""}
-            </span>
-          ))}
+          <span className="text-[#E31E24]">Brand new. Today.</span>
         </h1>
 
-        <p
-          className="font-[family-name:var(--font-barlow)] text-[15px] leading-[1.55] text-[#a8a8a8] lg:max-w-[620px] lg:text-[18px]"
-          style={{ animation: "rise 0.6s 0.3s both" }}
-        >
-          Doors, hoods, fenders, bumpers and more — new, CAPA certified, delivered same-day across Central
-          Florida on orders before 12 PM.
+        <p className={`${bodyClass} lg:max-w-[54ch]`}>
+          {options.totalParts > 0 ? `${options.totalParts.toLocaleString()} new ` : "New "}
+          aftermarket body parts on the shelf in Orlando — doors, hoods, fenders, bumpers and more.
         </p>
 
         <form
           action="/catalog"
           method="GET"
-          className="flex flex-col gap-2.5 border border-white/8 border-t-2 border-t-[#E31E24] bg-[#1A1A1A] p-4 lg:gap-3 lg:p-[22px]"
-          style={{ animation: "rise 0.7s 0.45s both, glow 2.4s ease-out 0.9s both" }}
+          className="flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-4 lg:gap-3 lg:p-[22px]"
         >
-          <div className="font-[family-name:var(--font-barlow-condensed)] text-[12px] font-semibold tracking-[0.26em] text-[#888] lg:text-[13px] lg:tracking-[0.28em]">
-            SEARCH BY VEHICLE
-          </div>
-          <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[1fr_1fr_1fr_1fr_230px] lg:gap-2.5">
-            <select name="year" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                Year
-              </option>
-              {YEARS.map((y) => (
+          <div className={eyebrowClass}>Search by vehicle</div>
+          {/* Three selects, not four: the model dropdown this replaced had
+              `value=""` on both of its options, so it could never produce a
+              filter. Model selection happens on the catalog itself, where the
+              list can narrow to the chosen make. */}
+          <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[1fr_1.2fr_1.4fr_200px] lg:gap-2.5">
+            <label htmlFor="hero-year" className="sr-only">
+              Year
+            </label>
+            <select id="hero-year" name="year" defaultValue="" className={selectClass}>
+              <option value="">Year</option>
+              {options.years.map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>
               ))}
             </select>
-            <select name="make" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                Make
-              </option>
-              {MAKES.map((m) => (
+            <label htmlFor="hero-make" className="sr-only">
+              Make
+            </label>
+            <select id="hero-make" name="make" defaultValue="" className={selectClass}>
+              <option value="">Make</option>
+              {options.makes.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
               ))}
             </select>
-            <select name="model" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                Model
-              </option>
-              <option value="">All models</option>
-            </select>
-            <select name="partType" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                Part type
-              </option>
-              {PARTS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
+            <label htmlFor="hero-part" className="sr-only">
+              Part type
+            </label>
+            <select id="hero-part" name="partType" defaultValue="" className={selectClass}>
+              <option value="">Part type</option>
+              {options.partTypes.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label} ({p.count})
                 </option>
               ))}
             </select>
             <button
               type="submit"
-              className="h-[56px] bg-[#E31E24] font-[family-name:var(--font-oswald)] text-[16px] font-bold tracking-[0.2em] text-white transition-colors hover:bg-[#ff3a40] active:scale-[0.97]"
+              className={`h-[52px] bg-[#E31E24] font-[family-name:var(--font-barlow)] text-[15px] font-semibold tracking-[0.01em] text-white transition-colors hover:bg-[#ff3a40] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:h-[56px]`}
             >
-              SEARCH PARTS
+              Search parts
             </button>
           </div>
         </form>
-
-        <div className="flex flex-wrap gap-2" style={{ animation: "rise 0.6s 0.7s both" }}>
-          <div className={badgeClass}>
-            <span className="h-[5px] w-[5px] rotate-45 bg-[#E31E24] lg:h-1.5 lg:w-1.5" />
-            CAPA CERTIFIED
-          </div>
-          <div className={badgeClass}>
-            <span className="h-[5px] w-[5px] rotate-45 bg-[#E31E24] lg:h-1.5 lg:w-1.5" />
-            <span className="lg:hidden">SAME-DAY CENTRAL FL</span>
-            <span className="hidden lg:inline">SAME-DAY CENTRAL FL DELIVERY</span>
-          </div>
-          <div className={badgeClass}>
-            <span className="h-[5px] w-[5px] rotate-45 bg-[#E31E24] lg:h-1.5 lg:w-1.5" />
-            24-HR DISPATCH
-          </div>
-          <div className={badgeClass}>
-            <span className="h-[5px] w-[5px] rotate-45 bg-[#E31E24] lg:h-1.5 lg:w-1.5" />
-            <span className="lg:hidden">FREE ORLANDO DELIVERY</span>
-            <span className="hidden lg:inline">FREE DELIVERY IN ORLANDO</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-3.5 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 lg:bottom-[18px]">
-        <div className="font-[family-name:var(--font-barlow-condensed)] text-[9px] font-semibold tracking-[0.32em] text-[#666] lg:text-[10px] lg:tracking-[0.36em]">
-          SCROLL
-        </div>
-        <div className="h-[22px] w-px overflow-hidden bg-white/15 lg:h-[26px]">
-          <div className="h-2 w-px bg-[#E31E24]" style={{ animation: "cue 1.8s ease-in infinite" }} />
-        </div>
       </div>
     </div>
   );
 }
 
-function BrowseByPart() {
+function CategoryTile({ category, featured }: { category: Category; featured: boolean }) {
   return (
-    <div id="parts" className={`px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}>
-      <div className="mx-auto flex max-w-[1060px] flex-col gap-4 lg:gap-8">
-        <Reveal>
-          <div className="flex items-baseline justify-between">
-            <h2 className={sectionHeadingClass}>Browse by part</h2>
-            <div className="hidden font-[family-name:var(--font-barlow-condensed)] text-[12px] font-semibold tracking-[0.3em] text-[#E31E24] lg:block">
-              {TILES.length} CATEGORIES · ALL NEW · NO SALVAGE
-            </div>
-          </div>
-        </Reveal>
-        <Reveal variant="rule">
-          <div
-            className="h-px w-full"
-            style={{ background: "linear-gradient(90deg, #E31E24 0 56px, rgba(255,255,255,0.1) 56px)" }}
-          />
-        </Reveal>
+    <Link
+      href={`/catalog?part=${category.slug}`}
+      className={`group flex flex-col border border-white/8 bg-[#1A1A1A] transition-colors hover:border-[#E31E24]/60 ${focusRingClass} ${
+        featured ? "col-span-2" : ""
+      }`}
+    >
+      <div
+        className={`flex items-center justify-center overflow-hidden bg-[#111] ${
+          featured ? "h-[132px] lg:h-[196px]" : "h-[104px] lg:h-[150px]"
+        }`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={TILE_IMAGES[category.slug]}
+          alt=""
+          className="h-[70%] w-[70%] object-contain opacity-90"
+        />
+      </div>
+      <div className="flex items-baseline justify-between gap-2 px-3 py-3 lg:px-4 lg:py-3.5">
+        <span className={subHeadingClass}>{category.label}</span>
+        {/* The live count, where a decorative arrow used to sit — "330" is the
+            most persuasive thing this tile can say, and it costs nothing. */}
+        <span className="shrink-0 font-mono text-[13px] text-[#8A8A8A]">{category.count}</span>
+      </div>
+    </Link>
+  );
+}
 
+function BrowseByPart({ categories }: { categories: Category[] }) {
+  const tiled = categories.filter((c) => c.count >= TILE_MIN_COUNT);
+  const thin = categories.filter((c) => c.count < TILE_MIN_COUNT);
+
+  return (
+    <div id="parts" className={sectionClass}>
+      <div className="mx-auto flex max-w-[1060px] flex-col gap-6 lg:gap-8">
+          <h2 className={sectionHeadingClass}>Browse by part</h2>
+
+        {/* The deepest category leads at double width. Doors are 330 of 592
+            parts; giving them the same tile as a single grille told the
+            visitor nothing about what this shop actually stocks. */}
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3.5">
-          {TILES.map((t, i) => (
-            <Reveal key={t.slug} delay={i * 80}>
-              <Link
-                href={`/catalog?part=${t.slug}`}
-                className="group block overflow-hidden border border-white/8 bg-[#1A1A1A] transition-all duration-300 hover:-translate-y-1 hover:border-[#E31E24]/60 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.85)]"
-              >
-                <div className="h-[104px] overflow-hidden bg-[#111] lg:h-[150px]">
-                  <div className="flex h-full w-full items-center justify-center transition-transform duration-500 ease-out group-hover:scale-105">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={t.img} alt={t.alt} className="h-[70%] w-[70%] object-contain opacity-90" />
-                  </div>
-                </div>
-                <div className="h-0.5 origin-left scale-x-0 bg-[#E31E24] transition-transform duration-[350ms] ease-out group-hover:scale-x-100" />
-                <div className="flex items-center justify-between gap-1.5 px-3 py-2.5 lg:px-4 lg:py-3.5">
-                  <div className="flex flex-col gap-0.5">
-                    <div className="font-[family-name:var(--font-oswald)] text-[12.5px] font-semibold uppercase tracking-[0.1em] lg:text-[15px]">
-                      {t.name}
-                    </div>
-                    <div className="font-[family-name:var(--font-barlow)] text-[10.5px] text-[#888] lg:text-[12px]">
-                      {t.note}
-                    </div>
-                  </div>
-                  <div className="font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[#E31E24] lg:text-[16px]">
-                    →
-                  </div>
-                </div>
-              </Link>
-            </Reveal>
+          {tiled.map((c, i) => (
+            <CategoryTile key={c.slug} category={c} featured={i === 0} />
           ))}
         </div>
+
+        {thin.length > 0 ? (
+            <p className={bodyClass}>
+              Also in stock:{" "}
+              {thin.map((c, i) => (
+                <span key={c.slug}>
+                  {i > 0 ? " · " : ""}
+                  <Link
+                    href={`/catalog?part=${c.slug}`}
+                    className={`text-white underline decoration-white/25 underline-offset-4 transition-colors hover:decoration-[#E31E24] ${focusRingClass}`}
+                  >
+                    {c.label}
+                  </Link>{" "}
+                  <span className="font-mono text-[13px] text-[#8A8A8A]">({c.count})</span>
+                </span>
+              ))}
+            </p>
+        ) : null}
       </div>
     </div>
   );
@@ -354,63 +340,22 @@ function BrowseByPart() {
 
 function WhyADS() {
   return (
-    <div
-      id="why"
-      className={`relative border-t border-white/6 bg-[#0C0C0C] px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}
-    >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")",
-        }}
-      />
-      <div className="relative mx-auto flex max-w-[1060px] flex-col gap-4 lg:gap-8">
-        <Reveal>
+    <div id="why" className={`bg-[#0C0C0C] ${sectionClass}`}>
+      <div className="mx-auto flex max-w-[1060px] flex-col gap-6 lg:gap-8">
           <h2 className={sectionHeadingClass}>Why ADS</h2>
-        </Reveal>
-        <Reveal variant="rule">
-          <div
-            className="h-px w-full"
-            style={{ background: "linear-gradient(90deg, #E31E24 0 72px, rgba(255,255,255,0.1) 72px)" }}
-          />
-        </Reveal>
 
-        <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-4 lg:gap-3.5">
-          {WHY.map((w, i) => (
-            <Reveal key={w.title} delay={i * 80}>
-              <div className="flex h-full gap-3.5 border border-white/8 bg-[#1A1A1A] p-[18px] lg:flex-col lg:gap-3.5 lg:p-6">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[#E31E24]/50 lg:h-10 lg:w-10">
-                  <span className="h-2.5 w-2.5 rotate-45 bg-[#E31E24] lg:h-3 lg:w-3" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="font-[family-name:var(--font-oswald)] text-[14px] font-semibold uppercase tracking-[0.14em] lg:text-[16px]">
-                    {w.title}
-                  </div>
-                  <div className="font-[family-name:var(--font-barlow)] text-[13px] leading-[1.5] text-[#a0a0a0] lg:text-[13.5px] lg:leading-[1.55]">
-                    {w.body}
-                  </div>
-                </div>
-              </div>
-            </Reveal>
+        {/* The animated 0 HR / 0 PM / 0% / 0 counter strip that used to close
+            this section is gone. It server-rendered as a row of zeros, its
+            "8 part categories" figure matched neither the 12 advertised nor
+            the 10 in stock, and every fact in it is already stated here. */}
+        <div className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2">
+          {WHY.map((w) => (
+            <div key={w.title} className="flex flex-col gap-1.5">
+              <h3 className={subHeadingClass}>{w.title}</h3>
+              <p className={bodyClass}>{w.body}</p>
+            </div>
           ))}
         </div>
-
-        <Reveal>
-          <div className="grid grid-cols-2 gap-px border border-white/8 bg-white/8 lg:grid-cols-4">
-            {STATS.map((s) => (
-              <div key={s.label} className="flex flex-col gap-1.5 bg-[#0C0C0C] p-[18px] lg:gap-2 lg:p-7">
-                <div className="font-[family-name:var(--font-oswald)] text-[30px] font-bold tracking-[0.04em] text-white lg:text-[44px]">
-                  <CountUp target={s.target} />
-                  <span className="text-[18px] text-[#E31E24] lg:text-[24px]">{s.suffix}</span>
-                </div>
-                <div className="font-[family-name:var(--font-barlow-condensed)] text-[10px] font-semibold tracking-[0.24em] text-[#777] lg:text-[11px] lg:tracking-[0.28em]">
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Reveal>
       </div>
     </div>
   );
@@ -418,84 +363,56 @@ function WhyADS() {
 
 function DeliverySection() {
   return (
-    <div id="delivery" className={`border-t border-white/6 px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}>
+    <div id="delivery" className={sectionClass}>
       <div className="mx-auto flex max-w-[1060px] flex-col gap-6 lg:gap-8">
-        <Reveal>
           <h2 className={sectionHeadingClass}>Delivery &amp; pickup</h2>
-        </Reveal>
-        <Reveal variant="rule">
-          <div
-            className="h-px w-full"
-            style={{ background: "linear-gradient(90deg, #E31E24 0 72px, rgba(255,255,255,0.1) 72px)" }}
-          />
-        </Reveal>
 
-        <Reveal>
-          <div className="inline-flex items-center gap-2 self-start border border-[#E31E24]/50 bg-[#E31E24]/10 px-4 py-2 font-[family-name:var(--font-barlow-condensed)] text-[12px] font-semibold tracking-[0.16em] text-[#E31E24] lg:text-[13px]">
-            <span className="h-1.5 w-1.5 shrink-0 rotate-45 bg-[#E31E24]" />
-            FREE DELIVERY IN ORLANDO
-          </div>
-        </Reveal>
-
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-start lg:gap-10">
-          <div className="flex flex-col">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1fr] lg:items-start">
+          <div className="flex flex-col gap-6">
             {DELIVERY_STEPS.map((step, i) => (
-              <Reveal key={step.title} delay={i * 80}>
-                <div className="flex gap-[18px] pb-[22px] last:pb-0">
-                  <div className="flex flex-col items-center">
-                    <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rotate-45 bg-[#E31E24] lg:h-3 lg:w-3" />
-                    {i < DELIVERY_STEPS.length - 1 ? (
-                      <div className="mt-2 w-px flex-1 bg-white/12" />
-                    ) : null}
-                  </div>
+              <div key={step.title} className="flex gap-4">
+                <span className="mt-0.5 shrink-0 font-mono text-[13px] text-[#8A8A8A]">{i + 1}</span>
                   <div className="flex flex-col gap-1">
-                    <div className="font-[family-name:var(--font-oswald)] text-[14px] font-semibold uppercase tracking-[0.12em] lg:text-[17px]">
-                      {step.title}
-                    </div>
-                    <div className="font-[family-name:var(--font-barlow)] text-[13px] leading-[1.5] text-[#a0a0a0] lg:text-[14px] lg:leading-[1.55]">
-                      {step.body}
-                    </div>
+                    <h3 className={subHeadingClass}>{step.title}</h3>
+                    <p className={bodyClass}>{step.body}</p>
                   </div>
                 </div>
-              </Reveal>
             ))}
           </div>
 
-          <Reveal>
-            <div className="relative h-[220px] overflow-hidden border border-white/8 bg-[#1A1A1A] lg:h-[340px]">
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 34px), repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 34px)",
-                }}
-              />
-              <div className="absolute left-1/2 top-[44%] -translate-x-1/2 -translate-y-1/2">
-                <div className="absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#E31E24]" style={{ animation: "pulse-ring 2.2s ease-out infinite" }} />
-                <div className="h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
-              </div>
-              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2.5 bg-[#080808]/92 px-3.5 py-3 lg:inset-x-4 lg:bottom-4 lg:px-[18px] lg:py-4">
-                <div className="flex flex-col gap-0.5">
-                  <div className="font-[family-name:var(--font-oswald)] text-[12px] font-semibold tracking-[0.12em] lg:text-[14px] lg:tracking-[0.14em]">
-                    <span className="lg:hidden">ADS WAREHOUSE</span>
-                    <span className="hidden lg:inline">ADS WAREHOUSE — LOCAL PICKUP AVAILABLE</span>
-                  </div>
-                  <div className="font-[family-name:var(--font-barlow)] text-[11.5px] text-[#999] lg:text-[13px]">
+          {/* Was a decorative fake map — a grid of lines with a pulsing red dot
+              that represented no real location. Replaced with the details
+              somebody driving over actually needs. */}
+            <div className="flex flex-col gap-4 border border-white/8 bg-[#1A1A1A] p-5 lg:p-6">
+              <h3 className={subHeadingClass}>Pick up at the warehouse</h3>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className={eyebrowClass}>Address</span>
+                  <a
+                    href={MAPS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`font-[family-name:var(--font-barlow)] text-[15px] text-white underline decoration-white/25 underline-offset-4 transition-colors hover:decoration-[#E31E24] ${focusRingClass}`}
+                  >
                     {ADDRESS}
-                  </div>
+                  </a>
                 </div>
-                <a
-                  href={MAPS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="whitespace-nowrap font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.18em] text-[#E31E24] transition-colors hover:text-[#ff4a50] lg:text-[12px] lg:tracking-[0.2em]"
-                >
-                  <span className="lg:hidden">MAP →</span>
-                  <span className="hidden lg:inline">OPEN IN MAPS →</span>
-                </a>
+                <div className="flex flex-col gap-1">
+                  <span className={eyebrowClass}>Hours</span>
+                  <span className="font-[family-name:var(--font-barlow)] text-[15px] text-white">
+                    {HOURS_DISPLAY}
+                  </span>
+                  <span className={bodyClass}>{PHONE_NOTE}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className={eyebrowClass}>Delivery</span>
+                  <span className={bodyClass}>
+                    Free inside Orlando city limits. Same-day across Central Florida on orders placed
+                    before 12 PM.
+                  </span>
+                </div>
               </div>
             </div>
-          </Reveal>
         </div>
       </div>
     </div>
@@ -504,155 +421,55 @@ function DeliverySection() {
 
 function ContactSection() {
   return (
-    <div
-      id="contact"
-      className={`border-t border-white/6 bg-[#0C0C0C] px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}
-    >
+    <div id="contact" className={`bg-[#0C0C0C] ${sectionClass}`}>
       <div className="mx-auto flex max-w-[1060px] flex-col gap-6 lg:gap-8">
-        <Reveal>
-          <h2 className={sectionHeadingClass}>
-            <span className="lg:hidden">Get a quote</span>
-            <span className="hidden lg:inline">Talk to a parts specialist</span>
-          </h2>
-        </Reveal>
-        <Reveal variant="rule">
-          <div
-            className="h-px w-full"
-            style={{ background: "linear-gradient(90deg, #E31E24 0 72px, rgba(255,255,255,0.1) 72px)" }}
-          />
-        </Reveal>
+          <h2 className={sectionHeadingClass}>Talk to a parts specialist</h2>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.2fr] lg:items-start lg:gap-10">
-          <Reveal>
             <div className="flex flex-col gap-2">
               <a href={`tel:${PHONE_HREF}`} className={contactRowClass}>
-                <span className={contactLabelClass}>CALL</span>
+                <span className={eyebrowClass}>Call</span>
                 <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold lg:text-[16px]">
                   {PHONE_DISPLAY}
                 </span>
               </a>
               <a href={`sms:${PHONE_HREF}`} className={contactRowClass}>
-                <span className={contactLabelClass}>TEXT</span>
+                <span className={eyebrowClass}>Text</span>
                 <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold lg:text-[16px]">
                   {PHONE_DISPLAY}
                 </span>
               </a>
               <a href={`mailto:${EMAIL}`} className={contactRowClass}>
-                <span className={contactLabelClass}>EMAIL</span>
+                <span className={eyebrowClass}>Email</span>
                 <span className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold lg:text-[14px]">
                   {EMAIL}
                 </span>
               </a>
               <div className={`hidden lg:flex ${contactRowClass}`}>
-                <span className={contactLabelClass}>VISIT</span>
-                <span className="font-[family-name:var(--font-barlow)] text-[14px] font-medium">{ADDRESS}</span>
-              </div>
-              <div className={`hidden lg:flex ${contactRowClass}`}>
-                <span className={contactLabelClass}>HOURS</span>
-                <span className="flex flex-col items-end gap-1 text-right">
-                  <span className="font-[family-name:var(--font-barlow)] text-[14px] font-medium">
-                    Mon–Fri 9 AM–5 PM · Sat–Sun Closed
-                  </span>
-                  <span className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold tracking-[0.02em] text-[#E31E24]">
-                    Phone available 24/7
-                  </span>
+                <span className={eyebrowClass}>Hours</span>
+                <span className="text-right font-[family-name:var(--font-barlow)] text-[14px]">
+                  {HOURS_DISPLAY}
                 </span>
               </div>
             </div>
-          </Reveal>
-          <Reveal>
             <QuoteForm />
-          </Reveal>
         </div>
       </div>
     </div>
   );
 }
 
-function SiteFooter() {
-  return (
-    <div className="border-t border-white/6 bg-[#070707] px-4 pt-10 lg:px-14 lg:pt-16">
-      <div className="mx-auto flex max-w-[1060px] flex-col gap-5 lg:gap-10">
-        <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-[1.4fr_1fr_1fr] lg:gap-10">
-          <div className="flex flex-col gap-3.5">
-            <BrandLogo size="sm" />
-            <div className="font-[family-name:var(--font-barlow)] text-[13px] leading-[1.6] text-[#888] lg:max-w-[320px]">
-              New aftermarket auto body parts — never used salvage. CAPA certified fit and finish, dispatched
-              from Orlando within 24 hours.
-            </div>
-          </div>
+export default async function LandingPage() {
+  const options = await getSearchOptions();
 
-          <div className="hidden flex-col gap-2 font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.1em] lg:flex">
-            <div className="mb-1 font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.28em] text-[#666]">
-              SITE
-            </div>
-            <a href="#parts" className="text-[#aaa] transition-colors hover:text-white">
-              PARTS
-            </a>
-            <a href="#why" className="text-[#aaa] transition-colors hover:text-white">
-              WHY ADS
-            </a>
-            <a href="#delivery" className="text-[#aaa] transition-colors hover:text-white">
-              DELIVERY
-            </a>
-            <a href="#contact" className="text-[#aaa] transition-colors hover:text-white">
-              CONTACT
-            </a>
-          </div>
-
-          <div className="flex flex-col gap-2 font-[family-name:var(--font-barlow)] text-[12px] leading-[1.8] text-[#666] lg:text-[13px] lg:leading-[1.6] lg:text-[#aaa]">
-            <div className="hidden font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.28em] text-[#666] lg:mb-1 lg:block">
-              CONTACT
-            </div>
-            <div>{ADDRESS}</div>
-            <a href={`tel:${PHONE_HREF}`} className="hover:text-white">
-              {PHONE_DISPLAY}
-            </a>
-            <a href={`mailto:${EMAIL}`} className="hover:text-white">
-              {EMAIL}
-            </a>
-            <div className="text-[#666] lg:text-[#777]">Mon–Fri 9 AM–5 PM · Sat–Sun Closed</div>
-            <div className="font-semibold text-[#E31E24]">Phone available 24/7</div>
-          </div>
-        </div>
-
-        {/* Mobile-only flat section nav (desktop uses the SITE column above) */}
-        <div className="flex flex-wrap gap-5 font-[family-name:var(--font-barlow)] text-[11px] font-semibold tracking-[0.12em] lg:hidden">
-          <a href="#parts" className="text-[#aaa] transition-colors hover:text-white">
-            PARTS
-          </a>
-          <a href="#why" className="text-[#aaa] transition-colors hover:text-white">
-            WHY ADS
-          </a>
-          <a href="#delivery" className="text-[#aaa] transition-colors hover:text-white">
-            DELIVERY
-          </a>
-          <a href="#contact" className="text-[#aaa] transition-colors hover:text-white">
-            CONTACT
-          </a>
-        </div>
-
-        <div className="flex items-center justify-between border-t border-white/6 py-3.5 font-[family-name:var(--font-barlow)] text-[11px] tracking-[0.06em] text-[#555] lg:py-4">
-          <div>© 2026 AUTO DOOR STORE · ORLANDO, FL</div>
-          <div className="flex items-center gap-[18px]">
-            <div className="hidden lg:block">SAME-DAY DELIVERY ACROSS CENTRAL FLORIDA · ORDER BY 12 PM</div>
-            <Link href="/login" className="text-[#555] transition-colors hover:text-[#999]">
-              Staff Login
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function LandingPage() {
   return (
     <main>
-      <TopBar />
+      {/* No red announcement bar above the header: the same-day claim it made
+          appeared eight more times across the site, and the Delivery section
+          below makes it properly, with the detail that actually matters. */}
       <SiteHeader heroId="hero" />
-      <Hero />
-      <BrowseByPart />
+      <Hero options={options} />
+      <BrowseByPart categories={options.categories} />
       <WhyADS />
       <DeliverySection />
       <ContactSection />

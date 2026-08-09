@@ -2,14 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
+import { EMAIL, ORG_SLUG, PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
+import {
+  badgeClass,
+  bodyClass,
+  eyebrowClass,
+  pageTitleClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "@/lib/public-ui";
 import { CatalogHeader } from "../catalog-header";
 import { PhotoGallery } from "./photo-gallery";
+import { SiteFooter } from "@/components/site-footer";
 import { ProductQuoteForm } from "./product-quote-form";
-
-const ORG_SLUG = "ads-auto-parts";
-const PHONE_DISPLAY = "(407) 743-4644";
-const PHONE_HREF = "4077434644";
-const EMAIL = "autodoorstorewest@gmail.com";
 
 export default async function PartDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,7 +41,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
     <div className="min-h-screen bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
       <CatalogHeader />
 
-      <div className="border-b border-white/10 px-4 py-3.5 text-[13px] text-[#6B6B6B] lg:px-10">
+      <div className="border-b border-white/10 px-4 py-3.5 text-[13px] text-[#9A9A9A] lg:px-10">
         <Link href="/catalog" className="text-[#A1A1A1] hover:text-white">
           ← Back to results
         </Link>
@@ -53,9 +58,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
           <PhotoGallery photos={product.photos} alt={`${fitLabel} — ${title}`} partType={product.partType} />
 
           <div className="mt-3 flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-5 lg:p-6">
-            <span className="font-[family-name:var(--font-oswald)] text-[12px] tracking-[0.22em] text-[#E31E24]">
-              DELIVERY &amp; PICKUP
-            </span>
+            <span className={eyebrowClass}>Delivery &amp; pickup</span>
             <div className="grid grid-cols-1 gap-1.5 text-[14px] text-[#D4D4D4] sm:grid-cols-2 sm:gap-x-6">
               <span>Same-day delivery, Central FL</span>
               <span>Free delivery in Orlando</span>
@@ -69,38 +72,36 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap gap-2">
               {product.capaCertified ? (
-                <span className="border border-[#E31E24] bg-[#0A0A0A] px-2.5 py-1 font-[family-name:var(--font-oswald)] text-[11px] tracking-[0.16em] text-[#E31E24]">
-                  CAPA CERTIFIED
-                </span>
+                <span className={`${badgeClass} border-[#E31E24] bg-[#0A0A0A] text-[#E31E24]`}>CAPA certified</span>
               ) : null}
               <span
-                className="border px-2.5 py-1 font-[family-name:var(--font-oswald)] text-[11px] tracking-[0.16em]"
+                className={badgeClass}
                 style={{ borderColor: availability.color, color: availability.color }}
               >
                 {availability.label}
               </span>
             </div>
-            <h1 className="mt-1 font-[family-name:var(--font-oswald)] text-[26px] font-semibold uppercase tracking-[0.05em] lg:text-[32px]">
+            <h1 className={`mt-1 ${pageTitleClass}`}>
               {title}
             </h1>
-            <span className="text-[15px] text-[#A1A1A1] lg:text-[16px]">{fitLabel}</span>
+            <span className={bodyClass}>{fitLabel}</span>
           </div>
 
           <div className="flex items-baseline gap-3.5 border-y border-white/10 py-4">
             <span className="font-[family-name:var(--font-oswald)] text-[30px] font-semibold lg:text-[38px]">
               {formatMoney(product.price.toString())}
             </span>
-            <span className="text-[13px] text-[#6B6B6B]">
+            <span className="text-[13px] text-[#9A9A9A]">
               {product.capaCertified ? "New aftermarket · CAPA certified" : "New aftermarket"}
             </span>
           </div>
 
           <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-[14px]">
-            <span className="text-[#6B6B6B]">Part type</span>
+            <span className="text-[#9A9A9A]">Part type</span>
             <span>{formatPartType(product.partType)}</span>
-            <span className="text-[#6B6B6B]">Position</span>
+            <span className="text-[#9A9A9A]">Position</span>
             <span>{formatPosition(product.position)}</span>
-            <span className="text-[#6B6B6B]">Condition</span>
+            <span className="text-[#9A9A9A]">Condition</span>
             <span>
               Grade {product.condition}
               {product.conditionNotes ? ` — ${product.conditionNotes}` : ""}
@@ -108,9 +109,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           <div className="flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-4 lg:p-5">
-            <span className="font-[family-name:var(--font-oswald)] text-[12px] tracking-[0.22em] text-[#6B6B6B]">
-              FITS THESE VEHICLES
-            </span>
+            <span className={eyebrowClass}>Fits these vehicles</span>
             {product.vehicleFits.map((fit) => (
               <span key={fit.id} className="border-b border-[#242424] pb-2 text-[14px] text-[#D4D4D4] last:border-b-0">
                 {formatFit(fit.make, fit.model, fit.yearStart, fit.yearEnd)}
@@ -122,27 +121,27 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
           <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
             <a
               href={`tel:${PHONE_HREF}`}
-              className="flex min-h-[48px] items-center justify-center bg-[#E31E24] font-[family-name:var(--font-oswald)] text-[14px] tracking-[0.14em] text-white transition-colors hover:bg-[#ff3a40] lg:text-[15px]"
+              className={primaryButtonClass}
             >
-              CALL
+              Call
             </a>
             <a
               href={smsHref}
-              className="flex min-h-[48px] items-center justify-center border border-[#4A4A4A] font-[family-name:var(--font-oswald)] text-[14px] tracking-[0.14em] text-white transition-colors hover:border-[#E31E24] lg:text-[15px]"
+              className={secondaryButtonClass}
             >
-              TEXT
+              Text
             </a>
             <a
               href={emailHref}
-              className="flex min-h-[48px] items-center justify-center border border-[#4A4A4A] font-[family-name:var(--font-oswald)] text-[14px] tracking-[0.14em] text-white transition-colors hover:border-[#E31E24] lg:text-[15px]"
+              className={secondaryButtonClass}
             >
-              EMAIL
+              Email
             </a>
             <a
               href="#quote"
-              className="flex min-h-[48px] items-center justify-center border border-[#4A4A4A] font-[family-name:var(--font-oswald)] text-[14px] tracking-[0.14em] text-white transition-colors hover:border-[#E31E24] lg:text-[15px]"
+              className={secondaryButtonClass}
             >
-              QUOTE
+              Quote
             </a>
           </div>
 
@@ -156,11 +155,13 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
       <div className="sticky bottom-0 border-t border-white/10 bg-[#0A0A0A] p-3 lg:hidden">
         <a
           href={`tel:${PHONE_HREF}`}
-          className="flex min-h-[52px] items-center justify-center bg-[#E31E24] font-[family-name:var(--font-oswald)] text-[15px] tracking-[0.16em] text-white"
+          className={primaryButtonClass}
         >
-          CALL {PHONE_DISPLAY}
+          Call {PHONE_DISPLAY}
         </a>
       </div>
+
+      <SiteFooter />
     </div>
   );
 }
