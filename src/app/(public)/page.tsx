@@ -2,31 +2,75 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
+import { connection } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { PART_SLUG_TO_TYPES } from "@/lib/format";
+import { ORG_SLUG } from "@/lib/site";
 import { QuoteForm } from "./quote-form";
 import { SiteHeader } from "./site-header";
 
-const YEARS = Array.from({ length: 27 }, (_, i) => 2026 - i);
+// Search options come from the catalog itself. The hardcoded lists this
+// replaced offered six makes with no stock (RAM, Subaru, BMW, Mercedes-Benz,
+// Lexus, Acura) while omitting VW, Tesla and Chrysler, which do have stock —
+// so the primary CTA could route a shopper straight into an empty result.
+type SearchData = {
+  makes: string[];
+  models: string[];
+  years: number[];
+  countBySlug: Record<string, number>;
+};
 
-const MAKES = [
-  "Toyota",
-  "Honda",
-  "Ford",
-  "Chevrolet",
-  "Nissan",
-  "Hyundai",
-  "Kia",
-  "Dodge",
-  "RAM",
-  "Jeep",
-  "GMC",
-  "Volkswagen",
-  "Subaru",
-  "Mazda",
-  "BMW",
-  "Mercedes-Benz",
-  "Lexus",
-  "Acura",
-];
+const EMPTY_SEARCH_DATA: SearchData = { makes: [], models: [], years: [], countBySlug: {} };
+
+async function getSearchData(): Promise<SearchData> {
+  // Prisma reads would otherwise resolve during prerendering and freeze these
+  // lists at build time; stock changes through the admin UI, not a deploy.
+  await connection();
+
+  const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
+  if (!organization) return EMPTY_SEARCH_DATA;
+
+  const fitWhere = { organizationId: organization.id, product: { isPublic: true } };
+  const [makeRows, modelRows, yearBounds, partTypeCounts] = await Promise.all([
+    prisma.vehicleFit.groupBy({ by: ["make"], where: fitWhere, orderBy: { make: "asc" } }),
+    prisma.vehicleFit.findMany({
+      where: fitWhere,
+      distinct: ["model"],
+      select: { model: true },
+      orderBy: { model: "asc" },
+    }),
+    prisma.vehicleFit.aggregate({
+      where: fitWhere,
+      _min: { yearStart: true },
+      _max: { yearEnd: true },
+    }),
+    prisma.product.groupBy({
+      by: ["partType"],
+      where: { organizationId: organization.id, isPublic: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countByType = new Map(partTypeCounts.map((r) => [String(r.partType), r._count._all]));
+  const minYear = yearBounds._min.yearStart;
+  const maxYear = yearBounds._max.yearEnd;
+
+  return {
+    makes: makeRows.map((r) => r.make),
+    models: modelRows.map((r) => r.model),
+    years:
+      minYear != null && maxYear != null
+        ? Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
+        : [],
+    // A tile spanning two enum values (Tailgates & Trunks) sums both.
+    countBySlug: Object.fromEntries(
+      Object.entries(PART_SLUG_TO_TYPES).map(([slug, types]) => [
+        slug,
+        types.reduce((sum, t) => sum + (countByType.get(t) ?? 0), 0),
+      ]),
+    ),
+  };
+}
 
 const PARTS = [
   "Doors",
@@ -131,7 +175,13 @@ function TopBar() {
   );
 }
 
-function Hero() {
+function Hero({ data }: { data: SearchData }) {
+  // Same marketing labels, minus any category with nothing behind it.
+  const parts = PARTS.filter((label) => {
+    const tile = TILES.find((t) => t.name === label);
+    return tile ? (data.countBySlug[tile.slug] ?? 0) > 0 : true;
+  });
+
   const words1 = ["Find", "your", "part."];
   const words2 = ["Brand", "new.", "Today."];
 
@@ -222,7 +272,7 @@ function Hero() {
               <option value="" disabled>
                 Year
               </option>
-              {YEARS.map((y) => (
+              {data.years.map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>
@@ -232,7 +282,7 @@ function Hero() {
               <option value="" disabled>
                 Make
               </option>
-              {MAKES.map((m) => (
+              {data.makes.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -243,12 +293,17 @@ function Hero() {
                 Model
               </option>
               <option value="">All models</option>
+              {data.models.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
             </select>
             <select name="partType" defaultValue="" className={selectClass}>
               <option value="" disabled>
                 Part type
               </option>
-              {PARTS.map((p) => (
+              {parts.map((p) => (
                 <option key={p} value={p}>
                   {p}
                 </option>
@@ -297,7 +352,11 @@ function Hero() {
   );
 }
 
-function BrowseByPart() {
+function BrowseByPart({ countBySlug }: { countBySlug: Record<string, number> }) {
+  // Hinges, Radiator Supports and Reinforcement Bars have no stock — those
+  // workbook tabs were never imported, so the tiles were dead ends.
+  const tiles = TILES.filter((t) => (countBySlug[t.slug] ?? 0) > 0);
+
   return (
     <div id="parts" className={`px-4 py-14 lg:px-14 lg:py-[110px] ${sectionScrollMtClass}`}>
       <div className="mx-auto flex max-w-[1060px] flex-col gap-4 lg:gap-8">
@@ -305,7 +364,7 @@ function BrowseByPart() {
           <div className="flex items-baseline justify-between">
             <h2 className={sectionHeadingClass}>Browse by part</h2>
             <div className="hidden font-[family-name:var(--font-barlow-condensed)] text-[12px] font-semibold tracking-[0.3em] text-[#E31E24] lg:block">
-              {TILES.length} CATEGORIES · ALL NEW · NO SALVAGE
+              {tiles.length} CATEGORIES · ALL NEW · NO SALVAGE
             </div>
           </div>
         </Reveal>
@@ -317,7 +376,7 @@ function BrowseByPart() {
         </Reveal>
 
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3.5">
-          {TILES.map((t, i) => (
+          {tiles.map((t, i) => (
             <Reveal key={t.slug} delay={i * 80}>
               <Link
                 href={`/catalog?part=${t.slug}`}
@@ -636,9 +695,6 @@ function SiteFooter() {
           <div>© 2026 AUTO DOOR STORE · ORLANDO, FL</div>
           <div className="flex items-center gap-[18px]">
             <div className="hidden lg:block">SAME-DAY DELIVERY ACROSS CENTRAL FLORIDA · ORDER BY 12 PM</div>
-            <Link href="/login" className="text-[#555] transition-colors hover:text-[#999]">
-              Staff Login
-            </Link>
           </div>
         </div>
       </div>
@@ -646,13 +702,15 @@ function SiteFooter() {
   );
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const data = await getSearchData();
+
   return (
     <main>
       <TopBar />
       <SiteHeader heroId="hero" />
-      <Hero />
-      <BrowseByPart />
+      <Hero data={data} />
+      <BrowseByPart countBySlug={data.countBySlug} />
       <WhyADS />
       <DeliverySection />
       <ContactSection />
