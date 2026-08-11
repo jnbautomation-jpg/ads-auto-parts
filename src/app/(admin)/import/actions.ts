@@ -24,8 +24,11 @@ import type { Prisma } from "@/generated/prisma/client";
 const PART_TYPES = new Set<string>(Object.values(PartType));
 const POSITIONS = new Set<string>(Object.values(PartPosition));
 
-// Single clear rule for now, easy to change later: these part types are
-// always sourced CAPA certified, everything else isn't.
+// Client-confirmed (2026-08-11): every fender, hood and bumper this shop
+// sources is CAPA certified, and no other part type is. This is the single
+// write path for the flag — the public catalog reads products.capaCertified
+// directly and never infers CAPA from part type or from "(capa)" text left in
+// a model name, so this set is the only place the rule lives.
 const CAPA_PART_TYPES = new Set<PartType>(["FENDER", "BUMPER", "HOOD"]);
 
 // The master workbook has a stray non-inventory tab (an invoice template,
