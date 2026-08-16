@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Oswald, Barlow, Barlow_Condensed } from "next/font/google";
+import { BUSINESS_NAME, SITE_URL } from "@/lib/site";
 
 const oswald = Oswald({
   subsets: ["latin"],
@@ -20,10 +21,26 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
+  // Without metadataBase, Next resolves relative OG image paths against
+  // http://localhost:3000 and warns at build time — every shared link would
+  // preview a broken image.
+  metadataBase: new URL(SITE_URL),
   title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
   description:
     "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",
+  alternates: { canonical: "/" },
   openGraph: {
+    type: "website",
+    siteName: BUSINESS_NAME,
+    locale: "en_US",
+    url: SITE_URL,
+    title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
+    description:
+      "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",
+    images: ["/ads-logo.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
     title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
     description:
       "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",

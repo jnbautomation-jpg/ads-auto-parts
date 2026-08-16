@@ -5,28 +5,62 @@ import { prisma } from "@/lib/prisma";
 // files leads against. Looked up by slug rather than passed from the client
 // so nothing about the org is exposed to the browser.
 import { ORG_SLUG } from "@/lib/site";
+import { HONEYPOT_NAME, normalizePhone, validateQuoteInput } from "@/lib/inquiry";
 
 export type QuoteFormState = { success?: boolean; error?: string };
+
+// A single phone number may file this many requests inside the window below
+// before we start rejecting. Set well above what a real customer does (send,
+// realise they forgot the paint code, send again) and well below what a
+// script does.
+const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 export async function submitQuoteRequest(
   _prevState: QuoteFormState,
   formData: FormData,
 ): Promise<QuoteFormState> {
-  const name = String(formData.get("name") || "").trim();
-  const phone = String(formData.get("phone") || "").trim();
-  const email = String(formData.get("email") || "").trim() || null;
-  const vehicle = String(formData.get("vehicle") || "").trim();
-  const partNeeded = String(formData.get("partNeeded") || "").trim();
-  const notes = String(formData.get("notes") || "").trim();
-  const requestedProductId = String(formData.get("productId") || "").trim() || null;
-
-  if (!name || !phone) {
-    return { error: "Name and phone are required." };
+  // Honeypot: a real browser leaves this empty because no human can see or
+  // tab to it. Report success rather than an error — telling a bot why it was
+  // rejected just teaches it to avoid the trap next time.
+  if (String(formData.get(HONEYPOT_NAME) || "").trim() !== "") {
+    return { success: true };
   }
+
+  const validation = validateQuoteInput({
+    name: String(formData.get("name") || ""),
+    phone: String(formData.get("phone") || ""),
+    email: String(formData.get("email") || ""),
+    vehicle: String(formData.get("vehicle") || ""),
+    partNeeded: String(formData.get("partNeeded") || ""),
+    notes: String(formData.get("notes") || ""),
+  });
+  if (!validation.ok) return { error: validation.error };
+
+  const { name, phone, email, vehicle, partNeeded, notes } = validation.value;
+  const requestedProductId = String(formData.get("productId") || "").trim() || null;
 
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) {
     return { error: "Something went wrong on our end — please call or text us instead." };
+  }
+
+  // Rate limit per phone number. Recent inquiries are fetched and compared on
+  // digits only, so re-formatting the same number ("407-743-4644" vs
+  // "4077434644") cannot be used to slip past the limit. The window keeps
+  // this query small, and it lives in the database rather than in memory
+  // because serverless instances do not share state.
+  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+  const recent = await prisma.inquiry.findMany({
+    where: { organizationId: organization.id, createdAt: { gte: since } },
+    select: { phone: true },
+  });
+  const digits = normalizePhone(phone);
+  const fromSamePhone = recent.filter((r) => normalizePhone(r.phone ?? "") === digits).length;
+  if (fromSamePhone >= RATE_LIMIT_MAX) {
+    return {
+      error: "We've already got your request — give us a call if it's urgent.",
+    };
   }
 
   // Never trust a client-supplied productId directly — re-check it's a real,
@@ -51,7 +85,7 @@ export async function submitQuoteRequest(
       productId,
       name,
       phone,
-      email,
+      email: email || null,
       message,
     },
   });

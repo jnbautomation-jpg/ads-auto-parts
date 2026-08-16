@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
+import { canRecordStock } from "@/lib/permissions";
 
 export type StockMovementState = { error?: string };
 
@@ -11,6 +12,11 @@ export async function recordStockMovement(
   formData: FormData,
 ): Promise<StockMovementState> {
   const { organization, user } = await requireAuthContext();
+  // Every role can record stock today, so this never rejects — but the check
+  // belongs here anyway: the action is the real boundary, and without it a
+  // future tightening of canRecordStock would only hide the button while the
+  // action kept accepting requests.
+  if (!canRecordStock(user.role)) return { error: "You don't have permission to record stock." };
 
   const productId = String(formData.get("productId") || "");
   const direction = String(formData.get("direction") || "");

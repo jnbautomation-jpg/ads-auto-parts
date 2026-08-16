@@ -9,6 +9,29 @@
 // Single-tenant public site — every public query and lead scopes to this org.
 export const ORG_SLUG = "ads-auto-parts";
 
+// Absolute origin for canonical URLs, Open Graph images, and the sitemap.
+// Metadata needs an absolute base; without one Next falls back to
+// http://localhost:3000 and every shared link points at nothing.
+//
+// Resolution order:
+//   1. NEXT_PUBLIC_SITE_URL — set this in Vercel once the real domain is
+//      attached. It is the only one that survives a domain change.
+//   2. VERCEL_PROJECT_PRODUCTION_URL — the project's production domain,
+//      injected by Vercel. Deliberately NOT VERCEL_URL, which is unique per
+//      deployment and would make canonical URLs point at a preview build.
+//   3. localhost, for `npm run dev`.
+function resolveSiteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return explicit.replace(/\/+$/, "");
+
+  const vercelProduction = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercelProduction) return `https://${vercelProduction.replace(/\/+$/, "")}`;
+
+  return "http://localhost:3000";
+}
+
+export const SITE_URL = resolveSiteUrl();
+
 export const PHONE_DISPLAY = "(407) 743-4644";
 // Bare digits for tel:/sms: hrefs — never render this one.
 export const PHONE_HREF = "4077434644";

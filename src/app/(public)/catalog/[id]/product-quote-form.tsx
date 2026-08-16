@@ -3,6 +3,7 @@
 import { useActionState, useId } from "react";
 import { submitQuoteRequest, type QuoteFormState } from "../../actions";
 import { eyebrowClass, primaryButtonClass } from "@/lib/public-ui";
+import { HoneypotField } from "@/components/honeypot-field";
 
 const fieldClass =
   "min-h-[44px] w-full border border-[#2A2A2A] bg-[#1A1A1A] px-3.5 py-3 text-[14px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none";
@@ -12,7 +13,8 @@ export function ProductQuoteForm({ productId }: { productId: string }) {
   const uid = useId();
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 border border-[#2A2A2A] p-5 lg:p-6">
+    <form action={formAction} className="relative flex flex-col gap-3 border border-[#2A2A2A] p-5 lg:p-6">
+      <HoneypotField />
       <input type="hidden" name="productId" value={productId} />
       <span className={eyebrowClass}>
         Request a quote

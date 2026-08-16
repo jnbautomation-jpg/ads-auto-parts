@@ -1,8 +1,18 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
-import { EMAIL, ORG_SLUG, PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
+import {
+  BUSINESS_NAME,
+  EMAIL,
+  LOCALITY,
+  ORG_SLUG,
+  PHONE_DISPLAY,
+  PHONE_HREF,
+  SITE_URL,
+} from "@/lib/site";
 import {
   badgeClass,
   bodyClass,
@@ -16,16 +26,69 @@ import { PhotoGallery } from "./photo-gallery";
 import { SiteFooter } from "@/components/site-footer";
 import { ProductQuoteForm } from "./product-quote-form";
 
-export default async function PartDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-
+// Wrapped in React's cache() so generateMetadata and the page body share one
+// database round-trip per request instead of each issuing their own.
+const loadPublicProduct = cache(async (id: string) => {
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
-  if (!organization) notFound();
+  if (!organization) return null;
 
-  const product = await prisma.product.findFirst({
+  return prisma.product.findFirst({
     where: { id, organizationId: organization.id, isPublic: true },
     include: { vehicleFits: { orderBy: [{ make: "asc" }, { model: "asc" }, { yearStart: "asc" }] } },
   });
+});
+
+// Every catalog page shared the one static title from (public)/layout.tsx
+// before this, so search results and shared links could not tell two parts
+// apart. Titles lead with the fit, since that is what customers search for.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const product = await loadPublicProduct(id);
+
+  // notFound() belongs to the page, not to metadata — returning a plain
+  // title here keeps the 404 path rendering the real not-found UI.
+  if (!product) return { title: "Part not found" };
+
+  const partLabel = product.position
+    ? `${formatPartType(product.partType)} — ${formatPosition(product.position)}`
+    : formatPartType(product.partType);
+  const fitLabel = formatFit(product.make, product.model, product.yearStart, product.yearEnd);
+
+  const title = `${fitLabel} ${partLabel}`;
+  const description = [
+    `New aftermarket ${partLabel.toLowerCase()} for ${fitLabel}.`,
+    product.capaCertified ? "CAPA certified." : null,
+    `Available from ${BUSINESS_NAME} in ${LOCALITY} — call ${PHONE_DISPLAY} for a quote.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const image = product.photos[0] ?? "/ads-logo.jpg";
+  const canonical = `/catalog/${product.id}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      url: `${SITE_URL}${canonical}`,
+      title,
+      description,
+      images: [image],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+  };
+}
+
+export default async function PartDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  const product = await loadPublicProduct(id);
   if (!product) notFound();
 
   const availability = getAvailability(product.quantity, product.reorderPoint);

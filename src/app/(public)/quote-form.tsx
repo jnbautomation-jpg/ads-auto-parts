@@ -3,6 +3,7 @@
 import { useActionState, useId } from "react";
 import { submitQuoteRequest, type QuoteFormState } from "./actions";
 import { eyebrowClass, primaryButtonClass } from "@/lib/public-ui";
+import { HoneypotField } from "@/components/honeypot-field";
 
 const PARTS = [
   "Doors",
@@ -33,8 +34,9 @@ export function QuoteForm({ id }: { id?: string }) {
     <form
       id={id}
       action={formAction}
-      className="flex flex-col gap-3 self-start border border-white/8 border-t-2 border-t-[#E31E24] bg-[#1A1A1A] p-[18px] lg:gap-3 lg:p-[26px]"
+      className="relative flex flex-col gap-3 self-start border border-white/8 border-t-2 border-t-[#E31E24] bg-[#1A1A1A] p-[18px] lg:gap-3 lg:p-[26px]"
     >
+      <HoneypotField />
       <div className={eyebrowClass}>
         Request a quote
       </div>
