@@ -5,7 +5,10 @@ import { CountUp } from "@/components/count-up";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PART_SLUG_TO_TYPES } from "@/lib/format";
-import { ORG_SLUG } from "@/lib/site";
+// Shop details come from the shared source of truth — they used to be
+// re-declared here, which is how the site ended up advertising a stale
+// contact address. Only the *styling* on this page is deliberately local.
+import { ADDRESS, EMAIL, MAPS_URL, ORG_SLUG, PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 import { QuoteForm } from "./quote-form";
 import { SiteHeader } from "./site-header";
 
@@ -146,11 +149,6 @@ const DELIVERY_STEPS = [
   },
 ];
 
-const PHONE_DISPLAY = "(407) 743-4644";
-const PHONE_HREF = "4077434644";
-const EMAIL = "autodoorstorewest@gmail.com";
-const ADDRESS = "6950 Venture Cir, Orlando, FL 32807";
-const MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(ADDRESS)}`;
 
 const selectClass =
   "h-[52px] w-full border border-white/12 bg-[#111] px-3.5 font-[family-name:var(--font-barlow)] text-[16px] font-medium text-white focus:border-[#E31E24] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none lg:h-[56px]";

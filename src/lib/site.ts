@@ -36,7 +36,10 @@ export const PHONE_DISPLAY = "(407) 743-4644";
 // Bare digits for tel:/sms: hrefs — never render this one.
 export const PHONE_HREF = "4077434644";
 
-export const EMAIL = "autodoorstorewest@gmail.com";
+// Phase 2 spec 1.14: moved off the personal Gmail account to the business
+// domain. This mailbox must exist and be monitored before deploying —
+// every quote link on the public site points at it.
+export const EMAIL = "sales@autodoorstoreorlando.com";
 
 export const ADDRESS = "6950 Venture Cir, Orlando, FL 32807";
 export const MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(ADDRESS)}`;
