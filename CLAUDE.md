@@ -51,12 +51,14 @@ Enums (see `prisma/schema.prisma` for the authoritative list):
 - Theme is dark: black, red `#E31E24`, white. Red is reserved for the primary action and the CAPA mark, so it keeps meaning.
 - Part images (`src/lib/part-images.ts`) are **one shared image per part type**, never per product. Callers prefer `product.photos[0]` first; `getPartTypeImage()` returns `null` for "no default" — render a placeholder box, never a broken `<img>`.
 
-## DO NOT TOUCH: the landing page
+## The landing page: no restyling
 
-`src/app/(public)/page.tsx` was deliberately reverted to its pre-restyle state.
+`src/app/(public)/page.tsx` was deliberately reverted to its pre-restyle state. **Do not restyle it.** Its visual design is settled; changes here should be behavioural fixes with a specific reason, not aesthetic ones.
 
-- Its opacity-0 `Reveal` wrappers and the `CountUp` counters rendering `0 HR / 0 PM / 0%` before intersection are **accepted and intentional**. Do not fix or restyle them.
 - It defines its own local `sectionHeadingClass` and `badgeClass` and deliberately does **not** import `src/lib/public-ui.ts`. The catalog and product detail pages *do* use that shared scale. This divergence is correct — do not reconcile it.
+- Its opacity-0 `Reveal` wrappers are intentional. Leave them.
+
+**Superseded (Aug 2026):** this section previously also froze the `CountUp` counters rendering `0 HR / 0 PM / 0%` as "accepted and intentional". The Phase 2 build spec lists that as bug 1.11, and it is a real defect — the server rendered `0`, so any visitor who didn't scroll to the stats band, every crawler, and anyone without JS saw the homepage advertise zero. `CountUp` now takes the real value as its initial state and treats the animation as progressive enhancement. Spec 1.12 (mobile/desktop label variants both rendering into the markup) was fixed in the same pass. Neither changed the page's visual design.
 
 `src/lib/public-ui.ts` (public) and `src/lib/admin-ui.ts` (staff) are the shared type scales for everything else.
 

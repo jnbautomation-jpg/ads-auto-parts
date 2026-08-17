@@ -121,12 +121,18 @@ const WHY = [
   { title: "Free Delivery In Orlando", body: "No delivery fee on orders within Orlando city limits — every time, no minimum." },
 ];
 
-const STATS = [
-  { target: 24, suffix: " HR", label: "DISPATCH" },
-  { target: 12, suffix: " PM", label: "SAME-DAY CUTOFF" },
-  { target: 100, suffix: "%", label: "NEW PARTS" },
-  { target: 8, suffix: "", label: "PART CATEGORIES" },
-];
+// PART CATEGORIES was hardcoded to 8 while the browse tiles below are
+// filtered to categories that actually have stock — so the homepage could
+// advertise a number the page itself contradicted. Derived from the same
+// data now, per the spec's "generate from the database, never hardcode".
+function statsFor(categoryCount: number) {
+  return [
+    { target: 24, suffix: " HR", label: "DISPATCH" },
+    { target: 12, suffix: " PM", label: "SAME-DAY CUTOFF" },
+    { target: 100, suffix: "%", label: "NEW PARTS" },
+    { target: categoryCount, suffix: "", label: "PART CATEGORIES" },
+  ];
+}
 
 const DELIVERY_STEPS = [
   { title: "Order by 12 PM", body: "Call, text, or send the quote form with your vehicle and the part you need." },
@@ -325,8 +331,10 @@ function Hero({ data }: { data: SearchData }) {
           </div>
           <div className={badgeClass}>
             <span className="h-[5px] w-[5px] rotate-45 bg-[#E31E24] lg:h-1.5 lg:w-1.5" />
-            <span className="lg:hidden">SAME-DAY CENTRAL FL</span>
-            <span className="hidden lg:inline">SAME-DAY CENTRAL FL DELIVERY</span>
+            {/* One string, with the desktop-only tail as a suffix — rendering
+                both variants put "SAME-DAY CENTRAL FLSAME-DAY CENTRAL FL
+                DELIVERY" in the markup (spec 1.12). */}
+            SAME-DAY CENTRAL FL<span className="hidden lg:inline"> DELIVERY</span>
           </div>
           <div className={badgeClass}>
             <span className="h-[5px] w-[5px] rotate-45 bg-[#E31E24] lg:h-1.5 lg:w-1.5" />
@@ -334,8 +342,10 @@ function Hero({ data }: { data: SearchData }) {
           </div>
           <div className={badgeClass}>
             <span className="h-[5px] w-[5px] rotate-45 bg-[#E31E24] lg:h-1.5 lg:w-1.5" />
-            <span className="lg:hidden">FREE ORLANDO DELIVERY</span>
-            <span className="hidden lg:inline">FREE DELIVERY IN ORLANDO</span>
+            {/* The two variants said the same thing in a different word
+                order, so there is nothing to preserve — kept the shorter
+                phrasing, which is the one that has to fit on mobile. */}
+            FREE ORLANDO DELIVERY
           </div>
         </div>
       </div>
@@ -411,7 +421,8 @@ function BrowseByPart({ countBySlug }: { countBySlug: Record<string, number> }) 
   );
 }
 
-function WhyADS() {
+function WhyADS({ categoryCount }: { categoryCount: number }) {
+  const stats = statsFor(categoryCount);
   return (
     <div
       id="why"
@@ -457,7 +468,7 @@ function WhyADS() {
 
         <Reveal>
           <div className="grid grid-cols-2 gap-px border border-white/8 bg-white/8 lg:grid-cols-4">
-            {STATS.map((s) => (
+            {stats.map((s) => (
               <div key={s.label} className="flex flex-col gap-1.5 bg-[#0C0C0C] p-[18px] lg:gap-2 lg:p-7">
                 <div className="font-[family-name:var(--font-oswald)] text-[30px] font-bold tracking-[0.04em] text-white lg:text-[44px]">
                   <CountUp target={s.target} />
@@ -536,8 +547,7 @@ function DeliverySection() {
               <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2.5 bg-[#080808]/92 px-3.5 py-3 lg:inset-x-4 lg:bottom-4 lg:px-[18px] lg:py-4">
                 <div className="flex flex-col gap-0.5">
                   <div className="font-[family-name:var(--font-oswald)] text-[12px] font-semibold tracking-[0.12em] lg:text-[14px] lg:tracking-[0.14em]">
-                    <span className="lg:hidden">ADS WAREHOUSE</span>
-                    <span className="hidden lg:inline">ADS WAREHOUSE — LOCAL PICKUP AVAILABLE</span>
+                    ADS WAREHOUSE<span className="hidden lg:inline"> — LOCAL PICKUP AVAILABLE</span>
                   </div>
                   <div className="font-[family-name:var(--font-barlow)] text-[11.5px] text-[#999] lg:text-[13px]">
                     {ADDRESS}
@@ -549,8 +559,7 @@ function DeliverySection() {
                   rel="noopener noreferrer"
                   className="whitespace-nowrap font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.18em] text-[#E31E24] transition-colors hover:text-[#ff4a50] lg:text-[12px] lg:tracking-[0.2em]"
                 >
-                  <span className="lg:hidden">MAP →</span>
-                  <span className="hidden lg:inline">OPEN IN MAPS →</span>
+                  <span className="hidden lg:inline">OPEN IN </span>MAPS →
                 </a>
               </div>
             </div>
@@ -570,8 +579,10 @@ function ContactSection() {
       <div className="mx-auto flex max-w-[1060px] flex-col gap-6 lg:gap-8">
         <Reveal>
           <h2 className={sectionHeadingClass}>
-            <span className="lg:hidden">Get a quote</span>
-            <span className="hidden lg:inline">Talk to a parts specialist</span>
+            {/* A heading carries SEO weight, and rendering both variants
+                made the h2 read "Get a quoteTalk to a parts specialist".
+                The two are different sentences, so one had to win. */}
+            Talk to a parts specialist
           </h2>
         </Reveal>
         <Reveal variant="rule">
@@ -704,6 +715,9 @@ function SiteFooter() {
 
 export default async function LandingPage() {
   const data = await getSearchData();
+  // Same predicate BrowseByPart uses to filter its tiles, so the headline
+  // number and the tiles can never disagree.
+  const stockedCategoryCount = TILES.filter((t) => (data.countBySlug[t.slug] ?? 0) > 0).length;
 
   return (
     <main>
@@ -711,7 +725,7 @@ export default async function LandingPage() {
       <SiteHeader heroId="hero" />
       <Hero data={data} />
       <BrowseByPart countBySlug={data.countBySlug} />
-      <WhyADS />
+      <WhyADS categoryCount={stockedCategoryCount} />
       <DeliverySection />
       <ContactSection />
       <SiteFooter />
