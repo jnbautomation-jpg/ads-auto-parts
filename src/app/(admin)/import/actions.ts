@@ -18,6 +18,7 @@ import {
 } from "@/lib/inventory-import";
 import { generateSkuBase } from "@/lib/sku";
 import { canEditCatalog } from "@/lib/permissions";
+import { defaultRetailPrice } from "@/lib/pricing";
 import { PartPosition, PartType } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -329,6 +330,10 @@ export async function commitImport(rows: ParsedInventoryRow[]): Promise<CommitRe
       quantity,
       cost,
       price,
+      // The workbooks carry wholesale prices only — the sheet has no retail
+      // column — so retail is derived on import. Staff can override it per
+      // product afterward.
+      retailPrice: defaultRetailPrice(price),
       binLocation,
       additionalVehicles,
     });

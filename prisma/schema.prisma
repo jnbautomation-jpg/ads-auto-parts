@@ -142,8 +142,18 @@ model Product {
   quantity      Int @default(0)
   reorderPoint  Int @default(2)
 
-  cost  Decimal @db.Decimal(10, 2)
+  // What ADS paid the supplier. Staff-only, never leaves the admin screens.
+  cost Decimal @db.Decimal(10, 2)
+
+  // WHOLESALE price — what a trade account pays. Staff-only for now; when
+  // wholesale customer accounts land (Phase 2A) this is what those accounts
+  // see. Must never be selected by a public query. See src/lib/pricing.ts.
   price Decimal @db.Decimal(10, 2)
+
+  // RETAIL price — the only price the public catalog ever shows.
+  // Backfilled to price + RETAIL_MARKUP_USD; see
+  // scripts/backfill-retail-price.ts.
+  retailPrice Decimal @db.Decimal(10, 2)
 
   photos String[]
 

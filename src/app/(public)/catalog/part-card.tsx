@@ -15,7 +15,9 @@ export type PartCardData = {
   yearEnd: number;
   partType: string;
   position: string | null;
-  price: unknown;
+  // Retail only. The wholesale price is never selected for public pages, so
+  // there is deliberately no `price` field on this type.
+  retailPrice: unknown;
   capaCertified: boolean;
   photos: string[];
   // Never the raw number — only ever a label derived from quantity/reorderPoint
@@ -66,7 +68,7 @@ export function PartCard({ product }: { product: PartCardData }) {
         <span className="text-[12px] text-[#A1A1A1] sm:text-[13px]">{typePos}</span>
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 sm:mt-1.5 sm:border-t sm:border-white/10 sm:pt-3">
           <span className="font-[family-name:var(--font-oswald)] text-[17px] font-semibold sm:text-[20px]">
-            {formatMoney(product.price as never)}
+            {formatMoney(product.retailPrice as never)}
           </span>
           <span
             className={badgeClass}

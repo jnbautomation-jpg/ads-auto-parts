@@ -16,7 +16,8 @@
     "postinstall": "prisma generate",
     "db:seed": "tsx scripts/seed-owner.ts",
     "setup:storage": "tsx scripts/setup-storage.ts",
-    "reset:products": "tsx scripts/reset-products.ts"
+    "reset:products": "tsx scripts/reset-products.ts",
+    "backfill:retail": "tsx scripts/backfill-retail-price.ts"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^3.3.0",

@@ -50,7 +50,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     },
     { k: "QTY ON HAND", v: String(product.quantity), color: lowStock ? "#B45309" : "#15803d", bold: true },
     { k: "REORDER PT", v: String(product.reorderPoint) },
-    { k: "PRICE", v: formatMoney(product.price.toString()), bold: true },
+    // Both prices, labelled — staff quoting a customer must never read the
+    // wholesale number off this screen by mistake.
+    { k: "RETAIL (PUBLIC)", v: formatMoney(product.retailPrice.toString()), bold: true },
+    { k: "WHOLESALE", v: formatMoney(product.price.toString()) },
     { k: "SUPPLIER", v: product.supplier?.name ?? "—" },
   ];
 

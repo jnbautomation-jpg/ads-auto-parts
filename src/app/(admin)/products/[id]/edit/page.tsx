@@ -41,6 +41,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     reorderPoint: product.reorderPoint,
     cost: product.cost.toString(),
     price: product.price.toString(),
+    retailPrice: product.retailPrice.toString(),
     photos: product.photos,
     isPublic: product.isPublic,
     supplierId: product.supplierId ?? "",

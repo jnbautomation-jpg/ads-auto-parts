@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
+import { PUBLIC_PRODUCT_SELECT } from "@/lib/pricing";
 import {
   BUSINESS_NAME,
   EMAIL,
@@ -32,9 +33,15 @@ const loadPublicProduct = cache(async (id: string) => {
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) return null;
 
+  // Explicit select, not a whole-row fetch: wholesale price, cost, bin
+  // location, and supplier never load into this page's data at all, so they
+  // cannot leak through the RSC payload or a later refactor.
   return prisma.product.findFirst({
     where: { id, organizationId: organization.id, isPublic: true },
-    include: { vehicleFits: { orderBy: [{ make: "asc" }, { model: "asc" }, { yearStart: "asc" }] } },
+    select: {
+      ...PUBLIC_PRODUCT_SELECT,
+      vehicleFits: { orderBy: [{ make: "asc" }, { model: "asc" }, { yearStart: "asc" }] },
+    },
   });
 });
 
@@ -152,7 +159,7 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
 
           <div className="flex items-baseline gap-3.5 border-y border-white/10 py-4">
             <span className="font-[family-name:var(--font-oswald)] text-[30px] font-semibold lg:text-[38px]">
-              {formatMoney(product.price.toString())}
+              {formatMoney(product.retailPrice.toString())}
             </span>
             <span className="text-[13px] text-[#9A9A9A]">
               {product.capaCertified ? "New aftermarket · CAPA certified" : "New aftermarket"}

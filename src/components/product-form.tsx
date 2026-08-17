@@ -7,6 +7,7 @@ import { generateSkuBase } from "@/lib/sku";
 import { formatPartType, formatPosition } from "@/lib/format";
 import { PartType, PartPosition, PartCondition } from "@/generated/prisma/enums";
 import { saveProduct, type ProductFormState } from "@/app/(admin)/products/actions";
+import { RETAIL_MARKUP_USD } from "@/lib/pricing";
 import { buttonPrimaryClass, cardClass, inputClass, labelClass, linkMutedClass, sectionLabelClass } from "@/lib/admin-ui";
 
 const PART_TYPES = Object.values(PartType);
@@ -31,7 +32,10 @@ export type ProductFormValues = {
   quantity: number;
   reorderPoint: number;
   cost: string;
+  // Wholesale (trade accounts). Never shown publicly.
   price: string;
+  // Retail — the only price the public catalog displays.
+  retailPrice: string;
   photos: string[];
   isPublic: boolean;
   supplierId: string;
@@ -56,6 +60,7 @@ const EMPTY_VALUES: ProductFormValues = {
   reorderPoint: 2,
   cost: "0",
   price: "0",
+  retailPrice: "0",
   photos: [],
   isPublic: true,
   supplierId: "",
@@ -297,8 +302,20 @@ export function ProductForm({
             <input type="number" name="cost" min={0} step="0.01" defaultValue={values.cost} className={inputClass} />
           </label>
           <label className={labelClass}>
-            PRICE ($)
+            WHOLESALE ($)
             <input type="number" name="price" min={0} step="0.01" defaultValue={values.price} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            RETAIL ($) — PUBLIC
+            <input
+              type="number"
+              name="retailPrice"
+              min={0}
+              step="0.01"
+              defaultValue={values.retailPrice}
+              placeholder={`wholesale + ${RETAIL_MARKUP_USD}`}
+              className={inputClass}
+            />
           </label>
           <label className={labelClass}>
             BIN LOCATION

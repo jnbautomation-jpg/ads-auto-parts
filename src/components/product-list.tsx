@@ -29,7 +29,9 @@ export type ProductRow = {
   capaCertified: boolean;
   quantity: number;
   reorderPoint: number;
-  price: string;
+  // Public retail price. Wholesale is deliberately not carried into this
+  // list component.
+  retailPrice: string;
   isPublic: boolean;
 };
 
@@ -127,7 +129,9 @@ export function ProductList({
             <div>BIN</div>
             <div>CAPA</div>
             <div className="text-right">QTY</div>
-            <div className="text-right">PRICE</div>
+            {/* The list shows the public-facing number; wholesale is on the
+                product detail screen. Labelled so the two can't be confused. */}
+            <div className="text-right">RETAIL</div>
             <div className="text-center">PUBLIC</div>
           </div>
           {products.length === 0 ? (
@@ -168,7 +172,7 @@ export function ProductList({
                   <div className={`text-right font-bold ${low ? "text-[#B45309]" : "text-[#15803d]"}`}>
                     {product.quantity}
                   </div>
-                  <div className="text-right">{formatMoney(product.price)}</div>
+                  <div className="text-right">{formatMoney(product.retailPrice)}</div>
                   <div className="flex justify-center">
                     {canEdit ? (
                       <form action={toggleProductVisibility}>
@@ -280,7 +284,7 @@ export function ProductList({
                         ) : null}
                       </div>
                       <div className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
-                        {formatMoney(product.price)}
+                        {formatMoney(product.retailPrice)}
                       </div>
                     </div>
                   </Link>

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuthContext } from "@/lib/auth";
 import { generateSkuBase } from "@/lib/sku";
 import { canBulkDelete, canEditCatalog } from "@/lib/permissions";
+import { defaultRetailPrice } from "@/lib/pricing";
 import { Prisma } from "@/generated/prisma/client";
 import type { PartType, PartPosition, PartCondition } from "@/generated/prisma/enums";
 
@@ -34,7 +35,12 @@ export async function saveProduct(
   const quantity = Number(formData.get("quantity"));
   const reorderPoint = Number(formData.get("reorderPoint"));
   const cost = Number(formData.get("cost"));
+  // `price` is the WHOLESALE price. `retailPrice` is what the public sees —
+  // if the form leaves it blank, fall back to the standard markup rather
+  // than storing a zero the catalog would then advertise.
   const price = Number(formData.get("price"));
+  const retailRaw = String(formData.get("retailPrice") || "").trim();
+  const retailPrice = retailRaw === "" ? defaultRetailPrice(price) : Number(retailRaw);
   const capaCertified = formData.get("capaCertified") === "on";
   const isPublic = formData.get("isPublic") === "on";
   const supplierId = String(formData.get("supplierId") || "") || null;
@@ -56,7 +62,12 @@ export async function saveProduct(
     return { error: "Reorder point must be zero or greater." };
   }
   if (!Number.isFinite(cost) || cost < 0) return { error: "Cost must be a non-negative number." };
-  if (!Number.isFinite(price) || price < 0) return { error: "Price must be a non-negative number." };
+  if (!Number.isFinite(price) || price < 0) {
+    return { error: "Wholesale price must be a non-negative number." };
+  }
+  if (!Number.isFinite(retailPrice) || retailPrice < 0) {
+    return { error: "Retail price must be a non-negative number." };
+  }
 
   if (supplierId) {
     const supplier = await prisma.supplier.findFirst({
@@ -92,6 +103,7 @@ export async function saveProduct(
     reorderPoint,
     cost,
     price,
+    retailPrice,
     photos,
     isPublic,
     supplierId,

@@ -144,6 +144,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         ...(capaOnly ? { capaCertified: true } : {}),
         ...(hasFitFilter ? { vehicleFits: { some: fitWhere } } : {}),
       },
+      // retailPrice only — the wholesale `price` column must never be
+      // selected by a public query. See src/lib/pricing.ts.
       select: {
         id: true,
         make: true,
@@ -152,7 +154,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         yearEnd: true,
         partType: true,
         position: true,
-        price: true,
+        retailPrice: true,
         capaCertified: true,
         photos: true,
         quantity: true,
