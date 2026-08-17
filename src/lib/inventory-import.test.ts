@@ -204,6 +204,18 @@ describe("parseInventorySheet — year and model normalization", () => {
     expect(result.parsed[0]).toMatchObject({ make: "Ford", model: "F-150" });
   });
 
+  it("imports a VW section as Volkswagen, not a separate make (spec 1.7)", () => {
+    const result = parseInventorySheet(
+      [makeRow("VW"), dataRow("19-24 JETTA"), makeRow("VOLKSWAGEN"), dataRow("18-22 TIGUAN")],
+      HEADER,
+      [],
+      "DOOR",
+    );
+    // Both section spellings must land on one canonical make, or the catalog
+    // filter shows the same manufacturer twice.
+    expect(result.parsed.map((r) => r.make)).toEqual(["Volkswagen", "Volkswagen"]);
+  });
+
   it("normalizes the misspelled HYUNDIA section header", () => {
     const result = parseInventorySheet([makeRow("HYUNDIA"), dataRow("18-24 ELANTRA")], HEADER, [], "DOOR");
     expect(result.parsed[0].make).toBe("Hyundai");

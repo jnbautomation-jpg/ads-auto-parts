@@ -15,6 +15,7 @@
 // a per-row TYPE column, when present, overrides it for just that row (a
 // tab like "TRUNK ETC" can mix TRUNK and LIFTGATE rows).
 import { PartPosition, PartType } from "@/generated/prisma/enums";
+import { MAKE_ALIASES, canonicalMake, canonicalModel } from "@/lib/normalize";
 
 export type ParsedInventoryRow = {
   rowNum: number;
@@ -146,26 +147,10 @@ function splitSideQualifier(sideText: string): { base: string; qualifier: string
 // Used both to detect a make section-header row and to spot an explicit make
 // token at the start of the second half of a multi-vehicle "/" split (e.g.
 // GMC, which never appears as its own section but shows up inline).
-const MAKE_LABELS: Record<string, string> = {
-  CHEVROLET: "Chevrolet",
-  CHEVY: "Chevrolet", // shop abbreviation, confirmed against real BUMPERS data
-  FORD: "Ford",
-  HONDA: "Honda",
-  HYUNDAI: "Hyundai",
-  HYUNDIA: "Hyundai", // misspelled in the source file
-  JEEP: "Jeep",
-  KIA: "Kia",
-  MAZDA: "Mazda",
-  NISSAN: "Nissan",
-  DODGE: "Dodge",
-  TESLA: "Tesla",
-  TOYOTA: "Toyota",
-  VW: "VW",
-  VOLKSWAGEN: "Volkswagen",
-  GMC: "GMC",
-  CHRYSLER: "Chrysler",
-  MITSUBISHI: "Mitsubishi",
-};
+// Make recognition and canonicalization both come from MAKE_ALIASES in
+// src/lib/normalize.ts — the same table the repair script uses. Keeping a
+// second copy here is what let "VW" and "Volkswagen" become two separate
+// makes in the first place (spec 1.7).
 
 // The subset that can appear as a standalone section row carrying the make
 // forward onto rows beneath it.
@@ -303,7 +288,7 @@ function detectMakeSectionRow(cells: string[]): string | null {
     .map((c) => normalizeWhitespace((c ?? "").toString()).toUpperCase())
     .filter((c) => SECTION_MAKES.has(c));
   if (matches.length !== 1) return null;
-  return MAKE_LABELS[matches[0]];
+  return canonicalMake(matches[0]);
 }
 
 function titleCase(s: string): string {
@@ -374,31 +359,17 @@ function parseYearModel(cell: string): YearModel | null {
 function stripMakePrefix(cell: string): { make: string | null; rest: string } {
   const normalized = normalizeWhitespace(cell);
   const firstWord = normalized.split(" ")[0]?.toUpperCase();
-  if (firstWord && MAKE_LABELS[firstWord]) {
-    return { make: MAKE_LABELS[firstWord], rest: normalized.slice(firstWord.length).trim() };
+  if (firstWord && firstWord in MAKE_ALIASES) {
+    return { make: canonicalMake(firstWord), rest: normalized.slice(firstWord.length).trim() };
   }
   return { make: null, rest: normalized };
 }
 
-// Common misspellings seen in the source sheets.
-const MODEL_MISSPELLINGS: [RegExp, string][] = [[/\btuscon\b/gi, "Tucson"]];
-
-// Canonical spelling for nameplates that show up with inconsistent
-// spacing/hyphenation across rows (title-cased first, so casing here is
-// what survives) — keeps the same vehicle from splitting into two.
-const MODEL_PATTERN_FIXES: [RegExp, string][] = [
-  [/\bcr[\s-]?v\b/gi, "CR-V"],
-  [/\bhr[\s-]?v\b/gi, "HR-V"],
-  [/\bf[\s-]?(\d{3})\b/gi, "F-$1"],
-  [/\brav[\s-]?4\b/gi, "RAV4"],
-];
-
-function canonicalizeModel(model: string): string {
-  let result = model;
-  for (const [pattern, replacement] of MODEL_MISSPELLINGS) result = result.replace(pattern, replacement);
-  for (const [pattern, replacement] of MODEL_PATTERN_FIXES) result = result.replace(pattern, replacement);
-  return normalizeWhitespace(result);
-}
+// Model canonicalization lives in src/lib/normalize.ts, shared with
+// scripts/clean-vehicle-data.ts. The importer and the repair script must
+// apply identical rules — otherwise cleaning the table just postpones the
+// mess until the next upload (spec 1.6).
+const canonicalizeModel = canonicalModel;
 
 // Strips a redundant leading make token (e.g. "Ford F 150" when the row is
 // already under a Ford section) and applies the canonical-spelling pass.
