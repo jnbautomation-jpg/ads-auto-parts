@@ -5,6 +5,8 @@ import { PartType } from "@/generated/prisma/enums";
 import { formatPartType, PART_SLUG_TO_TYPES } from "@/lib/format";
 import { ORG_SLUG, PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 import { bodyClass, eyebrowClass, primaryButtonClass, subHeadingClass } from "@/lib/public-ui";
+import { productSelectFor } from "@/lib/pricing";
+import { getViewerTier } from "@/lib/customer-auth";
 import { CatalogHeader } from "./catalog-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PartCard } from "./part-card";
@@ -82,6 +84,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   if (params.part) current.set("part", params.part);
   if (capaOnly) current.set("capa", "1");
 
+  const viewerTier = await getViewerTier();
+
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) {
     return (
@@ -144,22 +148,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         ...(capaOnly ? { capaCertified: true } : {}),
         ...(hasFitFilter ? { vehicleFits: { some: fitWhere } } : {}),
       },
-      // retailPrice only — the wholesale `price` column must never be
-      // selected by a public query. See src/lib/pricing.ts.
-      select: {
-        id: true,
-        make: true,
-        model: true,
-        yearStart: true,
-        yearEnd: true,
-        partType: true,
-        position: true,
-        retailPrice: true,
-        capaCertified: true,
-        photos: true,
-        quantity: true,
-        reorderPoint: true,
-      },
+      // The select depends on who is asking: a guest or retail customer's
+      // query never fetches the wholesale price at all. See
+      // productSelectFor() in src/lib/pricing.ts.
+      select: productSelectFor(viewerTier),
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -392,7 +384,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           ) : (
             <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
               {products.map((p) => (
-                <PartCard key={p.id} product={p} />
+                <PartCard key={p.id} product={p} viewerTier={viewerTier} />
               ))}
             </div>
           )}

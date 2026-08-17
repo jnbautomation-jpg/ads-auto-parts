@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
 import { getPartTypeImage } from "@/lib/part-images";
 import { badgeClass } from "@/lib/public-ui";
+import { canSeeWholesale, priceForViewer, type ViewerTier } from "@/lib/pricing";
 
 const PHOTO_PLACEHOLDER = {
   backgroundImage: "repeating-linear-gradient(45deg,#1E1E1E 0,#1E1E1E 12px,#232323 12px,#232323 24px)",
@@ -15,9 +16,12 @@ export type PartCardData = {
   yearEnd: number;
   partType: string;
   position: string | null;
-  // Retail only. The wholesale price is never selected for public pages, so
-  // there is deliberately no `price` field on this type.
   retailPrice: unknown;
+  // Present ONLY for wholesale and staff viewers — productSelectFor() leaves
+  // it out of the query entirely for guests and retail customers, which is
+  // why it is optional here rather than always fetched and conditionally
+  // rendered.
+  price?: unknown;
   capaCertified: boolean;
   photos: string[];
   // Never the raw number — only ever a label derived from quantity/reorderPoint
@@ -29,7 +33,13 @@ export type PartCardData = {
 // Same card markup serves both the mobile horizontal-list layout (1B) and the
 // desktop vertical-grid layout (1A) — the breakpoint just flips the internal
 // flex direction rather than needing two components.
-export function PartCard({ product }: { product: PartCardData }) {
+export function PartCard({
+  product,
+  viewerTier,
+}: {
+  product: PartCardData;
+  viewerTier: ViewerTier;
+}) {
   const availability = getAvailability(product.quantity, product.reorderPoint);
   const typePos = product.position
     ? `${formatPartType(product.partType)} — ${formatPosition(product.position)}`
@@ -68,7 +78,14 @@ export function PartCard({ product }: { product: PartCardData }) {
         <span className="text-[12px] text-[#A1A1A1] sm:text-[13px]">{typePos}</span>
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 sm:mt-1.5 sm:border-t sm:border-white/10 sm:pt-3">
           <span className="font-[family-name:var(--font-oswald)] text-[17px] font-semibold sm:text-[20px]">
-            {formatMoney(product.retailPrice as never)}
+            {formatMoney(priceForViewer(product, viewerTier) as never)}
+            {canSeeWholesale(viewerTier) ? (
+              // Staff quote trade customers off this page, so the price on
+              // screen has to say which one it is.
+              <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-[0.14em] text-[#E31E24]">
+                TRADE
+              </span>
+            ) : null}
           </span>
           <span
             className={badgeClass}

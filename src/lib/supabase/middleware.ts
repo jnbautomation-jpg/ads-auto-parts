@@ -23,6 +23,7 @@ export const PRIVATE_PREFIXES = [
   "/suppliers",
   "/import",
   "/inquiries",
+  "/customers",
   "/staff",
   // Not under (admin), but authenticated-only: a signed-out visitor must not
   // reach it.
@@ -75,11 +76,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
+  // NOTE: "already signed in, bounce off /login" is handled by the login page
+  // itself, not here. Middleware can't tell a staff session from a customer
+  // session without a database query, and bouncing a signed-in CUSTOMER to
+  // /dashboard produced an infinite loop: /dashboard has no `users` row for
+  // them, so requireAuthContext() sent them straight back to /login.
 
   // Staff accounts are created with a temp password and this flag set —
   // only the admin API (never the user's own session) can clear it, so it's
@@ -90,11 +91,8 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/force-password-change";
     return NextResponse.redirect(url);
   }
-  if (user && !mustChangePassword && pathname === "/force-password-change") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
+  // Same reasoning as above: leaving this page when the flag is clear is
+  // decided by the page, which can tell staff from customers.
 
   return supabaseResponse;
 }

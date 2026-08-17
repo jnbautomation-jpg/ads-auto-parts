@@ -3,6 +3,7 @@ import type { UserRole } from "@/generated/prisma/enums";
 import {
   ASSIGNABLE_ROLES,
   ROLE_LABEL,
+  canApproveWholesale,
   canBulkDelete,
   canEditCatalog,
   canManageStaff,
@@ -31,6 +32,15 @@ describe("role predicates", () => {
     expect(canEditCatalog("OWNER")).toBe(true);
     expect(canEditCatalog("ADMIN")).toBe(true);
     expect(canEditCatalog("STAFF")).toBe(false);
+  });
+
+  it("restricts approving trade accounts to owner and manager", () => {
+    // Approving grants wholesale pricing on every part. The spec's reason for
+    // manual approval — keeping competitors out of trade pricing — only holds
+    // if the approval itself is restricted.
+    expect(canApproveWholesale("OWNER")).toBe(true);
+    expect(canApproveWholesale("ADMIN")).toBe(true);
+    expect(canApproveWholesale("STAFF")).toBe(false);
   });
 
   it("allows every authenticated role to record stock", () => {

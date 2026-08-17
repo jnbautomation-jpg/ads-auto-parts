@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   PUBLIC_PRODUCT_SELECT,
   RETAIL_MARKUP_USD,
+  canSeeWholesale,
   defaultRetailPrice,
+  priceForViewer,
+  productSelectFor,
   retailMarginPercent,
 } from "./pricing";
 
@@ -56,6 +59,46 @@ describe("PUBLIC_PRODUCT_SELECT", () => {
     for (const field of ["id", "make", "model", "partType", "photos", "quantity", "reorderPoint"]) {
       expect(field in PUBLIC_PRODUCT_SELECT, `${field} should be selected`).toBe(true);
     }
+  });
+});
+
+describe("viewer tiers", () => {
+  it("shows wholesale only to approved wholesale accounts and staff", () => {
+    expect(canSeeWholesale("WHOLESALE")).toBe(true);
+    expect(canSeeWholesale("STAFF")).toBe(true);
+    expect(canSeeWholesale("RETAIL")).toBe(false);
+    expect(canSeeWholesale("GUEST")).toBe(false);
+  });
+
+  it("never selects the wholesale price for a guest or retail viewer", () => {
+    // The guarantee is at the query, not the template: if it is never
+    // fetched it cannot leak through markup, a link, or a client prop.
+    for (const tier of ["GUEST", "RETAIL"] as const) {
+      expect("price" in productSelectFor(tier), `${tier} must not select price`).toBe(false);
+    }
+  });
+
+  it("selects the wholesale price for wholesale and staff viewers", () => {
+    for (const tier of ["WHOLESALE", "STAFF"] as const) {
+      expect("price" in productSelectFor(tier), `${tier} should select price`).toBe(true);
+    }
+  });
+
+  it("resolves the right price per tier", () => {
+    const full = { retailPrice: "439", price: "339" };
+    expect(priceForViewer(full, "WHOLESALE")).toBe("339");
+    expect(priceForViewer(full, "STAFF")).toBe("339");
+    expect(priceForViewer(full, "RETAIL")).toBe("439");
+    expect(priceForViewer(full, "GUEST")).toBe("439");
+  });
+
+  it("falls back to retail when wholesale was not selected", () => {
+    // What a retail viewer's query actually returns — no `price` key at all.
+    const retailOnly = { retailPrice: "439" };
+    expect(priceForViewer(retailOnly, "RETAIL")).toBe("439");
+    // Even if the tier says wholesale, a missing price must not render
+    // "undefined" on a customer-facing page.
+    expect(priceForViewer(retailOnly, "WHOLESALE")).toBe("439");
   });
 });
 

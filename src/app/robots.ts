@@ -13,7 +13,10 @@ const PRIVATE_PATHS = [
   "/import",
   "/inquiries",
   "/staff",
+  "/customers",
   "/login",
+  // Per-customer pages, some showing trade pricing.
+  "/account",
   "/force-password-change",
 ];
 

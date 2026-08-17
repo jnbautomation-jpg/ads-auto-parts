@@ -4,7 +4,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
-import { PUBLIC_PRODUCT_SELECT } from "@/lib/pricing";
+import {
+  canSeeWholesale,
+  priceForViewer,
+  productSelectFor,
+  type ViewerTier,
+} from "@/lib/pricing";
+import { getViewerTier } from "@/lib/customer-auth";
 import {
   BUSINESS_NAME,
   EMAIL,
@@ -29,7 +35,7 @@ import { ProductQuoteForm } from "./product-quote-form";
 
 // Wrapped in React's cache() so generateMetadata and the page body share one
 // database round-trip per request instead of each issuing their own.
-const loadPublicProduct = cache(async (id: string) => {
+const loadPublicProduct = cache(async (id: string, tier: ViewerTier) => {
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) return null;
 
@@ -39,7 +45,7 @@ const loadPublicProduct = cache(async (id: string) => {
   return prisma.product.findFirst({
     where: { id, organizationId: organization.id, isPublic: true },
     select: {
-      ...PUBLIC_PRODUCT_SELECT,
+      ...productSelectFor(tier),
       vehicleFits: { orderBy: [{ make: "asc" }, { model: "asc" }, { yearStart: "asc" }] },
     },
   });
@@ -54,7 +60,9 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const product = await loadPublicProduct(id);
+  // Deliberately resolved as a GUEST: page metadata is shared and cacheable,
+  // so it must never contain a trade price.
+  const product = await loadPublicProduct(id, "GUEST");
 
   // notFound() belongs to the page, not to metadata — returning a plain
   // title here keeps the 404 path rendering the real not-found UI.
@@ -95,7 +103,8 @@ export async function generateMetadata({
 export default async function PartDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const product = await loadPublicProduct(id);
+  const viewerTier = await getViewerTier();
+  const product = await loadPublicProduct(id, viewerTier);
   if (!product) notFound();
 
   const availability = getAvailability(product.quantity, product.reorderPoint);
@@ -159,8 +168,11 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
 
           <div className="flex items-baseline gap-3.5 border-y border-white/10 py-4">
             <span className="font-[family-name:var(--font-oswald)] text-[30px] font-semibold lg:text-[38px]">
-              {formatMoney(product.retailPrice.toString())}
+              {formatMoney(priceForViewer(product, viewerTier))}
             </span>
+            {canSeeWholesale(viewerTier) ? (
+              <span className={`${badgeClass} border-[#E31E24] text-[#E31E24]`}>Trade price</span>
+            ) : null}
             <span className="text-[13px] text-[#9A9A9A]">
               {product.capaCertified ? "New aftermarket · CAPA certified" : "New aftermarket"}
             </span>

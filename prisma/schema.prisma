@@ -27,6 +27,7 @@ model Organization {
   suppliers     Supplier[]
   stockMovements StockMovement[]
   inquiries     Inquiry[]
+  customers     CustomerAccount[]
 
   @@map("organizations")
 }
@@ -46,12 +47,108 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  stockMovements StockMovement[]
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockMovements    StockMovement[]
+  reviewedCustomers CustomerAccount[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
   @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Customer accounts (Phase 2A — spec step 5)
+// ---------------------------------------------------------------------------
+
+// What a signed-in customer pays.
+enum CustomerTier {
+  RETAIL
+  WHOLESALE
+}
+
+// A wholesale application is approved by a human, never automatically — the
+// spec is explicit that self-signup would let competitors read trade pricing.
+enum WholesaleStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A shop or retail buyer. DELIBERATELY a separate table from User rather than
+// extra values on UserRole:
+//
+//   * User rows grant staff access — getAuthContext() looks a Supabase auth id
+//     up in `users`, and every admin page and server action is gated on the
+//     result. A customer must never appear there, so no bug in customer
+//     signup can ever mint a staff account.
+//   * Staff and customers carry genuinely different data (a shop has a
+//     company name and a wholesale application; staff have an org role).
+//
+// One person could in principle hold both a staff User and a CustomerAccount;
+// they are keyed independently by Supabase auth id and never merged.
+model CustomerAccount {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Supabase Auth user id (uuid). Unique globally, not just per org — one
+  // auth identity is exactly one customer account.
+  authUserId String @unique
+
+  email String
+  name  String?
+  phone String?
+
+  // Wholesale applicants only.
+  companyName String?
+
+  tier CustomerTier @default(RETAIL)
+
+  // null = never applied. PENDING blocks wholesale pricing until a staff
+  // member approves; tier is what actually resolves pricing, and only an
+  // approval sets it to WHOLESALE.
+  wholesaleStatus WholesaleStatus?
+  // Free-text reason shown to the applicant when rejected.
+  wholesaleNote   String?
+  appliedAt       DateTime?
+  reviewedAt      DateTime?
+  // Staff User.id who approved or rejected. SetNull so removing a staff
+  // member never deletes the customer's application history.
+  reviewedById    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewedBy    User?          @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  savedVehicles SavedVehicle[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, tier])
+  // Staff review queue: pending applications, oldest first.
+  @@index([organizationId, wholesaleStatus])
+  @@map("customer_accounts")
+}
+
+// "Saved vehicles" on the account dashboard — a shop that works on the same
+// cars repeatedly shouldn't retype the fit every visit.
+model SavedVehicle {
+  id                String @id @default(cuid())
+  customerAccountId String
+
+  make  String
+  model String
+  year  Int
+
+  label String?
+
+  createdAt DateTime @default(now())
+
+  customerAccount CustomerAccount @relation(fields: [customerAccountId], references: [id], onDelete: Cascade)
+
+  // The same vehicle saved twice is a mistake, not a feature.
+  @@unique([customerAccountId, make, model, year])
+  @@index([customerAccountId])
+  @@map("saved_vehicles")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AdsLogoImage } from "@/components/ads-logo";
+import { getAuthContext } from "@/lib/auth";
+import { getCustomerContext } from "@/lib/customer-auth";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -8,6 +11,12 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
+
+  // Decided here rather than in middleware, which cannot distinguish a staff
+  // session from a customer one. Sending a signed-in customer to /dashboard
+  // looped: that page has no staff record for them and bounced them back.
+  if (await getAuthContext()) redirect("/dashboard");
+  if (await getCustomerContext()) redirect("/account");
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center px-5 py-12">

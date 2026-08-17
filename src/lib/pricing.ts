@@ -43,6 +43,46 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+// Who is asking for a price.
+//
+//   GUEST     — signed out
+//   RETAIL    — signed-in customer, no approved wholesale application
+//   WHOLESALE — signed-in customer a staff member approved for trade pricing
+//   STAFF     — signed-in staff; they quote trade customers off the public
+//               catalog, so they see wholesale too
+export type ViewerTier = "GUEST" | "RETAIL" | "WHOLESALE" | "STAFF";
+
+export function canSeeWholesale(tier: ViewerTier): boolean {
+  return tier === "WHOLESALE" || tier === "STAFF";
+}
+
+/**
+ * The `select` to use for a public product read, given who is asking.
+ *
+ * The tier decides what the *query* fetches, not what the template renders.
+ * A retail visitor's request never loads the wholesale number at all, so no
+ * later refactor — passing the product to a client component, adding a debug
+ * log, serialising it into a link — can leak it.
+ */
+export function productSelectFor(tier: ViewerTier) {
+  return canSeeWholesale(tier)
+    ? ({ ...PUBLIC_PRODUCT_SELECT, price: true } as const)
+    : PUBLIC_PRODUCT_SELECT;
+}
+
+/**
+ * The price to show, given who is asking. Takes whatever the matching
+ * select returned; `price` is absent entirely for retail viewers, so this
+ * falls back to retail rather than rendering "undefined".
+ */
+export function priceForViewer(
+  product: { retailPrice: unknown; price?: unknown },
+  tier: ViewerTier,
+): string {
+  if (canSeeWholesale(tier) && product.price != null) return String(product.price);
+  return String(product.retailPrice);
+}
+
 /**
  * Prisma `select` for public product reads. Deliberately omits `price`,
  * `cost`, `binLocation`, and `supplierId` — anything a customer must never
