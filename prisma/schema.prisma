@@ -28,6 +28,7 @@ model Organization {
   stockMovements StockMovement[]
   inquiries     Inquiry[]
   customers     CustomerAccount[]
+  orders        Order[]
 
   @@map("organizations")
 }
@@ -121,6 +122,7 @@ model CustomerAccount {
   organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   reviewedBy    User?          @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
   savedVehicles SavedVehicle[]
+  orders        Order[]
 
   @@unique([organizationId, email])
   @@index([organizationId, tier])
@@ -149,6 +151,114 @@ model SavedVehicle {
   @@unique([customerAccountId, make, model, year])
   @@index([customerAccountId])
   @@map("saved_vehicles")
+}
+
+// ---------------------------------------------------------------------------
+// Orders (Phase 2A — spec steps 7 & 8)
+// ---------------------------------------------------------------------------
+
+// Warehouse-facing lifecycle, matching the statuses the spec names.
+enum OrderStatus {
+  NEW
+  READY
+  DELIVERED
+  PICKED_UP
+  CANCELLED
+}
+
+enum FulfillmentMethod {
+  DELIVERY
+  PICKUP
+}
+
+// Payment is tracked separately from fulfilment: a part can be paid for and
+// not yet collected, or (for "reserve now, pay at pickup") collected and paid
+// at the counter.
+enum PaymentStatus {
+  UNPAID
+  DEPOSIT_PAID
+  PAID
+  REFUNDED
+}
+
+model Order {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Human-readable reference staff quote on the phone. Allocated from a
+  // Postgres sequence so two simultaneous checkouts can't collide.
+  orderNumber Int
+
+  // Null for a guest checkout — an order must not require an account.
+  customerAccountId String?
+
+  // Contact details are SNAPSHOT here rather than read through the account.
+  // A customer changing their phone number later must not rewrite the
+  // details the warehouse used to fulfil an order already shipped.
+  customerName  String
+  customerEmail String?
+  customerPhone String
+
+  status      OrderStatus       @default(NEW)
+  fulfillment FulfillmentMethod @default(PICKUP)
+  // Only for DELIVERY orders.
+  deliveryAddress String?
+
+  paymentStatus PaymentStatus @default(UNPAID)
+
+  // Stripe's payment intent. The spec is explicit that webhooks — not the
+  // client callback — are the source of truth for payment success, so this
+  // is what a webhook matches an order on. Unique so a replayed webhook
+  // can't create a second order.
+  stripePaymentIntentId String? @unique
+
+  // Which price tier the buyer was on when they ordered. Kept for the audit
+  // trail: it explains why a line item cost what it did.
+  pricedAsTier CustomerTier @default(RETAIL)
+
+  subtotal Decimal @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerAccount CustomerAccount? @relation(fields: [customerAccountId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+
+  @@unique([organizationId, orderNumber])
+  // Staff dashboard: filter by status, newest first.
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([customerAccountId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+
+  // SetNull, not Cascade: deleting a product must never erase the record of
+  // having sold it.
+  productId String?
+
+  // Snapshot of what was sold, at the price it sold for. Repricing a part or
+  // renaming a model later must not rewrite history — and for a deleted
+  // product this is the only remaining description.
+  sku         String
+  description String
+  unitPrice   Decimal @db.Decimal(10, 2)
+  quantity    Int
+  lineTotal   Decimal @db.Decimal(10, 2)
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
 }
 
 // ---------------------------------------------------------------------------
@@ -266,6 +376,7 @@ model Product {
   vehicleFits    VehicleFit[]
   stockMovements StockMovement[]
   inquiries      Inquiry[]
+  orderItems     OrderItem[]
 
   @@unique([organizationId, sku])
   // Public catalog / staff filtering by vehicle fit. Still used for the

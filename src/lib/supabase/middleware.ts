@@ -23,6 +23,7 @@ export const PRIVATE_PREFIXES = [
   "/suppliers",
   "/import",
   "/inquiries",
+  "/orders",
   "/customers",
   "/staff",
   // Not under (admin), but authenticated-only: a signed-out visitor must not

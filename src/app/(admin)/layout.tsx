@@ -28,13 +28,15 @@ const barlow = Barlow({
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { organization, user } = await requireAuthContext();
 
-  const [newInquiries, pendingWholesale] = await Promise.all([
+  const [newInquiries, pendingWholesale, newOrders] = await Promise.all([
     prisma.inquiry.count({ where: { organizationId: organization.id, status: "NEW" } }),
     // Badged like inquiries: a trade application sitting unreviewed is a
     // shop that can't order at its price yet.
     prisma.customerAccount.count({
       where: { organizationId: organization.id, wholesaleStatus: "PENDING" },
     }),
+    // Unfulfilled orders are the most time-sensitive thing on the dashboard.
+    prisma.order.count({ where: { organizationId: organization.id, status: "NEW" } }),
   ]);
 
   const NAV = [
@@ -42,6 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/products", label: "Products" },
     { href: "/suppliers", label: "Suppliers" },
     ...(canEditCatalog(user.role) ? [{ href: "/import", label: "Import" }] : []),
+    { href: "/orders", label: "Orders", badge: newOrders },
     { href: "/inquiries", label: "Inquiries", badge: newInquiries },
     { href: "/customers", label: "Customers", badge: pendingWholesale },
     ...(canManageStaff(user.role) ? [{ href: "/staff", label: "Staff" }] : []),
