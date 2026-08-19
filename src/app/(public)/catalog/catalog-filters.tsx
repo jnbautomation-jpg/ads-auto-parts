@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatPartType } from "@/lib/format";
+import { formatPartTypeIn } from "@/lib/format";
 import { primaryButtonClass } from "@/lib/public-ui";
+import type { Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 import {
   applyChange,
   optionsFor,
@@ -38,6 +40,8 @@ export function CatalogFilters({
   rows,
   initial,
   multiTypeOption,
+  locale,
+  action,
 }: {
   rows: FitRow[];
   initial: Selection;
@@ -45,7 +49,11 @@ export function CatalogFilters({
   // enum option to round-trip through; kept as an extra option so pressing
   // Search from a landing-page tile doesn't silently drop the category.
   multiTypeOption: { value: string; label: string } | null;
+  /** Which language's catalog to submit to, so /es stays on /es. */
+  locale: Locale;
+  action: string;
 }) {
+  const dict = getDictionary(locale);
   const [sel, setSel] = useState<Selection>(initial);
 
   const years = useMemo(() => yearOptions(rows), [rows]);
@@ -54,9 +62,9 @@ export function CatalogFilters({
   const partTypes = useMemo(
     () =>
       optionsFor(rows, sel, "partType")
-        .map((value) => ({ value, label: formatPartType(value) }))
+        .map((value) => ({ value, label: formatPartTypeIn(value, locale) }))
         .sort((a, b) => a.label.localeCompare(b.label)),
-    [rows, sel],
+    [rows, sel, locale],
   );
 
   function update(key: keyof Selection, value: string) {
@@ -65,14 +73,14 @@ export function CatalogFilters({
 
   return (
     <form
-      action="/catalog"
+      action={action}
       method="GET"
       className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.2fr_1.2fr_1.4fr_160px] lg:gap-px lg:border lg:border-[#2A2A2A] lg:bg-[#2A2A2A]"
     >
       {/* sr-only labels are position:absolute, so they stay out of the
           grid's flow and don't consume a column. */}
       <label htmlFor="band-year" className="sr-only">
-        Year
+        {dict.catalog.year}
       </label>
       <select
         id="band-year"
@@ -81,7 +89,7 @@ export function CatalogFilters({
         onChange={(e) => update("year", e.target.value)}
         className={selectClass}
       >
-        <option value="">Year</option>
+        <option value="">{dict.catalog.year}</option>
         {years.map((y) => (
           <option key={y} value={y}>
             {y}
@@ -90,7 +98,7 @@ export function CatalogFilters({
       </select>
 
       <label htmlFor="band-make" className="sr-only">
-        Make
+        {dict.catalog.make}
       </label>
       <select
         id="band-make"
@@ -99,7 +107,7 @@ export function CatalogFilters({
         onChange={(e) => update("make", e.target.value)}
         className={selectClass}
       >
-        <option value="">Make</option>
+        <option value="">{dict.catalog.make}</option>
         {makes.map((m) => (
           <option key={m} value={m}>
             {m}
@@ -108,7 +116,7 @@ export function CatalogFilters({
       </select>
 
       <label htmlFor="band-model" className="sr-only">
-        Model
+        {dict.catalog.model}
       </label>
       <select
         id="band-model"
@@ -117,7 +125,7 @@ export function CatalogFilters({
         onChange={(e) => update("model", e.target.value)}
         className={selectClass}
       >
-        <option value="">Model</option>
+        <option value="">{dict.catalog.model}</option>
         {models.map((m) => (
           <option key={m} value={m}>
             {m}
@@ -126,7 +134,7 @@ export function CatalogFilters({
       </select>
 
       <label htmlFor="band-part-type" className="sr-only">
-        Part type
+        {dict.catalog.partType}
       </label>
       <select
         id="band-part-type"
@@ -135,7 +143,7 @@ export function CatalogFilters({
         onChange={(e) => update("partType", e.target.value)}
         className={selectClass}
       >
-        <option value="">Part Type</option>
+        <option value="">{dict.catalog.partType}</option>
         {multiTypeOption ? (
           <option value={multiTypeOption.value}>{multiTypeOption.label}</option>
         ) : null}
@@ -147,7 +155,7 @@ export function CatalogFilters({
       </select>
 
       <button type="submit" className={`col-span-2 ${primaryButtonClass} lg:col-span-1`}>
-        Search
+        {dict.catalog.search}
       </button>
     </form>
   );

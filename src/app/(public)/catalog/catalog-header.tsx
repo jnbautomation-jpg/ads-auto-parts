@@ -3,14 +3,25 @@ import { BrandLogo } from "@/components/brand-logo";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 import { getViewerTier } from "@/lib/customer-auth";
 import { canSeeWholesale } from "@/lib/pricing";
+import { localePath, type Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
+import { LanguageToggle } from "@/components/language-toggle";
 
-export async function CatalogHeader() {
+export async function CatalogHeader({
+  locale = "en",
+  path = "/catalog",
+}: {
+  locale?: Locale;
+  /** Language-neutral path, so the toggle stays on the current page. */
+  path?: string;
+} = {}) {
+  const dict = getDictionary(locale);
   const tier = await getViewerTier();
   const signedIn = tier !== "GUEST";
 
   return (
     <div className="flex h-[60px] items-center justify-between gap-3 border-b border-white/10 px-4 lg:h-[72px] lg:px-10">
-      <Link href="/">
+      <Link href={localePath(locale, "/")}>
         <BrandLogo size="md" />
       </Link>
 
@@ -19,23 +30,25 @@ export async function CatalogHeader() {
             whether the numbers on screen are their price or the public one. */}
         {canSeeWholesale(tier) ? (
           <span className="hidden border border-[#E31E24] px-2 py-[3px] font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[#E31E24] sm:inline">
-            Trade pricing
+            {dict.nav.tradePricing}
           </span>
         ) : null}
 
         <Link
-          href="/vin"
+          href={localePath(locale, "/vin")}
           className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
         >
-          Search by VIN
+          {dict.nav.searchByVin}
         </Link>
 
         <Link
           href={signedIn ? "/account" : "/account/sign-in"}
           className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
         >
-          {signedIn ? "My account" : "Sign in"}
+          {signedIn ? dict.nav.myAccount : dict.nav.signIn}
         </Link>
+
+        <LanguageToggle locale={locale} path={path} />
 
         <a
           href={`tel:${PHONE_HREF}`}
