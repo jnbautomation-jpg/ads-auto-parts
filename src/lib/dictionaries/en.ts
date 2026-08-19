@@ -104,6 +104,7 @@ export const en = {
     intro:
       "Enter the 17-character VIN and we'll decode the vehicle and show what we stock for it. The VIN is on the driver's door jamb, the base of the windscreen, or your insurance card.",
     label: "VIN",
+    helper: "On your registration, insurance card, or the plate where the windshield meets the dash.",
     submit: "Find my parts",
     checking: "Checking…",
     decodedTitle: "Is this your vehicle?",

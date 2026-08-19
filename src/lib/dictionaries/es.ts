@@ -111,6 +111,7 @@ export const es: Dictionary = {
     intro:
       "Escriba el VIN de 17 caracteres y decodificamos el vehículo para mostrarle lo que tenemos. El VIN está en el marco de la puerta del conductor, en la base del parabrisas o en su tarjeta de seguro.",
     label: "VIN",
+    helper: "En su registración, tarjeta de seguro, o la placa donde el parabrisas se une al tablero.",
     submit: "Buscar mis piezas",
     checking: "Consultando…",
     decodedTitle: "¿Es este su vehículo?",

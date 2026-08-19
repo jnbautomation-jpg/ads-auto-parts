@@ -42,7 +42,7 @@ export function VinForm({ locale = "en" }: { locale?: Locale } = {}) {
           </button>
         </div>
         <p className="font-[family-name:var(--font-barlow)] text-[12.5px] text-[#8A8A8A]">
-          {dict.vin.intro}
+          {dict.vin.helper}
         </p>
       </form>
 
