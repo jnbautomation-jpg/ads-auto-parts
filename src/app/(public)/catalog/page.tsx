@@ -10,6 +10,7 @@ import { getViewerTier } from "@/lib/customer-auth";
 import { CatalogHeader } from "./catalog-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PartCard } from "./part-card";
+import { CatalogFilters, type FitRow } from "./catalog-filters";
 
 // The landing hero form (src/app/(public)/page.tsx) submits `partType` as a
 // marketing label ("Doors", "Tailgates & Trunks", ...), not the PartType enum
@@ -45,9 +46,6 @@ function resolvePartTypes(partTypeParam: string, partSlugParam: string): PartTyp
   }
   return null;
 }
-
-const bandSelectClass =
-  "min-h-[44px] border border-[#2A2A2A] bg-[#0A0A0A] px-3.5 text-[15px] text-white lg:border-0";
 
 type SearchParams = {
   year?: string;
@@ -116,29 +114,31 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     product: { isPublic: true },
   };
 
-  const [makeCounts, modelRows, yearBounds, partTypeCounts, products] = await Promise.all([
+  const [makeCounts, partTypeCounts, fitMatrixRows, products] = await Promise.all([
     prisma.vehicleFit.groupBy({
       by: ["make"],
       where: publicFitWhere,
       _count: { _all: true },
       orderBy: { make: "asc" },
     }),
-    prisma.vehicleFit.findMany({
-      where: { ...publicFitWhere, ...(make ? { make: { equals: make, mode: "insensitive" } } : {}) },
-      distinct: ["model"],
-      select: { model: true },
-      orderBy: { model: "asc" },
-    }),
-    prisma.vehicleFit.aggregate({
-      where: publicFitWhere,
-      _min: { yearStart: true },
-      _max: { yearEnd: true },
-    }),
     prisma.product.groupBy({
       by: ["partType"],
       where: { organizationId: organization.id, isPublic: true },
       _count: { _all: true },
       orderBy: { partType: "asc" },
+    }),
+    // Fit matrix for the cascading selects: every public vehicle fit paired
+    // with its product's part type. A few hundred rows, deduped below, so the
+    // dropdowns can narrow instantly without a round-trip per change.
+    prisma.vehicleFit.findMany({
+      where: publicFitWhere,
+      select: {
+        make: true,
+        model: true,
+        yearStart: true,
+        yearEnd: true,
+        product: { select: { partType: true } },
+      },
     }),
     prisma.product.findMany({
       where: {
@@ -156,13 +156,22 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     }),
   ]);
 
-  const models = modelRows.map((r) => r.model);
-  const minYear = yearBounds._min.yearStart;
-  const maxYear = yearBounds._max.yearEnd;
-  const years =
-    minYear != null && maxYear != null
-      ? Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
-      : [];
+  // Deduped so the payload carries distinct combinations, not one row per
+  // product — the selects only care about which combinations exist.
+  const fitRows: FitRow[] = [
+    ...new Map(
+      fitMatrixRows.map((r) => [
+        `${r.make}|${r.model}|${r.yearStart}|${r.yearEnd}|${r.product.partType}`,
+        {
+          make: r.make,
+          model: r.model,
+          yearStart: r.yearStart,
+          yearEnd: r.yearEnd,
+          partType: r.product.partType as string,
+        },
+      ]),
+    ).values(),
+  ];
 
   const partTypeOptions = partTypeCounts
     .map((row) => ({ value: row.partType, label: formatPartType(row.partType), count: row._count._all }))
@@ -203,72 +212,11 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       <div id="find-your-part" className="border-b border-white/10 bg-[#1A1A1A] px-4 py-6 lg:px-10 lg:py-7">
         <div className="mx-auto flex max-w-[1360px] flex-col gap-3.5">
           <span className={eyebrowClass}>Find your part</span>
-          <form
-            action="/catalog"
-            method="GET"
-            className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.2fr_1.2fr_1.4fr_160px] lg:gap-px lg:border lg:border-[#2A2A2A] lg:bg-[#2A2A2A]"
-          >
-            {/* sr-only labels are position:absolute, so they stay out of the
-                grid's flow and don't consume a column. */}
-            <label htmlFor="band-year" className="sr-only">
-              Year
-            </label>
-            <select id="band-year" name="year" defaultValue={year} className={bandSelectClass}>
-              <option value="">Year</option>
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="band-make" className="sr-only">
-              Make
-            </label>
-            <select id="band-make" name="make" defaultValue={make} className={bandSelectClass}>
-              <option value="">Make</option>
-              {makeCounts.map((m) => (
-                <option key={m.make} value={m.make}>
-                  {m.make}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="band-model" className="sr-only">
-              Model
-            </label>
-            <select id="band-model" name="model" defaultValue={model} className={bandSelectClass}>
-              <option value="">Model</option>
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="band-part-type" className="sr-only">
-              Part type
-            </label>
-            <select
-              id="band-part-type"
-              name="partType"
-              defaultValue={partSelectValue}
-              className={bandSelectClass}
-            >
-              <option value="">Part Type</option>
-              {multiTypeOption ? (
-                <option value={multiTypeOption.value}>{multiTypeOption.label}</option>
-              ) : null}
-              {partTypeOptions.map((pt) => (
-                <option key={pt.value} value={pt.value}>
-                  {pt.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className={`col-span-2 ${primaryButtonClass} lg:col-span-1`}
-            >
-              Search
-            </button>
-          </form>
+          <CatalogFilters
+            rows={fitRows}
+            initial={{ year, make, model, partType: partSelectValue }}
+            multiTypeOption={multiTypeOption}
+          />
 
           {/* mobile active-filter chips */}
           {activeFilterChips.length > 0 ? (
