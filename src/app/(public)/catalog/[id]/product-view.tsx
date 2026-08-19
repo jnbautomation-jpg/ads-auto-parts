@@ -15,6 +15,9 @@ import {
 } from "@/lib/pricing";
 import { getViewerTier } from "@/lib/customer-auth";
 import { buildProductSchema, jsonLdScript } from "@/lib/structured-data";
+import { relatedPartTypes } from "@/lib/cross-sell";
+import { PartCard } from "../part-card";
+import { DeliveryChecker } from "@/components/delivery-checker";
 import { alternatesFor, localePath, type Locale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
 import {
@@ -47,15 +50,24 @@ import { ProductQuoteForm } from "./product-quote-form";
 
 // Wrapped in React's cache() so generateMetadata and the page body share one
 // database round-trip per request instead of each issuing their own.
+// Cached so the page body and the cross-sell query share one lookup.
+const loadOrgId = cache(async () => {
+  const organization = await prisma.organization.findUnique({
+    where: { slug: ORG_SLUG },
+    select: { id: true },
+  });
+  return organization?.id ?? null;
+});
+
 const loadPublicProduct = cache(async (id: string, tier: ViewerTier) => {
-  const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
-  if (!organization) return null;
+  const organizationId = await loadOrgId();
+  if (!organizationId) return null;
 
   // Explicit select, not a whole-row fetch: wholesale price, cost, bin
   // location, and supplier never load into this page's data at all, so they
   // cannot leak through the RSC payload or a later refactor.
   return prisma.product.findFirst({
-    where: { id, organizationId: organization.id, isPublic: true },
+    where: { id, organizationId, isPublic: true },
     select: {
       ...productSelectFor(tier),
       vehicleFits: { orderBy: [{ make: "asc" }, { model: "asc" }, { yearStart: "asc" }] },
@@ -145,6 +157,34 @@ export async function ProductView({
   const emailHref = `mailto:${EMAIL}?subject=${encodeURIComponent(`Quote request — ${title}, ${fitLabel} (${product.sku})`)}`;
   const smsHref = `sms:${PHONE_HREF}?body=${encodeURIComponent(`Hi, I'm interested in the ${title} for a ${fitLabel} (${product.sku}).`)}`;
 
+  // Cross-sell (spec 2B). Restricted to parts that fit this same vehicle and
+  // are actually on the shelf — suggesting something the shop can't ship is
+  // worse than suggesting nothing.
+  const orgId = await loadOrgId();
+  const relatedTypes = relatedPartTypes(product.partType);
+  const related =
+    relatedTypes.length === 0 || !orgId
+      ? []
+      : await prisma.product.findMany({
+          where: {
+            organizationId: orgId,
+            isPublic: true,
+            quantity: { gt: 0 },
+            partType: { in: relatedTypes },
+            id: { not: product.id },
+            vehicleFits: {
+              some: {
+                make: { equals: product.make, mode: "insensitive" },
+                model: { equals: product.model, mode: "insensitive" },
+                yearStart: { lte: product.yearEnd },
+                yearEnd: { gte: product.yearStart },
+              },
+            },
+          },
+          select: productSelectFor(viewerTier),
+          take: 3,
+        });
+
   // Product + Offer markup (spec 1.13). Always priced at RETAIL regardless of
   // who is viewing: search engines cache this, so emitting a trade price for a
   // signed-in wholesale account would publish trade pricing publicly.
@@ -192,6 +232,10 @@ export async function ProductView({
               <span>{dict.product.freeOrlando}</span>
               <span>{dict.product.localPickup}</span>
               <span>{dict.product.phones247}</span>
+            </div>
+            {/* Spec 2B ZIP estimator, placed where a buyer is deciding. */}
+            <div className="border-t border-white/10 pt-3">
+              <DeliveryChecker />
             </div>
           </div>
         </div>
@@ -291,6 +335,19 @@ export async function ProductView({
           Call {PHONE_DISPLAY}
         </a>
       </div>
+
+      {related.length > 0 ? (
+        <div className="mx-auto max-w-[1360px] px-4 pb-10 lg:px-10">
+          <div className="flex flex-col gap-4 border-t border-white/10 pt-8">
+            <span className={eyebrowClass}>{dict.product.oftenNeededWith}</span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+              {related.map((r) => (
+                <PartCard key={r.id} product={r} viewerTier={viewerTier} locale={locale} />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <SiteFooter />
     </div>

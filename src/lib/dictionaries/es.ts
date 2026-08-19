@@ -90,6 +90,7 @@ export const es: Dictionary = {
     notFoundTitle: "No encontramos esa pieza",
     notFoundBody:
       "Puede que se haya vendido o que el enlace esté desactualizado. Tenemos mucho más de lo que publicamos en línea — busque en el catálogo o llámenos y revisamos el almacén por usted.",
+    oftenNeededWith: "Suele necesitarse con esta pieza",
     browseCatalog: "Ver el catálogo",
   },
 
