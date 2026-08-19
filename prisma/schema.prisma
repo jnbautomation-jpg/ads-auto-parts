@@ -29,6 +29,7 @@ model Organization {
   inquiries     Inquiry[]
   customers     CustomerAccount[]
   orders        Order[]
+  chatSessions  ChatSession[]
 
   @@map("organizations")
 }
@@ -151,6 +152,56 @@ model SavedVehicle {
   @@unique([customerAccountId, make, model, year])
   @@index([customerAccountId])
   @@map("saved_vehicles")
+}
+
+// ---------------------------------------------------------------------------
+// AI chat (Phase 2B)
+// ---------------------------------------------------------------------------
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+// One browser's conversation. Keyed by an anonymous cookie, not by identity —
+// a customer can ask about parts without an account.
+//
+// Logged for two reasons: it is what the rate limiter counts (serverless
+// instances share no memory, so the limit has to live in the database), and
+// the transcript tells the shop what customers ask for that isn't in stock.
+model ChatSession {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Random opaque value from an httpOnly cookie. No PII.
+  sessionKey String @unique
+
+  locale String @default("en")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
+
+  @@index([organizationId, createdAt])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id            String @id @default(cuid())
+  chatSessionId String
+
+  role    ChatRole
+  content String
+
+  createdAt DateTime @default(now())
+
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  // Rate limiting counts recent rows, so this index carries that query.
+  @@index([chatSessionId, createdAt])
+  @@map("chat_messages")
 }
 
 // ---------------------------------------------------------------------------
