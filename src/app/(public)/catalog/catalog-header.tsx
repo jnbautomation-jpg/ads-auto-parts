@@ -24,6 +24,13 @@ export async function CatalogHeader() {
         ) : null}
 
         <Link
+          href="/vin"
+          className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
+        >
+          Search by VIN
+        </Link>
+
+        <Link
           href={signedIn ? "/account" : "/account/sign-in"}
           className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
         >
