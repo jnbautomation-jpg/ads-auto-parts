@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
+import { buildLocalBusinessSchema, jsonLdScript } from "@/lib/structured-data";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PART_SLUG_TO_TYPES } from "@/lib/format";
@@ -719,6 +720,12 @@ export default async function LandingPage() {
 
   return (
     <main>
+      {/* LocalBusiness markup (spec 1.13) — address, phone and hours for the
+          Google business panel. Structured data only; no visual change. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(buildLocalBusinessSchema()) }}
+      />
       <TopBar />
       <SiteHeader heroId="hero" />
       <Hero data={data} />

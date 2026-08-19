@@ -11,6 +11,7 @@ import {
   type ViewerTier,
 } from "@/lib/pricing";
 import { getViewerTier } from "@/lib/customer-auth";
+import { buildProductSchema, jsonLdScript } from "@/lib/structured-data";
 import {
   BUSINESS_NAME,
   EMAIL,
@@ -116,8 +117,28 @@ export default async function PartDetailPage({ params }: { params: Promise<{ id:
   const emailHref = `mailto:${EMAIL}?subject=${encodeURIComponent(`Quote request — ${title}, ${fitLabel} (${product.sku})`)}`;
   const smsHref = `sms:${PHONE_HREF}?body=${encodeURIComponent(`Hi, I'm interested in the ${title} for a ${fitLabel} (${product.sku}).`)}`;
 
+  // Product + Offer markup (spec 1.13). Always priced at RETAIL regardless of
+  // who is viewing: search engines cache this, so emitting a trade price for a
+  // signed-in wholesale account would publish trade pricing publicly.
+  const productSchema = buildProductSchema({
+    id: product.id,
+    sku: product.sku,
+    name: `${fitLabel} ${title}`,
+    description: `New aftermarket ${title.toLowerCase()} for ${fitLabel}.`,
+    make: product.make,
+    image: product.photos[0] ?? null,
+    retailPrice: product.retailPrice.toString(),
+    quantity: product.quantity,
+    reorderPoint: product.reorderPoint,
+    capaCertified: product.capaCertified,
+  });
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(productSchema) }}
+      />
       <CatalogHeader />
 
       <div className="border-b border-white/10 px-4 py-3.5 text-[13px] text-[#9A9A9A] lg:px-10">
