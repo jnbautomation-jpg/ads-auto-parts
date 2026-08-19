@@ -145,6 +145,83 @@ export const es: Dictionary = {
       "No pudimos decodificar ese VIN en este momento. Llámenos y lo buscamos por usted.",
   },
 
+  landing: {
+    hero: {
+      eyebrow: "PIEZAS DE CARROCERÍA NUEVAS · ORLANDO, FL",
+      line1: "Encuentre su pieza.",
+      line2: "Nueva. Hoy mismo.",
+      sub: "Puertas, cofres, salpicaderas, defensas y más — nuevas, certificadas CAPA, entregadas el mismo día en toda Florida Central en pedidos antes de las 12 PM.",
+      searchByVehicle: "BUSQUE POR VEHÍCULO",
+      searchParts: "BUSCAR PIEZAS",
+    },
+    nav: {
+      parts: "PIEZAS",
+      why: "POR QUÉ ADS",
+      delivery: "ENTREGA",
+      contact: "CONTACTO",
+    },
+    heroBadges: {
+      capa: "CERTIFICADAS CAPA",
+      sameDay: "MISMO DÍA FLORIDA CENTRAL",
+      sameDayTail: " · ENTREGA",
+      dispatch: "ENVÍO EN 24 H",
+      freeDelivery: "ENTREGA GRATIS EN ORLANDO",
+    },
+    ticker: "ENTREGA EL MISMO DÍA EN TODA FLORIDA CENTRAL — PIDA ANTES DE LAS 12 PM",
+    tickerTail: " · LA MAYORÍA DE LOS PEDIDOS SALEN EN 24 HORAS",
+    allModels: "Todos los modelos",
+    browseByPart: "Busque por tipo de pieza",
+    whyHeading: "Por qué ADS",
+    deliveryHeading: "Entrega y recolección",
+    contactHeading: "Hable con un especialista en piezas",
+    warehouse: "ALMACÉN ADS",
+    warehouseTail: " — RECOLECCIÓN LOCAL DISPONIBLE",
+    openInMaps: "ABRIR EN ",
+    maps: "MAPAS →",
+    tiles: {
+      doors: { name: "Puertas", note: "Delanteras y traseras · completas y láminas" },
+      hoods: { name: "Cofres", note: "Acero y aluminio" },
+      fenders: { name: "Salpicaderas", note: "Izquierda y derecha" },
+      bumpers: { name: "Defensas", note: "Cubiertas y refuerzos" },
+      "tailgates-trunks": { name: "Compuertas y cajuelas", note: "Camionetas y sedanes" },
+      liftgates: { name: "Puertas levadizas", note: "SUVs y hatchbacks" },
+      "quarter-panels": { name: "Paneles laterales", note: "Completos y parciales" },
+      "rear-body-panels": { name: "Paneles traseros", note: "Panel trasero y faldón" },
+      grilles: { name: "Parrillas", note: "Estilo cromado y deportivo" },
+      hinges: { name: "Bisagras", note: "Herrajes de puerta y cofre" },
+      "radiator-support": { name: "Soportes de radiador", note: "Ensambles de soporte" },
+      "reinforcement-bars": { name: "Barras de refuerzo", note: "Refuerzo de defensa y carrocería" },
+    },
+    why: {
+      capaTitle: "Calidad certificada CAPA",
+      capaBody:
+        "Piezas nuevas aftermarket fabricadas según estándares certificados de ajuste y acabado — nunca de deshuesadero.",
+      sameDayTitle: "Mismo día en Florida Central",
+      sameDayBody:
+        "Pida antes de las 12 PM y la pieza llega el mismo día a cualquier punto de Florida Central.",
+      dispatchTitle: "Envío en 24 horas",
+      dispatchBody: "La mayoría de los pedidos salen de nuestro almacén en Orlando en 24 horas.",
+      freeTitle: "Entrega gratis en Orlando",
+      freeBody: "Sin cargo de entrega dentro de los límites de Orlando — siempre, sin mínimo.",
+    },
+    stats: {
+      dispatch: "ENVÍO",
+      cutoff: "CORTE MISMO DÍA",
+      newParts: "PIEZAS NUEVAS",
+      categories: "CATEGORÍAS",
+    },
+    steps: {
+      orderTitle: "Pida antes de las 12 PM",
+      orderBody:
+        "Llame, envíe un mensaje o use el formulario de cotización con su vehículo y la pieza que necesita.",
+      dispatchTitle: "Enviado en 24 horas",
+      dispatchBody: "La mayoría de los pedidos salen de nuestro almacén en Orlando el mismo día.",
+      deliverTitle: "Mismo día en toda Florida Central",
+      deliverBody:
+        "Entregamos en su taller o domicilio — gratis dentro de Orlando — o recoja en el almacén sin esperar.",
+    },
+  },
+
   footer: {
     hours: "Horario",
     address: "Dirección",
