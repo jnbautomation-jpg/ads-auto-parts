@@ -15,6 +15,7 @@ import { CatalogHeader } from "./catalog-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PartCard } from "./part-card";
 import { CatalogFilters, type FitRow } from "./catalog-filters";
+import { PartAlertForm } from "@/components/part-alert-form";
 import type { Locale } from "@/lib/i18n";
 import { localePath } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
@@ -353,6 +354,18 @@ export async function CatalogView({
               >
                 {dict.catalog.callUs} {PHONE_DISPLAY}
               </a>
+              {/* Spec 2B: "turns every empty search result into a lead
+                  instead of a bounce". Pre-filled with the search they just
+                  ran, so leaving details is one tap. */}
+              <div className="w-full max-w-[520px] pt-2">
+                <PartAlertForm
+                  make={make}
+                  model={model}
+                  year={year}
+                  partType={partTypes?.length === 1 ? partTypes[0] : ""}
+                  compact
+                />
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">

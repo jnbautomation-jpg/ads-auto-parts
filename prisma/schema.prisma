@@ -29,6 +29,7 @@ model Organization {
   inquiries     Inquiry[]
   customers     CustomerAccount[]
   orders        Order[]
+  partAlerts    PartAlert[]
   chatSessions  ChatSession[]
 
   @@map("organizations")
@@ -124,6 +125,7 @@ model CustomerAccount {
   reviewedBy    User?          @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
   savedVehicles SavedVehicle[]
   orders        Order[]
+  partAlerts    PartAlert[]
 
   @@unique([organizationId, email])
   @@index([organizationId, tier])
@@ -313,6 +315,72 @@ model OrderItem {
 }
 
 // ---------------------------------------------------------------------------
+// Part alerts (Phase 2B — back-in-stock & price alerts)
+// ---------------------------------------------------------------------------
+
+enum AlertType {
+  BACK_IN_STOCK
+  PRICE_DROP
+}
+
+enum AlertStatus {
+  ACTIVE
+  NOTIFIED
+  CANCELLED
+}
+
+// "Turns every empty search result into a lead instead of a bounce."
+//
+// Captured from two places: an empty catalog search, and a part currently
+// showing CALL. The vehicle is stored as make/model/year rather than a
+// product id because the common case is a part the shop does not stock yet —
+// there is no product row to point at.
+model PartAlert {
+  id             String @id @default(cuid())
+  organizationId String
+
+  type AlertType @default(BACK_IN_STOCK)
+
+  // The vehicle and part they are waiting for. Normalized through
+  // src/lib/normalize.ts on write, so an alert for "cx 5" matches a CX-5
+  // arriving in stock.
+  make     String
+  model    String
+  year     Int?
+  partType PartType?
+
+  // Set only when the alert is about a specific listed part (price drop, or
+  // a part that is temporarily out).
+  productId String?
+
+  // Contact details. Phone is required — this shop calls people.
+  name  String?
+  phone String
+  email String?
+
+  customerAccountId String?
+
+  status     AlertStatus @default(ACTIVE)
+  notifiedAt DateTime?
+  // Free-text note staff add when they action it.
+  staffNote  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  customerAccount CustomerAccount? @relation(fields: [customerAccountId], references: [id], onDelete: SetNull)
+
+  // Staff queue: active alerts, oldest first.
+  @@index([organizationId, status, createdAt])
+  // Matching arriving stock to waiting customers.
+  @@index([organizationId, make, model, partType, status])
+  @@index([productId])
+  @@map("part_alerts")
+}
+
+// ---------------------------------------------------------------------------
 // Catalog
 // ---------------------------------------------------------------------------
 
@@ -428,6 +496,7 @@ model Product {
   stockMovements StockMovement[]
   inquiries      Inquiry[]
   orderItems     OrderItem[]
+  partAlerts     PartAlert[]
 
   @@unique([organizationId, sku])
   // Public catalog / staff filtering by vehicle fit. Still used for the

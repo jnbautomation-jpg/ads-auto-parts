@@ -23,6 +23,7 @@ export const PRIVATE_PREFIXES = [
   "/suppliers",
   "/import",
   "/inquiries",
+  "/alerts",
   "/orders",
   "/customers",
   "/staff",

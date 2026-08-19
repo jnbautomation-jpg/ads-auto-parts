@@ -14,6 +14,7 @@ const PRIVATE_PATHS = [
   "/inquiries",
   "/staff",
   "/orders",
+  "/alerts",
   "/customers",
   "/login",
   // Per-customer pages, some showing trade pricing.

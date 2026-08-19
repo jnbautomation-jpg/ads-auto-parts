@@ -28,7 +28,7 @@ const barlow = Barlow({
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { organization, user } = await requireAuthContext();
 
-  const [newInquiries, pendingWholesale, newOrders] = await Promise.all([
+  const [newInquiries, pendingWholesale, newOrders, waitingAlerts] = await Promise.all([
     prisma.inquiry.count({ where: { organizationId: organization.id, status: "NEW" } }),
     // Badged like inquiries: a trade application sitting unreviewed is a
     // shop that can't order at its price yet.
@@ -37,6 +37,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }),
     // Unfulfilled orders are the most time-sensitive thing on the dashboard.
     prisma.order.count({ where: { organizationId: organization.id, status: "NEW" } }),
+    // Customers waiting on a part we didn't have.
+    prisma.partAlert.count({ where: { organizationId: organization.id, status: "ACTIVE" } }),
   ]);
 
   const NAV = [
@@ -46,6 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ...(canEditCatalog(user.role) ? [{ href: "/import", label: "Import" }] : []),
     { href: "/orders", label: "Orders", badge: newOrders },
     { href: "/inquiries", label: "Inquiries", badge: newInquiries },
+    { href: "/alerts", label: "Requests", badge: waitingAlerts },
     { href: "/customers", label: "Customers", badge: pendingWholesale },
     ...(canManageStaff(user.role) ? [{ href: "/staff", label: "Staff" }] : []),
   ];
