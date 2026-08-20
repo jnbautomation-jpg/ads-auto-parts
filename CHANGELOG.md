@@ -1,7 +1,7 @@
 # Changelog — Phase 2
 
 **Last updated:** 20 August 2026
-**Branch:** `feat/customer-accounts` (27 commits ahead of `main`)
+**Branch:** `feat/customer-accounts` (34 commits ahead of `main`)
 **Status:** every Phase 2 spec item that does not require someone else's decision is built and verified.
 
 > **Reading this to pick up work?** Start at [Where we left off](#where-we-left-off), then
@@ -12,8 +12,24 @@
 
 ## Where we left off
 
-Nothing is half-finished. The last completed task was translating the customer account pages into
-Spanish, which finished the spec's i18n requirement.
+Nothing is half-finished. The last completed task was **finishing the Spanish site** (six commits,
+20 Aug). The i18n requirement had been recorded as done a commit earlier; it was not. What was
+missing was not visible from the routes list or from any test, which is why it survived:
+
+- `/es/estimate` and `/es/returns` did not exist, while both English pages advertised an hreflang
+  alternate at those URLs — so the "Subir presupuesto" link in the header of **every** Spanish page
+  pointed at a 404, and so did the language toggle on two English pages.
+- Both site footers, the landing page's contact block, and the trust-signals band rendered in
+  English on Spanish pages, and their links walked the visitor back into English.
+- Both quote forms — the site's conversion point — were English, as were the validation messages
+  the server sent back to them.
+- `<html lang>` was hard-coded `"en"` on every page, and Spanish pages shared to WhatsApp or
+  Facebook previewed as English.
+- The 404 pages, the public error boundary and the chat bubble answered in English.
+
+`dict.quote`, `dict.errors` and `dict.product.notFound*` already held most of the strings — they
+were written during the original i18n pass and never wired to anything. Two tests now hold the line
+(see [Decisions not to undo](#decisions-not-to-undo) 9 and 10).
 
 **Everything remaining is blocked on a person, not on code.** See
 [Outstanding](#outstanding--blocked-on-people). Do not start building those without an answer —
@@ -39,9 +55,9 @@ yet, and every "email us" link now points at it. Either create it, or revert
 
 | Check | State |
 | --- | --- |
-| Unit tests | 310 passing across 24 files |
+| Unit tests | 319 passing across 25 files |
 | CI | Green — lint, typecheck, tests, production build, on Node 20 and 24 |
-| Live-site regression sweep | 46 checks passing |
+| Live-site regression sweep | 46 checks passing — predates the i18n completion pass, not re-run since |
 | Working tree | Clean |
 
 Run everything the way CI does (no `.env`, placeholder credentials):
@@ -96,7 +112,10 @@ npx tsx scripts/backfill-retail-price.ts   # dry run; --apply to write
 ### Section 2 — Phase 2A commerce
 
 Done: order dashboard, stock decrement with row locking, two-tier pricing, wholesale accounts,
-full Spanish i18n.
+full Spanish i18n — including the parts of it that were missing when this file first claimed it was
+finished (see [Where we left off](#where-we-left-off)). Spanish now covers the routes, both
+footers, the trust band, both quote forms and their server-side validation messages, the 404 and
+error pages, the chat bubble's own chrome, `<html lang>`, and the social cards.
 
 Not done: **Stripe checkout** (JJ's, by Luca's decision) and **reserve-now / pay-at-pickup** (the
 spec marks it "not finalized"; needs Matthew's deposit amount and hold expiry).
@@ -127,6 +146,9 @@ Not done: part photographs, the first stock count — both legwork rather than c
 /parts/[city]        /account            /account/orders
 /account/orders/[id] /account/sign-in    /account/sign-up
 ```
+
+`src/lib/i18n-routes.test.ts` walks `src/app/(public)/` and **fails the build** if that sentence
+stops being true in either direction. It was written because it had already stopped being true.
 
 Cities: `winter-park`, `apopka`, `kissimmee`, `sanford`, `daytona-beach`, `lakeland`.
 
@@ -174,6 +196,32 @@ These were deliberate. Changing them re-introduces a bug that was specifically f
 
 8. **The chat can only learn catalogue facts through its one tool.** No catalogue data goes in the
    prompt. That is what stops it inventing parts or prices.
+
+9. **Every public page exists in both languages, and a test enforces it.**
+   `src/lib/i18n-routes.test.ts` walks the route tree. An English page without an `/es` twin is a
+   failed build, because the twin is already promised by the page's own hreflang and by the header
+   on every Spanish page — a missing one is a 404 in the primary nav, not a missing translation.
+
+10. **No Spanish string may equal its English source.** `i18n.test.ts` walks the whole dictionary.
+    Genuine cognates ("Material", "VIN") are listed by name in `SAME_IN_BOTH`; add to that list
+    rather than weakening the check. This is what catches a key added to `en.ts` and pasted
+    unchanged into `es.ts`.
+
+11. **What a Spanish customer sends is stored in English.** The part dropdown submits the English
+    label, and `actions.ts` writes `Vehicle:` / `Part needed:` prefixes that `parseQuoteMessage()`
+    reads back for the admin inquiries table. Staff screens are English; translating what gets
+    stored makes a Spanish lead show "—" for vehicle and part.
+
+12. **Business hours live in `src/lib/site.ts` in both languages, not in the dictionaries.**
+    `HOURS_DISPLAY_IN` / `PHONE_NOTE_IN` sit directly beside the English constants. Hours are a
+    contested fact still blocked on Matthew, and a shop whose Spanish page advertises different
+    opening hours from its English page is worse than one that is only half translated. Three
+    copy-pasted duplicates of the hours string were removed to get here.
+
+13. **`global-error.tsx` is English on purpose.** It replaces the root layout, so it has neither
+    request headers nor a router and cannot know which language the visitor was reading. Guessing
+    would produce a page whose `<html lang>` contradicts its own text. The phone number is the
+    useful part of that page and reads the same either way.
 
 ---
 
@@ -231,6 +279,16 @@ detail as parts are handled.
 - **The dev database only contains DOOR products** (325 of them). Features that depend on other
   part types — cross-sell especially — correctly render nothing locally. That is the in-stock
   filter working, not a bug.
+- **Next does not deep-merge `openGraph`.** A page that sets it replaces the layout's object
+  outright — set `{ url, title }` to fix one field and you have just dropped `og:image`,
+  `og:site_name` and `og:type` from that page's share card. Three pages had lost their preview
+  image this way. Build page metadata with `pageMetadata()` in `src/lib/metadata.ts` rather than
+  hand-writing an `openGraph` block.
+- **A layout cannot see the URL.** `<html lang>` can only be set in the root layout, and Next's
+  documented answer (`app/[lang]/...`) is not usable here — it would move every English page under
+  `/en` and break the indexed URLs spec 1.1 exists to protect. `src/proxy.ts` forwards the path as
+  `x-pathname` (`PATHNAME_HEADER` in `src/lib/i18n.ts`) and the root layout, the `(public)` layout
+  and both 404 pages read it. Client components use `usePathname()` instead.
 - **`DIRECT_URL` must never be `db.<ref>.supabase.co`** — IPv6-only and unreachable. See
   `CLAUDE.md`.
 
@@ -279,6 +337,13 @@ a749c7f feat(2b): PDF shipping labels from order data
 6a39baa feat(stock): accuracy pass — verification worklist for staff
 0786d41 feat(estimate): insurance estimate upload with VIN + parts extraction
 f50075c feat(i18n): Spanish account pages — sign-in, dashboard, orders, reorder
+fa860cd docs: add CHANGELOG as the handover point for future work
+7994d91 fix(i18n): Spanish estimate and returns pages — the /es twins that were missing
+668ff91 fix(i18n): the footers and contact block were English on every Spanish page
+04a2272 fix(i18n): the quote forms — the Spanish site's conversion point — were English
+eee6463 fix(i18n): Spanish pages declared lang="en" and shared as English
+2ea2f9a fix(i18n): 404 and error pages answered in English on the Spanish site
+a24c504 fix(i18n): the chat bubble greeted Spanish visitors in English
 ```
 
 Each commit message explains *why*, not just what — including what was deliberately not done and
