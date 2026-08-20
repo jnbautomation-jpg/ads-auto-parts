@@ -35,6 +35,13 @@ export async function CatalogHeader({
         ) : null}
 
         <Link
+          href={localePath(locale, "/estimate")}
+          className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white lg:inline"
+        >
+          {dict.nav.uploadEstimate}
+        </Link>
+
+        <Link
           href={localePath(locale, "/vin")}
           className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
         >

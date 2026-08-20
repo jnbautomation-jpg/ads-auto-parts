@@ -16,6 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/catalog`, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE_URL}/vin`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/returns`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${SITE_URL}/estimate`, changeFrequency: "monthly", priority: 0.6 },
     // Local landing pages, both languages — the whole point is that search
     // engines find them.
     ...SERVICE_LOCATIONS.flatMap((l) => [

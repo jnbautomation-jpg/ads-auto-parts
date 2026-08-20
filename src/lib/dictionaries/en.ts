@@ -6,6 +6,7 @@ export const en = {
   nav: {
     signIn: "Sign in",
     myAccount: "My account",
+    uploadEstimate: "Upload estimate",
     searchByVin: "Search by VIN",
     tradePricing: "Trade pricing",
     backToCatalog: "← Back to catalog",

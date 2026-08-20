@@ -15,6 +15,7 @@ export const es: Dictionary = {
   nav: {
     signIn: "Iniciar sesión",
     myAccount: "Mi cuenta",
+    uploadEstimate: "Subir presupuesto",
     searchByVin: "Buscar por VIN",
     tradePricing: "Precio mayorista",
     backToCatalog: "← Volver al catálogo",
