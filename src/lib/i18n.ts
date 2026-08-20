@@ -16,6 +16,17 @@ export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = "en";
 
+/**
+ * Request header the proxy sets with the incoming pathname.
+ *
+ * The root layout is the only place that can set <html lang>, and a layout
+ * cannot see the URL. Next's documented answer is app/[lang]/..., which this
+ * app deliberately does not use — it would move every English page under /en
+ * and break the indexed URLs spec 1.1 exists to protect. So the proxy passes
+ * the path forward and the layout reads it from here.
+ */
+export const PATHNAME_HEADER = "x-pathname";
+
 export function isLocale(value: string): value is Locale {
   return (LOCALES as readonly string[]).includes(value);
 }

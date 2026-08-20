@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { PATHNAME_HEADER } from "@/lib/i18n";
 
 // Staff-only route roots. Anything NOT listed here is treated as public,
 // which means an unknown URL renders the 404 page instead of bouncing a
@@ -42,8 +43,18 @@ export function isPrivatePath(pathname: string): boolean {
   );
 }
 
+// Forwards the pathname to the root layout, which needs it for <html lang>
+// and has no other way to know the URL. Rebuilt from `request.headers` at
+// each call rather than snapshotted once, so it always carries whatever
+// cookies Supabase has just refreshed below.
+function passThrough(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  return { request: { headers } };
+}
+
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = NextResponse.next(passThrough(request));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,7 +66,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next(passThrough(request));
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );

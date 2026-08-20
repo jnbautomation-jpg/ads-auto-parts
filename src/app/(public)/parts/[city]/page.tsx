@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 // in CI, which builds against a placeholder connection string. Every other
 // route in this app is server-rendered on demand for the same reason.
 import { findLocation } from "@/lib/locations";
-import { alternatesFor } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/metadata";
 import { BUSINESS_NAME, PHONE_DISPLAY } from "@/lib/site";
 import { LocationView } from "./location-view";
 
@@ -22,11 +22,10 @@ export async function generateMetadata({
   const location = findLocation(city);
   if (!location) return { title: "Not found" };
 
-  return {
+  return pageMetadata("en", `/parts/${location.slug}`, {
     title: `Auto body parts in ${location.name}, FL — doors, hoods, fenders`,
     description: `New aftermarket auto body parts delivered to ${location.name} and ${location.county}. Same-day across Central Florida on orders before 12 PM. ${BUSINESS_NAME} — ${PHONE_DISPLAY}.`,
-    alternates: alternatesFor("en", `/parts/${location.slug}`),
-  };
+  });
 }
 
 export default async function LocationPage({

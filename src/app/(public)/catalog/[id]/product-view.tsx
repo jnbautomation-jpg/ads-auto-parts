@@ -19,7 +19,8 @@ import { relatedPartTypes } from "@/lib/cross-sell";
 import { fitmentRows } from "@/lib/fitment";
 import { PartCard } from "../part-card";
 import { DeliveryChecker } from "@/components/delivery-checker";
-import { alternatesFor, localePath, type Locale } from "@/lib/i18n";
+import { localePath, type Locale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/lib/dictionaries";
 import {
   formatMoneyIn,
@@ -34,7 +35,6 @@ import {
   ORG_SLUG,
   PHONE_DISPLAY,
   PHONE_HREF,
-  SITE_URL,
 } from "@/lib/site";
 import {
   badgeClass,
@@ -116,23 +116,11 @@ export async function buildProductMetadata(
           .filter(Boolean)
           .join(" ");
 
+  // The part's own photo when it has one, so a shared link previews the
+  // actual panel rather than the logo.
   const image = product.photos[0] ?? "/ads-logo.jpg";
-  const path = `/catalog/${product.id}`;
-  const canonical = localePath(locale, path);
 
-  return {
-    title,
-    description,
-    alternates: alternatesFor(locale, path),
-    openGraph: {
-      type: "website",
-      url: `${SITE_URL}${canonical}`,
-      title,
-      description,
-      images: [image],
-    },
-    twitter: { card: "summary_large_image", title, description, images: [image] },
-  };
+  return pageMetadata(locale, `/catalog/${product.id}`, { title, description, images: [image] });
 }
 
 export async function ProductView({
