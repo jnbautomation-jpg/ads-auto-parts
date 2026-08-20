@@ -113,6 +113,40 @@ describe("dictionaries", () => {
     }
   });
 
+  it("leaves no string in English", () => {
+    // Stronger than the per-section checks above: it walks the whole
+    // dictionary, so a section added later is covered without anyone
+    // remembering to add a test. If a translation ever is legitimately
+    // identical (a brand name, say), give it its own key and allow it here
+    // rather than deleting this.
+    const flatten = (value: unknown, path = ""): [string, string][] =>
+      typeof value === "string"
+        ? [[path, value]]
+        : Object.entries(value as Record<string, unknown>).flatMap(([k, v]) =>
+            flatten(v, path ? `${path}.${k}` : k),
+          );
+
+    // Words that are genuinely the same in both languages. Listed one by one
+    // so adding to it is a deliberate act, not a blanket exemption.
+    const SAME_IN_BOTH = new Set([
+      "fitment.material", // the same word in Spanish
+      "vin.label", // an acronym, not a word to translate
+    ]);
+
+    const english = new Map(flatten(en));
+    expect(english.size).toBeGreaterThan(50);
+
+    const untranslated = flatten(es)
+      // A string with no letters — the em dash used for "not recorded" — is
+      // the same in every language by definition.
+      .filter(([, value]) => /\p{L}/u.test(value))
+      .filter(([key, value]) => english.get(key) === value)
+      .map(([key]) => key)
+      .filter((key) => !SAME_IN_BOTH.has(key));
+
+    expect(untranslated).toEqual([]);
+  });
+
   it("falls back to English for an unknown locale rather than crashing", () => {
     expect(getDictionary("de" as never)).toBe(en);
   });

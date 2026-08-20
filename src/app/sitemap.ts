@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { ORG_SLUG, SITE_URL } from "@/lib/site";
 import { SERVICE_LOCATIONS } from "@/lib/locations";
+import { HREFLANG, LOCALES, localePath } from "@/lib/i18n";
 
 // Rendered on demand rather than at build time. A sitemap route that queried
 // the database during the build would make `next build` require a live
@@ -10,19 +11,46 @@ import { SERVICE_LOCATIONS } from "@/lib/locations";
 // hit this rarely, so the per-request cost is irrelevant.
 export const dynamic = "force-dynamic";
 
+/**
+ * One entry per page, with its other language attached as an `xhtml:link`
+ * alternate — the shape Google documents for a multilingual site, and the one
+ * in Next's own localized-sitemap example.
+ *
+ * Listing each language as a separate top-level URL instead would work, but it
+ * tells a crawler nothing about which pages are translations of each other, so
+ * the two languages compete as near-duplicates. `path` here is the
+ * language-neutral path; the prefixes come from `localePath`.
+ */
+function bothLanguages(
+  path: string,
+  rest: Omit<MetadataRoute.Sitemap[number], "url" | "alternates">,
+): MetadataRoute.Sitemap[number] {
+  return {
+    url: `${SITE_URL}${localePath("en", path)}`,
+    alternates: {
+      languages: {
+        ...Object.fromEntries(
+          LOCALES.map((l) => [HREFLANG[l], `${SITE_URL}${localePath(l, path)}`]),
+        ),
+        "x-default": `${SITE_URL}${localePath("en", path)}`,
+      },
+    },
+    ...rest,
+  };
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [
-    { url: `${SITE_URL}/`, changeFrequency: "weekly", priority: 1 },
-    { url: `${SITE_URL}/catalog`, changeFrequency: "daily", priority: 0.8 },
-    { url: `${SITE_URL}/vin`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE_URL}/returns`, changeFrequency: "yearly", priority: 0.4 },
-    { url: `${SITE_URL}/estimate`, changeFrequency: "monthly", priority: 0.6 },
+    bothLanguages("/", { changeFrequency: "weekly", priority: 1 }),
+    bothLanguages("/catalog", { changeFrequency: "daily", priority: 0.8 }),
+    bothLanguages("/vin", { changeFrequency: "monthly", priority: 0.7 }),
+    bothLanguages("/returns", { changeFrequency: "yearly", priority: 0.4 }),
+    bothLanguages("/estimate", { changeFrequency: "monthly", priority: 0.6 }),
     // Local landing pages, both languages — the whole point is that search
     // engines find them.
-    ...SERVICE_LOCATIONS.flatMap((l) => [
-      { url: `${SITE_URL}/parts/${l.slug}`, changeFrequency: "monthly" as const, priority: 0.6 },
-      { url: `${SITE_URL}/es/parts/${l.slug}`, changeFrequency: "monthly" as const, priority: 0.6 },
-    ]),
+    ...SERVICE_LOCATIONS.map((l) =>
+      bothLanguages(`/parts/${l.slug}`, { changeFrequency: "monthly", priority: 0.6 }),
+    ),
   ];
 
   const organization = await prisma.organization.findUnique({
@@ -41,11 +69,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticEntries,
-    ...products.map((product) => ({
-      url: `${SITE_URL}/catalog/${product.id}`,
-      lastModified: product.updatedAt,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    })),
+    ...products.map((product) =>
+      bothLanguages(`/catalog/${product.id}`, {
+        lastModified: product.updatedAt,
+        changeFrequency: "weekly",
+        priority: 0.6,
+      }),
+    ),
   ];
 }

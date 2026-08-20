@@ -345,6 +345,80 @@ export const es: Dictionary = {
     },
   },
 
+  estimate: {
+    title: "Suba un presupuesto",
+    intro:
+      "Suba un presupuesto de CCC, Mitchell o Audatex y le leemos el VIN y los paneles que trae, y después le mostramos qué tenemos en el almacén para ese vehículo exacto. Más rápido que escribirlo todo — y siempre le mostramos lo que leímos para que lo revise.",
+    fileLabel: "Presupuesto en PDF",
+    submit: "Ver qué tenemos",
+    submitting: "Leyendo el presupuesto…",
+    privacy:
+      "Leemos el VIN y las piezas de la lista, y después borramos el archivo. No guardamos nada del presupuesto.",
+    scannedTitle: "Eso parece un escaneo",
+    scannedBody:
+      "Ese PDF no tiene texto legible, así que probablemente sea una foto o un escaneo. Envíenoslo y lo cotizamos a mano — o escriba el VIN aquí.",
+    whatWeRead: "Lo que leímos",
+    noVehicle: "No pudimos identificar el vehículo en ese presupuesto.",
+    checkBeforeOrdering:
+      "Revise que esto coincida con su presupuesto antes de pedir — lo leemos automáticamente.",
+    inStockTitle: "Lo que tenemos en existencia",
+    noMatches:
+      "Ahora mismo no tenemos publicado nada para esas piezas en ese vehículo — pero tenemos mucho más de lo que publicamos. Llámenos con el presupuesto y lo revisamos.",
+    unmatchedTitle: "Sin coincidencia",
+    unmatchedBefore:
+      "Estas venían en el presupuesto pero no las tenemos publicadas para este vehículo:",
+    unmatchedAfter: "Llámenos y se las conseguimos.",
+    chooseFile: "Elija un presupuesto en PDF para subir.",
+    tooLarge: "Ese archivo es demasiado grande — suba solamente el PDF del presupuesto.",
+    notPdf: "Por favor suba un PDF.",
+    unreadable: "No pudimos leer ese PDF. Envíenoslo y lo cotizamos a mano.",
+    vinCheckDigit:
+      "El VIN de este presupuesto no pasa su dígito verificador — confírmelo antes de pedir.",
+  },
+
+  returns: {
+    eyebrow: "Devoluciones y garantía",
+    title: "Si algo no está bien",
+    intro:
+      "Los paneles de carrocería son grandes, pesados y fáciles de dañar en el transporte. Así lo manejamos cuando una pieza llega dañada, no ajusta o no era la que necesitaba.",
+    freightTitle: "Daño en el transporte",
+    freightBody:
+      "Revise la pieza antes de firmar. Si el empaque está roto o aplastado, o el panel tiene un golpe visible, anótelo en los papeles de entrega y tómele fotos antes de que se vaya el chofer — ese registro es lo que nos permite reemplazarla rápido. Después llámenos el mismo día y ponemos el reemplazo en camino.",
+    freightAfter:
+      "Si descubre el daño después de que se fue el chofer, llámenos de todos modos. Tome fotos del empaque además de la pieza.",
+    fitTitle: "Pieza equivocada o que no ajusta",
+    fitBefore:
+      "Las piezas cambian según la versión, y el VIN es la forma más segura de acertar — puede",
+    fitLink: "revisar su VIN aquí",
+    fitAfter:
+      "antes de pedir. Si aun así la pieza no ajusta, llámenos antes de modificarla o prepararla para pintura: una vez que un panel se perfora, se corta o se pinta, ya no se puede devolver.",
+    capaTitle: "Piezas certificadas CAPA",
+    capaBody:
+      "Las piezas marcadas CAPA fueron probadas de forma independiente contra la pieza original del fabricante en ajuste, grosor y protección contra la corrosión, y llevan un sello numerado. Deje el sello puesto hasta que la pieza esté instalada — es la prueba que respalda cualquier reclamo.",
+    talkTitle: "Hable con nosotros primero",
+    talkBefore: "Cada reclamo lo atiende una persona, no un formulario. Llame al",
+    talkMiddle: "o escriba a",
+    talkAfter: "con su número de pedido y una foto, y le decimos qué sigue.",
+  },
+
+  trust: {
+    eyebrow: "Por qué puede comprar con confianza",
+    capaTitle: "Qué significa realmente la certificación CAPA",
+    capaBody:
+      "CAPA es una entidad independiente que prueba las piezas de carrocería alternativas contra la pieza original del fabricante — el grosor del panel, la calidad de la soldadura, la protección contra la corrosión y qué tan exacto queda el ajuste en el carro. Una pieza marcada CAPA pasó esas pruebas y lleva un sello numerado. No es una pieza de deshuesadero ni una copia que \"se parece\". Si una pieza de este sitio está marcada CAPA, aprobó.",
+    newPartsBadge: "Solo piezas nuevas",
+    newPartsBody: "Nunca usadas ni de deshuesadero. Todos los paneles se envían nuevos.",
+    warehouseBadge: "Almacén propio",
+    warehouseBefore: "almacena y envía desde su propio almacén en",
+    warehouseAfter: "— o recoja en persona si lo prefiere.",
+    personBadge: "Hable con una persona",
+    personAfter: "— contestamos 24/7, y quien contesta conoce las piezas.",
+    findUs: "Encuéntrenos en",
+    ebayStore: "Tienda de eBay",
+    returnsPrompt: "¿Preguntas sobre ajuste, daño en el transporte o devoluciones?",
+    returnsLink: "Lea la política de devoluciones y garantía",
+  },
+
   footer: {
     hours: "Horario",
     address: "Dirección",

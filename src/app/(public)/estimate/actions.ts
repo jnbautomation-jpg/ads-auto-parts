@@ -6,6 +6,8 @@ import { ORG_SLUG } from "@/lib/site";
 import { ESTIMATE_LIMITS, parseEstimateText } from "@/lib/estimate";
 import { decodeVin, tidyMake, validateVin } from "@/lib/vin";
 import { canonicalMake, canonicalModel } from "@/lib/normalize";
+import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 import type { PartType } from "@/generated/prisma/enums";
 
 export type EstimateMatch = {
@@ -34,15 +36,22 @@ export async function analyzeEstimate(
   _prev: EstimateState,
   formData: FormData,
 ): Promise<EstimateState> {
+  // The page that submitted says which language to answer in. Anything else
+  // falls back to English rather than throwing — a tampered field must not be
+  // able to break an upload.
+  const submitted = String(formData.get("locale") || "");
+  const locale = isLocale(submitted) ? submitted : DEFAULT_LOCALE;
+  const dict = getDictionary(locale);
+
   const file = formData.get("estimate");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose an estimate PDF to upload." };
+    return { error: dict.estimate.chooseFile };
   }
   if (file.size > ESTIMATE_LIMITS.maxBytes) {
-    return { error: "That file is too large — please upload the estimate PDF only." };
+    return { error: dict.estimate.tooLarge };
   }
   if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
-    return { error: "Please upload a PDF." };
+    return { error: dict.estimate.notPdf };
   }
 
   // Parsed in memory and never written anywhere. An insurance estimate carries
@@ -55,7 +64,7 @@ export async function analyzeEstimate(
     const extracted = await extractText(pdf, { mergePages: true });
     text = String(extracted.text ?? "");
   } catch {
-    return { error: "We couldn't read that PDF. Send it to us and we'll quote it by hand." };
+    return { error: dict.estimate.unreadable };
   }
 
   const parsed = parseEstimateText(text);
@@ -81,8 +90,7 @@ export async function analyzeEstimate(
   if (parsed.vin) {
     const check = validateVin(parsed.vin);
     if (check.ok && !parsed.vinCheckDigitValid) {
-      vinWarning =
-        "The VIN on this estimate doesn't pass its check digit — confirm it before ordering.";
+      vinWarning = dict.estimate.vinCheckDigit;
     }
     try {
       decoded = await decodeVin(parsed.vin);
@@ -133,26 +141,28 @@ export async function analyzeEstimate(
       take: 24,
     });
 
-    const { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } = await import(
-      "@/lib/format"
-    );
+    const { formatFit, formatMoneyIn, formatPartTypeIn, formatPositionIn, getAvailabilityIn } =
+      await import("@/lib/format");
 
     matches = products.map((p) => {
       matchedTypes.add(p.partType);
       return {
         id: p.id,
         sku: p.sku,
-        label: `${formatFit(p.make, p.model, p.yearStart, p.yearEnd)} — ${formatPartType(p.partType)}${
-          p.position ? ` (${formatPosition(p.position)})` : ""
-        }`,
-        partType: formatPartType(p.partType),
-        price: formatMoney(p.retailPrice.toString()),
-        availability: getAvailability(p.quantity, p.reorderPoint).label,
+        label: `${formatFit(p.make, p.model, p.yearStart, p.yearEnd)} — ${formatPartTypeIn(
+          p.partType,
+          locale,
+        )}${p.position ? ` (${formatPositionIn(p.position, locale)})` : ""}`,
+        partType: formatPartTypeIn(p.partType, locale),
+        // Retail price only — `productSelectFor` is not used here, so the
+        // wholesale column is deliberately never selected above.
+        price: formatMoneyIn(p.retailPrice.toString(), locale),
+        availability: getAvailabilityIn(p.quantity, p.reorderPoint, locale).label,
       };
     });
   }
 
-  const { formatPartType } = await import("@/lib/format");
+  const { formatPartTypeIn } = await import("@/lib/format");
 
   return {
     result: {
@@ -161,13 +171,13 @@ export async function analyzeEstimate(
         : null,
       vin: parsed.vin,
       vinWarning,
-      partTypes: parsed.partTypes.map((t) => formatPartType(t)),
+      partTypes: parsed.partTypes.map((t) => formatPartTypeIn(t, locale)),
       matches,
       // Named on the estimate but not in stock for this vehicle — the shop
       // should see these rather than assume we quoted everything.
       unmatchedPartTypes: parsed.partTypes
         .filter((t) => !matchedTypes.has(t))
-        .map((t) => formatPartType(t)),
+        .map((t) => formatPartTypeIn(t, locale)),
       scanned: false,
     },
   };

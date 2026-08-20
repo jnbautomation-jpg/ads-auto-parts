@@ -334,6 +334,84 @@ export const en = {
     },
   },
 
+  // Insurance estimate upload (/estimate and /es/estimate).
+  estimate: {
+    title: "Upload an estimate",
+    intro:
+      "Drop in a CCC, Mitchell or Audatex estimate and we'll read the VIN and the panels off it, then show you what's on our shelf for that exact vehicle. Faster than typing it all out — and we'll always show you what we read so you can check it.",
+    fileLabel: "Estimate PDF",
+    submit: "Check what we have",
+    submitting: "Reading the estimate…",
+    privacy:
+      "We read the VIN and the parts listed, then delete the file. Nothing from the estimate is stored.",
+    scannedTitle: "That looks like a scan",
+    scannedBody:
+      "There's no readable text in that PDF, so it's probably a photo or a scan. Send it to us and we'll quote it by hand — or type the VIN in instead.",
+    whatWeRead: "What we read",
+    noVehicle: "We couldn't identify the vehicle from that estimate.",
+    checkBeforeOrdering:
+      "Check this matches your estimate before ordering — we read it automatically.",
+    inStockTitle: "What we have in stock",
+    noMatches:
+      "We don't have anything listed for those parts on that vehicle right now — but we stock far more than we list. Call us with the estimate and we'll check.",
+    unmatchedTitle: "Not matched",
+    unmatchedBefore: "These were on the estimate but we don't have them listed for this vehicle:",
+    unmatchedAfter: "Call and we'll source them.",
+    // Returned by the server action, so they have to be translated too —
+    // an English error on the Spanish page is the failure this file exists to
+    // prevent.
+    chooseFile: "Choose an estimate PDF to upload.",
+    tooLarge: "That file is too large — please upload the estimate PDF only.",
+    notPdf: "Please upload a PDF.",
+    unreadable: "We couldn't read that PDF. Send it to us and we'll quote it by hand.",
+    vinCheckDigit:
+      "The VIN on this estimate doesn't pass its check digit — confirm it before ordering.",
+  },
+
+  // Returns & warranty (/returns and /es/returns).
+  returns: {
+    eyebrow: "Returns & warranty",
+    title: "If something isn't right",
+    intro:
+      "Body panels are big, heavy and easy to damage in transit. Here's how we handle it when a part arrives damaged, doesn't fit, or isn't what you needed.",
+    freightTitle: "Freight damage",
+    freightBody:
+      "Inspect the part before you sign for it. If the packaging is torn, crushed or the panel is visibly dented, note it on the delivery paperwork and photograph it before the driver leaves — that record is what lets us replace it quickly. Then call us the same day and we'll get a replacement moving.",
+    freightAfter:
+      "If you find damage after the driver has gone, call us anyway. Photograph the packaging as well as the part.",
+    fitTitle: "Wrong part or doesn't fit",
+    fitBefore: "Parts differ by trim, and a VIN is the surest way to get it right — you can",
+    fitLink: "check your VIN here",
+    fitAfter:
+      "before ordering. If a part still doesn't fit, call us before attempting any modification or paint prep: once a panel has been drilled, cut or painted it can no longer be returned.",
+    capaTitle: "CAPA certified parts",
+    capaBody:
+      "Parts marked CAPA have been independently tested against the manufacturer's original for fit, thickness and corrosion protection, and carry a numbered seal. Leave the seal on until the part is fitted — it's the evidence behind any claim.",
+    talkTitle: "Talk to us first",
+    talkBefore: "Every claim is handled by a person, not a form. Call",
+    talkMiddle: "or email",
+    talkAfter: "with your order number and a photo, and we'll tell you what happens next.",
+  },
+
+  // Trust signals band — rendered on both landing pages.
+  trust: {
+    eyebrow: "Why you can buy with confidence",
+    capaTitle: "What CAPA certified actually means",
+    capaBody:
+      "CAPA is an independent body that tests aftermarket body parts against the original manufacturer's part — panel thickness, weld quality, corrosion protection, and how precisely it lines up on the car. A CAPA-marked part has been through that testing and carries a numbered seal. It is not a salvage-yard part and it is not a copy that \"looks about right\". If a part on this site is marked CAPA, it passed.",
+    newPartsBadge: "New parts only",
+    newPartsBody: "Never used salvage. Every panel ships new.",
+    warehouseBadge: "Real warehouse",
+    warehouseBefore: "stocks and ships from its own warehouse in",
+    warehouseAfter: "— collect in person if you'd rather.",
+    personBadge: "Talk to a person",
+    personAfter: "— answered 24/7, by someone who knows the parts.",
+    findUs: "Find us on",
+    ebayStore: "eBay store",
+    returnsPrompt: "Questions about fit, freight damage or returns?",
+    returnsLink: "Read the returns & warranty policy",
+  },
+
   footer: {
     hours: "Hours",
     address: "Address",

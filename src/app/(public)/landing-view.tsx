@@ -767,7 +767,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
       <BrowseByPart countBySlug={data.countBySlug} locale={locale} />
       <WhyADS categoryCount={stockedCategoryCount} locale={locale} />
       <DeliverySection locale={locale} />
-      <TrustSignals />
+      <TrustSignals locale={locale} />
       <ContactSection locale={locale} />
       <SiteFooter />
     </main>
