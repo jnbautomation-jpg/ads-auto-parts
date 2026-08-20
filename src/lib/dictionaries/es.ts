@@ -267,6 +267,8 @@ export const es: Dictionary = {
     pageErrorBody:
       "Esta página no cargó. Es de nuestro lado, no del suyo — intente de nuevo o llame al taller y resolvemos la pieza por teléfono.",
     reference: "Referencia",
+    notFoundTitle: "Página no encontrada",
+    notFoundBody: "La página que buscaba no existe o fue movida.",
     nameAndPhoneRequired: "El nombre y el teléfono son obligatorios.",
     phoneInvalid: "Escriba un número de teléfono donde podamos localizarlo.",
     emailInvalid: "Ese correo electrónico no parece correcto.",

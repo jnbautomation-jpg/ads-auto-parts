@@ -5,6 +5,13 @@
 // admin layout throws — including a failure inside requireAuthContext(),
 // which (admin)/error.tsx cannot catch.
 //
+// Deliberately English in both languages, and lang="en" below is deliberate
+// too: this replaces the root layout, so it has no request headers and no
+// router to ask which language the visitor was reading. Guessing wrong here
+// would mean a Spanish page whose <html lang> disagrees with its text. The
+// phone number is the part that matters on this page and it is the same in
+// any language.
+//
 // Styles are inline rather than Tailwind classes: if the failure happened
 // before the stylesheet was applied, class names would render unstyled text
 // on a white page. Metadata exports are not supported here, so the title is

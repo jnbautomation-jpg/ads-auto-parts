@@ -2,8 +2,11 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { bodyClass, h1Class, primaryButtonClass, secondaryButtonClass } from "@/lib/public-ui";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
+import { localePath, stripLocale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 
 // Catches uncaught exceptions anywhere under (public) — the landing page,
 // the catalog, and product detail. Without this a visitor sees Next's raw
@@ -18,6 +21,12 @@ export default function PublicError({
   error: Error & { digest?: string };
   unstable_retry: () => void;
 }) {
+  // An error boundary is a Client Component, so it cannot read the header the
+  // server pages use — usePathname gives it the same answer. The failure that
+  // brought a Spanish visitor here should not also switch them to English.
+  const { locale } = stripLocale(usePathname());
+  const dict = getDictionary(locale);
+
   useEffect(() => {
     // Surfaces in Vercel's runtime logs. `digest` is the only handle on the
     // original server-side error, since the real message is withheld from
@@ -27,21 +36,18 @@ export default function PublicError({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-[640px] flex-col justify-center gap-5 px-5 py-16">
-      <h1 className={h1Class}>Something went wrong</h1>
-      <p className={bodyClass}>
-        This page didn&apos;t load. It&apos;s on our end, not yours — try again, or call the shop
-        and we&apos;ll sort the part out over the phone.
-      </p>
+      <h1 className={h1Class}>{dict.errors.somethingWrong}</h1>
+      <p className={bodyClass}>{dict.errors.pageErrorBody}</p>
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <button type="button" onClick={() => unstable_retry()} className={primaryButtonClass}>
-          Try again
+          {dict.errors.tryAgain}
         </button>
         <a href={`tel:${PHONE_HREF}`} className={secondaryButtonClass}>
-          Call {PHONE_DISPLAY}
+          {dict.catalog.callUs} {PHONE_DISPLAY}
         </a>
-        <Link href="/" className={secondaryButtonClass}>
-          Back to home
+        <Link href={localePath(locale, "/")} className={secondaryButtonClass}>
+          {dict.nav.backToHome}
         </Link>
       </div>
 
@@ -49,7 +55,7 @@ export default function PublicError({
         // Lets the shop quote a specific failure to whoever is maintaining
         // the site, instead of "a page broke sometime yesterday".
         <p className="font-[family-name:var(--font-barlow)] text-[12px] text-[#8A8A8A]">
-          Reference: {error.digest}
+          {dict.errors.reference}: {error.digest}
         </p>
       ) : null}
     </main>

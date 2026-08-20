@@ -260,6 +260,10 @@ export const en = {
     pageErrorBody:
       "This page didn't load. It's on our end, not yours — try again, or call the shop and we'll sort the part out over the phone.",
     reference: "Reference",
+    // The site-wide 404, for a URL that matches no route at all. The
+    // "we can't find that part" copy under (public) is product.notFound*.
+    notFoundTitle: "Page not found",
+    notFoundBody: "The page you were looking for doesn't exist or has moved.",
     nameAndPhoneRequired: "Name and phone are required.",
     phoneInvalid: "Please enter a phone number we can reach you on.",
     emailInvalid: "That email address doesn't look right.",
