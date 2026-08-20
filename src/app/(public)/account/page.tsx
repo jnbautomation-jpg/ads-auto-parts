@@ -4,13 +4,17 @@ import { requireCustomerContext } from "@/lib/customer-auth";
 import { formatFit } from "@/lib/format";
 import { RETAIL_MARKUP_USD } from "@/lib/pricing";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
-import { badgeClass, bodyClass, eyebrowClass, h1Class, subHeadingClass } from "@/lib/public-ui";
+import {
+  badgeClass,
+  bodyClass,
+  eyebrowClass,
+  h1Class,
+  secondaryButtonClass,
+  subHeadingClass,
+} from "@/lib/public-ui";
 import { SaveVehicleForm, WholesaleApplicationForm } from "./account-forms";
 import { deleteVehicle, signOutCustomer } from "./actions";
 
-// Order history is deliberately absent: there is no Order model yet (it
-// arrives with Stripe checkout, spec step 7). Showing an empty "Orders"
-// section would imply the feature exists and is broken.
 export default async function AccountPage() {
   const { account } = await requireCustomerContext();
 
@@ -96,6 +100,17 @@ export default async function AccountPage() {
           )}
         </section>
       ) : null}
+
+      {/* --- Orders --- */}
+      <section className="flex flex-col gap-3 border border-white/10 bg-[#111] p-5 lg:p-6">
+        <span className={eyebrowClass}>Orders</span>
+        <p className={bodyClass}>
+          Your order history, and one-click reordering of anything you&apos;ve bought before.
+        </p>
+        <Link href="/account/orders" className={`${secondaryButtonClass} self-start`}>
+          View orders
+        </Link>
+      </section>
 
       {/* --- Saved vehicles --- */}
       <section className="flex flex-col gap-4 border border-white/10 bg-[#111] p-5 lg:p-6">

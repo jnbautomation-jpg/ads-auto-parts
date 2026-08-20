@@ -5,6 +5,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
 import { buildLocalBusinessSchema, jsonLdScript } from "@/lib/structured-data";
+import { TrustSignals } from "@/components/trust-signals";
 import { localePath, type Locale } from "@/lib/i18n";
 import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { connection } from "next/server";
@@ -766,6 +767,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
       <BrowseByPart countBySlug={data.countBySlug} locale={locale} />
       <WhyADS categoryCount={stockedCategoryCount} locale={locale} />
       <DeliverySection locale={locale} />
+      <TrustSignals />
       <ContactSection locale={locale} />
       <SiteFooter />
     </main>

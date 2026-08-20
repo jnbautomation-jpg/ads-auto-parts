@@ -49,3 +49,17 @@ export const PHONE_NOTE = "Phone available 24/7";
 
 export const BUSINESS_NAME = "ADS Auto Door Store";
 export const LOCALITY = "Orlando, FL";
+
+// Outbound profile links used by the trust-signals block.
+//
+// ⚠️ NEEDS THE REAL URLS. The spec notes the shop already has Facebook, Yelp
+// and eBay presences and that the eBay store "isn't linked from the site" —
+// but the document doesn't contain the URLs. An empty string hides that link
+// rather than shipping a dead one, so filling these in is a one-line change
+// each and requires no code.
+export const REVIEW_LINKS = {
+  google: "",
+  facebook: "",
+  yelp: "",
+  ebay: "",
+} as const;
