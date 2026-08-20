@@ -283,6 +283,21 @@ export const en = {
     },
     ticker: "SAME-DAY DELIVERY ACROSS CENTRAL FLORIDA — ORDER BY 12 PM",
     tickerTail: " · MOST ORDERS DISPATCHED WITHIN 24 HOURS",
+    // The landing page has its own footer, separate from the shared
+    // SiteFooter — see CLAUDE.md on why that page deliberately diverges.
+    footer: {
+      site: "SITE",
+      tagline:
+        "New aftermarket auto body parts — never used salvage. CAPA certified fit and finish, dispatched from Orlando within 24 hours.",
+      strip: "SAME-DAY DELIVERY ACROSS CENTRAL FLORIDA · ORDER BY 12 PM",
+    },
+    contact: {
+      call: "CALL",
+      text: "TEXT",
+      email: "EMAIL",
+      visit: "VISIT",
+      hours: "HOURS",
+    },
     allModels: "All models",
     browseByPart: "Browse by part",
     whyHeading: "Why ADS",
@@ -413,9 +428,12 @@ export const en = {
   },
 
   footer: {
-    hours: "Hours",
-    address: "Address",
-    openInMaps: "OPEN IN MAPS →",
+    tagline:
+      "New aftermarket auto body parts — never used salvage. Dispatched from our Orlando warehouse.",
+    parts: "Parts",
+    makes: "Makes",
+    areas: "Areas we deliver",
+    visitOrCall: "Visit or call",
   },
 } as const;
 

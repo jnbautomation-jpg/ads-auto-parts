@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { PART_SLUG_LABELS, PART_SLUG_TO_TYPES } from "@/lib/format";
+import { PART_SLUG_TO_TYPES, formatPartSlugIn } from "@/lib/format";
 import {
   ADDRESS,
   BUSINESS_NAME,
   EMAIL,
-  HOURS_DISPLAY,
-  PHONE_NOTE,
+  HOURS_DISPLAY_IN,
+  PHONE_NOTE_IN,
   LOCALITY,
   MAPS_URL,
   ORG_SLUG,
@@ -15,6 +15,8 @@ import {
 } from "@/lib/site";
 import { BrandLogo } from "@/components/brand-logo";
 import { SERVICE_LOCATIONS } from "@/lib/locations";
+import { localePath, type Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 
 // One footer for every public page. The catalog and product pages previously
 // had none at all — no address, no hours, no way back into the catalog — which
@@ -32,7 +34,7 @@ const linkClass =
   "flex items-baseline justify-between gap-4 font-[family-name:var(--font-barlow)] text-[14px] text-[#B4B4B4] transition-colors hover:text-white";
 const countClass = "font-mono text-[12px] text-[#8A8A8A]";
 
-async function getFooterData() {
+async function getFooterData(locale: Locale) {
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) return { categories: [], makes: [] };
 
@@ -54,7 +56,7 @@ async function getFooterData() {
   const categories = Object.entries(PART_SLUG_TO_TYPES)
     .map(([slug, types]) => ({
       slug,
-      label: PART_SLUG_LABELS[slug] ?? slug,
+      label: formatPartSlugIn(slug, locale),
       count: types.reduce((sum, t) => sum + (countByType.get(t) ?? 0), 0),
     }))
     .filter((c) => c.count > 0)
@@ -69,8 +71,12 @@ async function getFooterData() {
   return { categories, makes };
 }
 
-export async function SiteFooter() {
-  const { categories, makes } = await getFooterData();
+// Rendered on Spanish pages too, so it takes a locale: an English footer under
+// a Spanish page is half the site, and its links used to walk the visitor back
+// into English mid-session.
+export async function SiteFooter({ locale = "en" }: { locale?: Locale } = {}) {
+  const dict = getDictionary(locale);
+  const { categories, makes } = await getFooterData(locale);
   const year = new Date().getFullYear();
 
   return (
@@ -80,15 +86,19 @@ export async function SiteFooter() {
           <div className="flex flex-col gap-4">
             <BrandLogo size="sm" />
             <p className="font-[family-name:var(--font-barlow)] text-[14px] leading-[1.6] text-[#B4B4B4] lg:max-w-[34ch]">
-              New aftermarket auto body parts — never used salvage. Dispatched from our Orlando warehouse.
+              {dict.footer.tagline}
             </p>
           </div>
 
           {categories.length > 0 ? (
             <nav className="flex flex-col gap-3">
-              <h2 className={headingClass}>Parts</h2>
+              <h2 className={headingClass}>{dict.footer.parts}</h2>
               {categories.map((c) => (
-                <Link key={c.slug} href={`/catalog?part=${c.slug}`} className={linkClass}>
+                <Link
+                  key={c.slug}
+                  href={localePath(locale, `/catalog?part=${c.slug}`)}
+                  className={linkClass}
+                >
                   <span>{c.label}</span>
                   <span className={countClass}>{c.count}</span>
                 </Link>
@@ -98,11 +108,11 @@ export async function SiteFooter() {
 
           {makes.length > 0 ? (
             <nav className="flex flex-col gap-3">
-              <h2 className={headingClass}>Makes</h2>
+              <h2 className={headingClass}>{dict.footer.makes}</h2>
               {makes.map((m) => (
                 <Link
                   key={m.make}
-                  href={`/catalog?make=${encodeURIComponent(m.make)}`}
+                  href={localePath(locale, `/catalog?make=${encodeURIComponent(m.make)}`)}
                   className={linkClass}
                 >
                   <span>{m.make}</span>
@@ -115,9 +125,9 @@ export async function SiteFooter() {
           {/* Local landing pages. Linked from every page so crawlers actually
               reach them — an orphaned landing page earns nothing. */}
           <nav className="flex flex-col gap-3">
-            <h2 className={headingClass}>Areas we deliver</h2>
+            <h2 className={headingClass}>{dict.footer.areas}</h2>
             {SERVICE_LOCATIONS.map((l) => (
-              <Link key={l.slug} href={`/parts/${l.slug}`} className={linkClass}>
+              <Link key={l.slug} href={localePath(locale, `/parts/${l.slug}`)} className={linkClass}>
                 <span>{l.name}</span>
               </Link>
             ))}
@@ -126,7 +136,7 @@ export async function SiteFooter() {
           {/* Name / address / phone. Kept byte-identical to the Google Business
               listing — local search matches on the exact string. */}
           <div className="flex flex-col gap-3">
-            <h2 className={headingClass}>Visit or call</h2>
+            <h2 className={headingClass}>{dict.footer.visitOrCall}</h2>
             <address className="flex flex-col gap-2 font-[family-name:var(--font-barlow)] text-[14px] not-italic leading-[1.6] text-[#B4B4B4]">
               <a
                 href={MAPS_URL}
@@ -144,9 +154,9 @@ export async function SiteFooter() {
               </a>
             </address>
             <div className="font-[family-name:var(--font-barlow)] text-[14px] leading-[1.6] text-[#8A8A8A]">
-              {HOURS_DISPLAY}
+              {HOURS_DISPLAY_IN[locale]}
               <br />
-              <span className="text-[#B4B4B4]">{PHONE_NOTE}</span>
+              <span className="text-[#B4B4B4]">{PHONE_NOTE_IN[locale]}</span>
             </div>
           </div>
         </div>

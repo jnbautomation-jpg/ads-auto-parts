@@ -292,6 +292,19 @@ export const es: Dictionary = {
     },
     ticker: "ENTREGA EL MISMO DÍA EN TODA FLORIDA CENTRAL — PIDA ANTES DE LAS 12 PM",
     tickerTail: " · LA MAYORÍA DE LOS PEDIDOS SALEN EN 24 HORAS",
+    footer: {
+      site: "SITIO",
+      tagline:
+        "Piezas de carrocería nuevas alternativas — nunca usadas ni de deshuesadero. Ajuste y acabado certificados CAPA, salen de Orlando en 24 horas.",
+      strip: "ENTREGA EL MISMO DÍA EN TODA FLORIDA CENTRAL · PIDA ANTES DE LAS 12 PM",
+    },
+    contact: {
+      call: "LLAMAR",
+      text: "MENSAJE",
+      email: "CORREO",
+      visit: "VISITAR",
+      hours: "HORARIO",
+    },
     allModels: "Todos los modelos",
     browseByPart: "Busque por tipo de pieza",
     whyHeading: "Por qué ADS",
@@ -420,8 +433,11 @@ export const es: Dictionary = {
   },
 
   footer: {
-    hours: "Horario",
-    address: "Dirección",
-    openInMaps: "ABRIR EN MAPAS →",
+    tagline:
+      "Piezas de carrocería nuevas alternativas — nunca usadas ni de deshuesadero. Salen de nuestro almacén en Orlando.",
+    parts: "Piezas",
+    makes: "Marcas",
+    areas: "Zonas donde entregamos",
+    visitOrCall: "Visítenos o llame",
   },
 };

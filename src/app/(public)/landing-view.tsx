@@ -14,7 +14,16 @@ import { PART_SLUG_TO_TYPES } from "@/lib/format";
 // Shop details come from the shared source of truth — they used to be
 // re-declared here, which is how the site ended up advertising a stale
 // contact address. Only the *styling* on this page is deliberately local.
-import { ADDRESS, EMAIL, MAPS_URL, ORG_SLUG, PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
+import {
+  ADDRESS,
+  EMAIL,
+  HOURS_DISPLAY_IN,
+  MAPS_URL,
+  ORG_SLUG,
+  PHONE_DISPLAY,
+  PHONE_HREF,
+  PHONE_NOTE_IN,
+} from "@/lib/site";
 import { QuoteForm } from "./quote-form";
 import { SiteHeader } from "./site-header";
 
@@ -416,7 +425,7 @@ function BrowseByPart({
           {tiles.map((t, i) => (
             <Reveal key={t.slug} delay={i * 80}>
               <Link
-                href={`/catalog?part=${t.slug}`}
+                href={localePath(locale, `/catalog?part=${t.slug}`)}
                 className="group block overflow-hidden border border-white/8 bg-[#1A1A1A] transition-all duration-300 hover:-translate-y-1 hover:border-[#E31E24]/60 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.85)]"
               >
                 <div className="h-[104px] overflow-hidden bg-[#111] lg:h-[150px]">
@@ -630,35 +639,36 @@ function ContactSection({ locale }: { locale: Locale }) {
           <Reveal>
             <div className="flex flex-col gap-2">
               <a href={`tel:${PHONE_HREF}`} className={contactRowClass}>
-                <span className={contactLabelClass}>CALL</span>
+                <span className={contactLabelClass}>{dict.landing.contact.call}</span>
                 <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold lg:text-[16px]">
                   {PHONE_DISPLAY}
                 </span>
               </a>
               <a href={`sms:${PHONE_HREF}`} className={contactRowClass}>
-                <span className={contactLabelClass}>TEXT</span>
+                <span className={contactLabelClass}>{dict.landing.contact.text}</span>
                 <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold lg:text-[16px]">
                   {PHONE_DISPLAY}
                 </span>
               </a>
               <a href={`mailto:${EMAIL}`} className={contactRowClass}>
-                <span className={contactLabelClass}>EMAIL</span>
+                <span className={contactLabelClass}>{dict.landing.contact.email}</span>
                 <span className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold lg:text-[14px]">
                   {EMAIL}
                 </span>
               </a>
               <div className={`hidden lg:flex ${contactRowClass}`}>
-                <span className={contactLabelClass}>VISIT</span>
+                <span className={contactLabelClass}>{dict.landing.contact.visit}</span>
                 <span className="font-[family-name:var(--font-barlow)] text-[14px] font-medium">{ADDRESS}</span>
               </div>
               <div className={`hidden lg:flex ${contactRowClass}`}>
-                <span className={contactLabelClass}>HOURS</span>
+                <span className={contactLabelClass}>{dict.landing.contact.hours}</span>
                 <span className="flex flex-col items-end gap-1 text-right">
+                  {/* Third hard-coded copy of the hours; site.ts owns them. */}
                   <span className="font-[family-name:var(--font-barlow)] text-[14px] font-medium">
-                    Mon–Fri 9 AM–5 PM · Sat–Sun Closed
+                    {HOURS_DISPLAY_IN[locale]}
                   </span>
                   <span className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold tracking-[0.02em] text-[#E31E24]">
-                    Phone available 24/7
+                    {PHONE_NOTE_IN[locale]}
                   </span>
                 </span>
               </div>
@@ -673,7 +683,8 @@ function ContactSection({ locale }: { locale: Locale }) {
   );
 }
 
-function SiteFooter() {
+function SiteFooter({ locale }: { locale: Locale }) {
+  const dict = getDictionary(locale);
   return (
     <div className="border-t border-white/6 bg-[#070707] px-4 pt-10 lg:px-14 lg:pt-16">
       <div className="mx-auto flex max-w-[1060px] flex-col gap-5 lg:gap-10">
@@ -681,32 +692,31 @@ function SiteFooter() {
           <div className="flex flex-col gap-3.5">
             <BrandLogo size="sm" />
             <div className="font-[family-name:var(--font-barlow)] text-[13px] leading-[1.6] text-[#888] lg:max-w-[320px]">
-              New aftermarket auto body parts — never used salvage. CAPA certified fit and finish, dispatched
-              from Orlando within 24 hours.
+              {dict.landing.footer.tagline}
             </div>
           </div>
 
           <div className="hidden flex-col gap-2 font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.1em] lg:flex">
             <div className="mb-1 font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.28em] text-[#666]">
-              SITE
+              {dict.landing.footer.site}
             </div>
             <a href="#parts" className="text-[#aaa] transition-colors hover:text-white">
-              PARTS
+              {dict.landing.nav.parts}
             </a>
             <a href="#why" className="text-[#aaa] transition-colors hover:text-white">
-              WHY ADS
+              {dict.landing.nav.why}
             </a>
             <a href="#delivery" className="text-[#aaa] transition-colors hover:text-white">
-              DELIVERY
+              {dict.landing.nav.delivery}
             </a>
             <a href="#contact" className="text-[#aaa] transition-colors hover:text-white">
-              CONTACT
+              {dict.landing.nav.contact}
             </a>
           </div>
 
           <div className="flex flex-col gap-2 font-[family-name:var(--font-barlow)] text-[12px] leading-[1.8] text-[#666] lg:text-[13px] lg:leading-[1.6] lg:text-[#aaa]">
             <div className="hidden font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold tracking-[0.28em] text-[#666] lg:mb-1 lg:block">
-              CONTACT
+              {dict.landing.nav.contact}
             </div>
             <div>{ADDRESS}</div>
             <a href={`tel:${PHONE_HREF}`} className="hover:text-white">
@@ -715,31 +725,37 @@ function SiteFooter() {
             <a href={`mailto:${EMAIL}`} className="hover:text-white">
               {EMAIL}
             </a>
-            <div className="text-[#666] lg:text-[#777]">Mon–Fri 9 AM–5 PM · Sat–Sun Closed</div>
-            <div className="font-semibold text-[#E31E24]">Phone available 24/7</div>
+            {/* Was a second hard-coded copy of the hours and the phone note.
+                site.ts is the single source for both — a hours change that
+                edited site.ts and missed this line would have left the landing
+                page advertising the old ones. */}
+            <div className="text-[#666] lg:text-[#777]">{HOURS_DISPLAY_IN[locale]}</div>
+            <div className="font-semibold text-[#E31E24]">{PHONE_NOTE_IN[locale]}</div>
           </div>
         </div>
 
         {/* Mobile-only flat section nav (desktop uses the SITE column above) */}
         <div className="flex flex-wrap gap-5 font-[family-name:var(--font-barlow)] text-[11px] font-semibold tracking-[0.12em] lg:hidden">
           <a href="#parts" className="text-[#aaa] transition-colors hover:text-white">
-            PARTS
+            {dict.landing.nav.parts}
           </a>
           <a href="#why" className="text-[#aaa] transition-colors hover:text-white">
-            WHY ADS
+            {dict.landing.nav.why}
           </a>
           <a href="#delivery" className="text-[#aaa] transition-colors hover:text-white">
-            DELIVERY
+            {dict.landing.nav.delivery}
           </a>
           <a href="#contact" className="text-[#aaa] transition-colors hover:text-white">
-            CONTACT
+            {dict.landing.nav.contact}
           </a>
         </div>
 
         <div className="flex items-center justify-between border-t border-white/6 py-3.5 font-[family-name:var(--font-barlow)] text-[11px] tracking-[0.06em] text-[#555] lg:py-4">
-          <div>© 2026 AUTO DOOR STORE · ORLANDO, FL</div>
+          {/* The year was hard-coded, so the notice would have read 2026 for
+              as long as the site was up. */}
+          <div>© {new Date().getFullYear()} AUTO DOOR STORE · ORLANDO, FL</div>
           <div className="flex items-center gap-[18px]">
-            <div className="hidden lg:block">SAME-DAY DELIVERY ACROSS CENTRAL FLORIDA · ORDER BY 12 PM</div>
+            <div className="hidden lg:block">{dict.landing.footer.strip}</div>
           </div>
         </div>
       </div>
@@ -769,7 +785,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
       <DeliverySection locale={locale} />
       <TrustSignals locale={locale} />
       <ContactSection locale={locale} />
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </main>
   );
 }

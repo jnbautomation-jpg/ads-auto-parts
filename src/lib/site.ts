@@ -6,6 +6,8 @@
 // The address string is also what Google Business matches on for the local
 // listing: keep it byte-identical to the listing, don't reformat it.
 
+import type { Locale } from "@/lib/i18n";
+
 // Single-tenant public site — every public query and lead scopes to this org.
 export const ORG_SLUG = "ads-auto-parts";
 
@@ -46,6 +48,25 @@ export const MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(ADDRESS
 
 export const HOURS_DISPLAY = "Mon–Fri 9 AM–5 PM · Sat–Sun Closed";
 export const PHONE_NOTE = "Phone available 24/7";
+
+// The Spanish renderings live here, beside the English ones, rather than in
+// the dictionaries with the rest of the copy. These are not copy — they are
+// contested business facts (the site says Mon–Fri 9–5, the shop's Facebook
+// says always open; CHANGELOG has it blocked on Matthew), and a shop whose
+// Spanish page advertises different hours from its English page is worse than
+// one that is only half translated. Keeping them adjacent means whoever
+// finally gets the real hours edits both in the same breath.
+//
+// Typed as Record<Locale, string>, so adding a language is a compile error
+// here rather than a silently English line in the footer.
+export const HOURS_DISPLAY_IN: Record<Locale, string> = {
+  en: HOURS_DISPLAY,
+  es: "Lun–Vie 9 AM–5 PM · Sáb–Dom cerrado",
+};
+export const PHONE_NOTE_IN: Record<Locale, string> = {
+  en: PHONE_NOTE,
+  es: "Teléfono disponible 24/7",
+};
 
 export const BUSINESS_NAME = "ADS Auto Door Store";
 export const LOCALITY = "Orlando, FL";

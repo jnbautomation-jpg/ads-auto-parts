@@ -372,7 +372,7 @@ export async function ProductView({
         </div>
       ) : null}
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

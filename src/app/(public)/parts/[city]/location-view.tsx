@@ -199,7 +199,7 @@ export async function LocationView({
         </div>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

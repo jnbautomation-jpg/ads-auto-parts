@@ -142,3 +142,16 @@ export function formatMoneyIn(value: number | string, locale: Locale): string {
     currency: "USD",
   }).format(Number(value));
 }
+
+/**
+ * Catalog-category label ("Doors", "Puertas") for a URL slug.
+ *
+ * The Spanish names already exist as the landing page's tile names, so this
+ * reads them rather than introducing a second set that could disagree with the
+ * tiles about what a category is called. Falls back to the English label, then
+ * to the slug itself, so an unmapped slug degrades instead of rendering blank.
+ */
+export function formatPartSlugIn(slug: string, locale: Locale): string {
+  const tiles = getDictionary(locale).landing.tiles as Record<string, { name: string } | undefined>;
+  return tiles[slug]?.name ?? PART_SLUG_LABELS[slug] ?? slug;
+}

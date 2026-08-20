@@ -377,7 +377,7 @@ export async function CatalogView({
         </div>
       </div>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

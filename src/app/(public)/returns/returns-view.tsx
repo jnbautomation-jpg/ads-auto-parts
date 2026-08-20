@@ -76,7 +76,7 @@ export function ReturnsView({ locale }: { locale: Locale }) {
         </Link>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

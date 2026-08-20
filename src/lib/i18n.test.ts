@@ -13,6 +13,8 @@ import { getDictionary } from "./dictionaries";
 import { en } from "./dictionaries/en";
 import { es } from "./dictionaries/es";
 import {
+  PART_SLUG_TO_TYPES,
+  formatPartSlugIn,
   formatPartTypeIn,
   formatPositionIn,
   getAvailabilityIn,
@@ -185,6 +187,23 @@ describe("locale-aware formatters", () => {
     expect(formatMoneyIn(469, "en")).toContain("469");
     expect(formatMoneyIn(469, "es")).toContain("469");
     expect(formatMoneyIn(469, "es")).toMatch(/\$/);
+  });
+
+  it("translates every catalog category the footer can link to", () => {
+    // The footer builds its Parts column from PART_SLUG_TO_TYPES. A slug added
+    // there without a Spanish name would render an English category in the
+    // middle of the Spanish footer.
+    for (const slug of Object.keys(PART_SLUG_TO_TYPES)) {
+      const english = formatPartSlugIn(slug, "en");
+      const spanish = formatPartSlugIn(slug, "es");
+      expect(english, `no label for ${slug}`).not.toBe(slug);
+      expect(spanish, `${slug} has no Spanish category name`).not.toBe(english);
+    }
+  });
+
+  it("falls back to the slug's English label, then the slug itself", () => {
+    expect(formatPartSlugIn("doors", "en")).toBe("Doors");
+    expect(formatPartSlugIn("not-a-category", "es")).toBe("not-a-category");
   });
 
   it("falls back to the English label for an unknown part type", () => {

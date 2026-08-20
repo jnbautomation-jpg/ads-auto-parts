@@ -31,7 +31,7 @@ export function VinView({ locale }: { locale: Locale }) {
         </Link>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }
