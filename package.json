@@ -10,7 +10,7 @@
     "db:migrate:status": "prisma migrate status",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npm run clean:dupes --silent && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "postinstall": "prisma generate",
@@ -18,7 +18,8 @@
     "setup:storage": "tsx scripts/setup-storage.ts",
     "reset:products": "tsx scripts/reset-products.ts",
     "backfill:retail": "tsx scripts/backfill-retail-price.ts",
-    "clean:vehicles": "tsx scripts/clean-vehicle-data.ts"
+    "clean:vehicles": "tsx scripts/clean-vehicle-data.ts",
+    "clean:dupes": "find . -path ./node_modules -prune -o -name '* [0-9].ts' -type f -print -delete 2>/dev/null; true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.119.0",

@@ -94,6 +94,26 @@ export const es: Dictionary = {
     browseCatalog: "Ver el catálogo",
   },
 
+    fitment: {
+      heading: "Detalle de la pieza",
+      oemNumber: "Referencia OEM",
+      construction: "Construcción",
+      shell: "Puerta completa",
+      skin: "Solo lámina exterior",
+      material: "Material",
+      steel: "Acero",
+      aluminum: "Aluminio",
+      paintPrep: "Preparación para pintura",
+      bare: "Sin tratamiento",
+      primed: "Con primer",
+      edp: "Con recubrimiento EDP",
+      mirrorHole: "Orificio del espejo",
+      handleHole: "Orificio de la manija",
+      preCut: "Ya cortado",
+      notCut: "Sin cortar",
+      askUs: "Si algo no aparece aquí, llámenos — revisamos la pieza física en el almacén.",
+    },
+
   quote: {
     heading: "Solicitar cotización",
     name: "Nombre",

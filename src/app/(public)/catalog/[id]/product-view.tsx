@@ -1,7 +1,7 @@
 // Shared product-detail implementation, rendered by both /catalog/<id> and
 // /es/catalog/<id>. Same extract-and-wrap pattern as catalog-view.tsx.
 
-import { cache } from "react";
+import { Fragment, cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,6 +16,7 @@ import {
 import { getViewerTier } from "@/lib/customer-auth";
 import { buildProductSchema, jsonLdScript } from "@/lib/structured-data";
 import { relatedPartTypes } from "@/lib/cross-sell";
+import { fitmentRows } from "@/lib/fitment";
 import { PartCard } from "../part-card";
 import { DeliveryChecker } from "@/components/delivery-checker";
 import { alternatesFor, localePath, type Locale } from "@/lib/i18n";
@@ -160,6 +161,7 @@ export async function ProductView({
   // Cross-sell (spec 2B). Restricted to parts that fit this same vehicle and
   // are actually on the shelf — suggesting something the shop can't ship is
   // worse than suggesting nothing.
+  const fitment = fitmentRows(product, locale);
   const orgId = await loadOrgId();
   const relatedTypes = relatedPartTypes(product.partType);
   const related =
@@ -282,6 +284,27 @@ export async function ProductView({
               {product.conditionNotes ? ` — ${product.conditionNotes}` : ""}
             </span>
           </div>
+
+          {/* Fitment detail (spec section 4). Rendered only when something is
+              actually recorded — an unknown field is omitted rather than
+              guessed at, because a wrong "No" causes the very return this is
+              meant to prevent. */}
+          {fitment.length > 0 ? (
+            <div className="flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-4 lg:p-5">
+              <span className={eyebrowClass}>{dict.fitment.heading}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[14px]">
+                {fitment.map((row) => (
+                  <Fragment key={row.label}>
+                    <span className="text-[#9A9A9A]">{row.label}</span>
+                    <span>{row.value}</span>
+                  </Fragment>
+                ))}
+              </div>
+              <p className="font-[family-name:var(--font-barlow)] text-[12.5px] text-[#8A8A8A]">
+                {dict.fitment.askUs}
+              </p>
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-4 lg:p-5">
             <span className={eyebrowClass}>{dict.product.fitsThese}</span>

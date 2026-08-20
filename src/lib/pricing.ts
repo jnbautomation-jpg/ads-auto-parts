@@ -101,6 +101,14 @@ export const PUBLIC_PRODUCT_SELECT = {
   capaCertified: true,
   condition: true,
   conditionNotes: true,
+  // Fitment detail (spec section 4) — safe to expose: it's what stops a shop
+  // ordering the wrong panel.
+  oemPartNumber: true,
+  construction: true,
+  material: true,
+  paintPrep: true,
+  hasMirrorHole: true,
+  hasHandleHole: true,
   photos: true,
   quantity: true,
   reorderPoint: true,

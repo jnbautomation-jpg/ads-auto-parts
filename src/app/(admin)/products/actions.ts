@@ -41,6 +41,22 @@ export async function saveProduct(
   const price = Number(formData.get("price"));
   const retailRaw = String(formData.get("retailPrice") || "").trim();
   const retailPrice = retailRaw === "" ? defaultRetailPrice(price) : Number(retailRaw);
+  // Fitment detail. An empty select means "not recorded", which must be
+  // stored as NULL — not as false, and not as a guess. See src/lib/fitment.ts.
+  const enumOrNull = (key: string) => String(formData.get(key) || "").trim() || null;
+  const triState = (key: string): boolean | null => {
+    const raw = String(formData.get(key) || "");
+    if (raw === "yes") return true;
+    if (raw === "no") return false;
+    return null;
+  };
+  const oemPartNumber = String(formData.get("oemPartNumber") || "").trim().slice(0, 60) || null;
+  const construction = enumOrNull("construction");
+  const material = enumOrNull("material");
+  const paintPrep = enumOrNull("paintPrep");
+  const hasMirrorHole = triState("hasMirrorHole");
+  const hasHandleHole = triState("hasHandleHole");
+
   const capaCertified = formData.get("capaCertified") === "on";
   const isPublic = formData.get("isPublic") === "on";
   const supplierId = String(formData.get("supplierId") || "") || null;
@@ -104,6 +120,12 @@ export async function saveProduct(
     cost,
     price,
     retailPrice,
+    oemPartNumber,
+    construction: construction as never,
+    material: material as never,
+    paintPrep: paintPrep as never,
+    hasMirrorHole,
+    hasHandleHole,
     photos,
     isPublic,
     supplierId,

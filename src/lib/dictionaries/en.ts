@@ -87,6 +87,26 @@ export const en = {
     browseCatalog: "Browse the catalog",
   },
 
+    fitment: {
+      heading: "Part detail",
+      oemNumber: "OEM reference",
+      construction: "Construction",
+      shell: "Full shell",
+      skin: "Skin only",
+      material: "Material",
+      steel: "Steel",
+      aluminum: "Aluminum",
+      paintPrep: "Paint prep",
+      bare: "Bare",
+      primed: "Primed",
+      edp: "EDP coated",
+      mirrorHole: "Mirror hole",
+      handleHole: "Handle hole",
+      preCut: "Pre-cut",
+      notCut: "Not cut",
+      askUs: "Anything not listed here, call us — we'll check the actual part on the shelf.",
+    },
+
   quote: {
     heading: "Request a quote",
     name: "Name",

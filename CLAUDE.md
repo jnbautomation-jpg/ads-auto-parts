@@ -30,7 +30,9 @@ Local development connects to a **separate dev Supabase project** — never prod
 
 Products are identified by **vehicle fit**: make / model / `yearStart`–`yearEnd` + `partType` + `position`.
 
-**There are no manufacturer part numbers in this catalog.** `Product.sku` is an org-generated code (e.g. `ACC-18-DR-L`), unique per org. Fit + part type is the real identity.
+**Part identity is fit + part type, never a manufacturer number.** `Product.sku` is an org-generated code (e.g. `ACC-18-DR-L`), unique per org, and it is what everything keys off.
+
+`Product.oemPartNumber` was added in Aug 2026 for the Phase 2 spec's fitment work. It is an **optional cross-reference** a shop can quote against an insurance estimate — deliberately not unique, nothing keys off it, and it does not change the identity rule above.
 
 `VehicleFit` handles parts fitting multiple vehicles — a shared bumper cover gets a second `VehicleFit` row, not a second `Product`. Search matches across *all* of a product's fits; the primary fit on `Product` is kept in sync by the single-fit admin form.
 
