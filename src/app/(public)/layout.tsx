@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { PATHNAME_HEADER, stripLocale } from "@/lib/i18n";
 import { Oswald, Barlow, Barlow_Condensed } from "next/font/google";
 import { BUSINESS_NAME, SITE_URL } from "@/lib/site";
 import { isChatConfigured } from "@/lib/chat";
@@ -50,18 +52,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   // Rendered only when an API key is configured, so the bubble never appears
   // as a button that does nothing. Mounted in the layout rather than in any
   // page — notably it does not touch the frozen landing page component.
   const chatEnabled = isChatConfigured();
+  const { locale } = stripLocale((await headers()).get(PATHNAME_HEADER) ?? "/");
 
   return (
     <div
       className={`${oswald.variable} ${barlow.variable} ${barlowCondensed.variable} motion-scope min-h-screen bg-[#050505] font-[family-name:var(--font-barlow)] text-white`}
     >
       {children}
-      {chatEnabled ? <ChatWidget /> : null}
+      {chatEnabled ? <ChatWidget locale={locale} /> : null}
     </div>
   );
 }

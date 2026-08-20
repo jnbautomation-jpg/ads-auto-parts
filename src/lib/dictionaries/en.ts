@@ -448,6 +448,24 @@ export const en = {
     returnsLink: "Read the returns & warranty policy",
   },
 
+  // The chat bubble. Only rendered when ANTHROPIC_API_KEY is set; the
+  // assistant's own replies come back in whatever language the customer
+  // writes in (see the Language section of the system prompt in
+  // src/lib/chat.ts), so its chrome has to match the page or the two
+  // disagree before the customer has typed anything.
+  chat: {
+    title: "Parts assistant",
+    subtitle: "Checks live stock · English & Español",
+    greeting: "Hi — I can check what we have in stock for your vehicle. What are you looking for?",
+    checking: "Checking the catalog…",
+    placeholder: "Door for a 2021 RAV4?",
+    send: "Send",
+    open: "Open parts assistant",
+    close: "Close parts assistant",
+    closeChat: "Close chat",
+    failedBefore: "I couldn't reach the shop just now — please call",
+  },
+
   footer: {
     tagline:
       "New aftermarket auto body parts — never used salvage. Dispatched from our Orlando warehouse.",

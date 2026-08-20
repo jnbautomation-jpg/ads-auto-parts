@@ -1,17 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PHONE_DISPLAY } from "@/lib/site";
+import type { Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 
 type Msg = { role: "user" | "assistant"; text: string };
 
-const GREETING =
-  "Hi — I can check what we have in stock for your vehicle. What are you looking for?";
-
 // The bottom-right assistant. Rendered only when the server says a key is
 // configured, so it never appears as a button that does nothing.
-export function ChatWidget() {
+//
+// The assistant answers in whatever language it is written to (see the
+// Language section of the prompt in src/lib/chat.ts). Its chrome has to match
+// the page it sits on, or an English greeting is the first thing a Spanish
+// visitor reads — which invites them to write in English and makes the whole
+// exchange English.
+export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
+  const dict = getDictionary(locale);
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", text: GREETING }]);
+  const [messages, setMessages] = useState<Msg[]>([
+    { role: "assistant", text: dict.chat.greeting },
+  ]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,12 +62,12 @@ export function ChatWidget() {
       const data = (await res.json()) as { reply?: string; error?: string };
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: data.reply ?? data.error ?? "Something went wrong." },
+        { role: "assistant", text: data.reply ?? data.error ?? dict.errors.generic },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: "I couldn't reach the shop just now — please call (407) 743-4644." },
+        { role: "assistant", text: `${dict.chat.failedBefore} ${PHONE_DISPLAY}.` },
       ]);
     } finally {
       setPending(false);
@@ -70,22 +79,22 @@ export function ChatWidget() {
       {open ? (
         <div
           role="dialog"
-          aria-label="Parts assistant"
+          aria-label={dict.chat.title}
           className="fixed bottom-[84px] right-4 z-50 flex h-[min(520px,70vh)] w-[min(380px,calc(100vw-2rem))] flex-col border border-white/12 bg-[#111] shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
         >
           <div className="flex items-center justify-between border-b border-white/10 bg-[#1A1A1A] px-4 py-3">
             <div className="flex flex-col">
               <span className="font-[family-name:var(--font-oswald)] text-[14px] font-semibold tracking-[0.06em] text-white">
-                Parts assistant
+                {dict.chat.title}
               </span>
               <span className="font-[family-name:var(--font-barlow)] text-[11px] text-[#8A8A8A]">
-                Checks live stock · English &amp; Español
+                {dict.chat.subtitle}
               </span>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close chat"
+              aria-label={dict.chat.closeChat}
               className="p-1 text-[20px] leading-none text-[#8A8A8A] transition-colors hover:text-white"
             >
               ×
@@ -109,14 +118,14 @@ export function ChatWidget() {
             ))}
             {pending ? (
               <div className="self-start border border-white/10 bg-[#1A1A1A] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] text-[#8A8A8A]">
-                Checking the catalog…
+                {dict.chat.checking}
               </div>
             ) : null}
           </div>
 
           <form onSubmit={send} className="flex gap-2 border-t border-white/10 p-3">
             <label htmlFor="chat-input" className="sr-only">
-              Message
+              {dict.quote.messageLabel}
             </label>
             <input
               id="chat-input"
@@ -124,7 +133,7 @@ export function ChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               maxLength={1000}
-              placeholder="Door for a 2021 RAV4?"
+              placeholder={dict.chat.placeholder}
               className="min-h-[44px] flex-1 border border-white/12 bg-[#0A0A0A] px-3 font-[family-name:var(--font-barlow)] text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none"
             />
             <button
@@ -132,7 +141,7 @@ export function ChatWidget() {
               disabled={pending || !input.trim()}
               className="min-h-[44px] shrink-0 bg-[#E31E24] px-4 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-white transition-colors hover:bg-[#ff3a40] disabled:opacity-40"
             >
-              Send
+              {dict.chat.send}
             </button>
           </form>
         </div>
@@ -142,7 +151,7 @@ export function ChatWidget() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label={open ? "Close parts assistant" : "Open parts assistant"}
+        aria-label={open ? dict.chat.close : dict.chat.open}
         className="fixed bottom-5 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#E31E24] text-white shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform hover:scale-105 active:scale-95"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">

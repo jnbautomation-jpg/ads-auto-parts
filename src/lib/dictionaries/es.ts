@@ -449,6 +449,19 @@ export const es: Dictionary = {
     returnsLink: "Lea la política de devoluciones y garantía",
   },
 
+  chat: {
+    title: "Asistente de piezas",
+    subtitle: "Consulta existencias en vivo · Español e inglés",
+    greeting: "Hola — puedo revisar qué tenemos en existencia para su vehículo. ¿Qué necesita?",
+    checking: "Revisando el catálogo…",
+    placeholder: "¿Puerta para un RAV4 2021?",
+    send: "Enviar",
+    open: "Abrir el asistente de piezas",
+    close: "Cerrar el asistente de piezas",
+    closeChat: "Cerrar el chat",
+    failedBefore: "No pude comunicarme con el taller ahora mismo — por favor llame al",
+  },
+
   footer: {
     tagline:
       "Piezas de carrocería nuevas alternativas — nunca usadas ni de deshuesadero. Salen de nuestro almacén en Orlando.",
