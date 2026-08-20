@@ -1,5 +1,11 @@
 @AGENTS.md
 
+> **Picking up work on this project? Read [`CHANGELOG.md`](CHANGELOG.md) first.**
+> It records exactly where Phase 2 left off, what is blocked and on whom, and the
+> design decisions that must not be undone. It is kept current — trust it over
+> assumptions about the code.
+
+
 # ADS Auto Parts
 
 Inventory + public catalog for an Orlando auto body parts dealer.
