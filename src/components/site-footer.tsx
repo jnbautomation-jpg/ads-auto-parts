@@ -14,6 +14,7 @@ import {
   PHONE_HREF,
 } from "@/lib/site";
 import { BrandLogo } from "@/components/brand-logo";
+import { SERVICE_LOCATIONS } from "@/lib/locations";
 
 // One footer for every public page. The catalog and product pages previously
 // had none at all — no address, no hours, no way back into the catalog — which
@@ -110,6 +111,17 @@ export async function SiteFooter() {
               ))}
             </nav>
           ) : null}
+
+          {/* Local landing pages. Linked from every page so crawlers actually
+              reach them — an orphaned landing page earns nothing. */}
+          <nav className="flex flex-col gap-3">
+            <h2 className={headingClass}>Areas we deliver</h2>
+            {SERVICE_LOCATIONS.map((l) => (
+              <Link key={l.slug} href={`/parts/${l.slug}`} className={linkClass}>
+                <span>{l.name}</span>
+              </Link>
+            ))}
+          </nav>
 
           {/* Name / address / phone. Kept byte-identical to the Google Business
               listing — local search matches on the exact string. */}

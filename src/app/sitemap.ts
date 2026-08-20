@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { ORG_SLUG, SITE_URL } from "@/lib/site";
+import { SERVICE_LOCATIONS } from "@/lib/locations";
 
 // Rendered on demand rather than at build time. A sitemap route that queried
 // the database during the build would make `next build` require a live
@@ -15,6 +16,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/catalog`, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE_URL}/vin`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/returns`, changeFrequency: "yearly", priority: 0.4 },
+    // Local landing pages, both languages — the whole point is that search
+    // engines find them.
+    ...SERVICE_LOCATIONS.flatMap((l) => [
+      { url: `${SITE_URL}/parts/${l.slug}`, changeFrequency: "monthly" as const, priority: 0.6 },
+      { url: `${SITE_URL}/es/parts/${l.slug}`, changeFrequency: "monthly" as const, priority: 0.6 },
+    ]),
   ];
 
   const organization = await prisma.organization.findUnique({
