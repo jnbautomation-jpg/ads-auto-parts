@@ -6,6 +6,8 @@ import { requireCustomerContext, getViewerTier } from "@/lib/customer-auth";
 import { canSeeWholesale } from "@/lib/pricing";
 import { buildReorderPlan, type CurrentProduct } from "@/lib/reorder";
 import { createOrder } from "@/lib/orders";
+import { isLocale, localePath } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 
 export type ReorderState = { error?: string };
 
@@ -70,16 +72,19 @@ export async function confirmReorder(
 ): Promise<ReorderState> {
   const { account } = await requireCustomerContext();
   const orderId = String(formData.get("orderId") || "");
+  const rawLocale = String(formData.get("locale") || "");
+  const locale = isLocale(rawLocale) ? rawLocale : "en";
+  const t = getDictionary(locale);
 
   const loaded = await loadReorderPlan(orderId);
-  if (!loaded) return { error: "We couldn't find that order." };
+  if (!loaded) return { error: t.accountErrors.orderNotFound };
 
   // Re-derived here rather than trusted from the form: the review screen may
   // have been open for a while, and stock moves. createOrder() locks rows and
   // rejects anything short, so this is belt and braces rather than the only
   // guard.
   const { plan, order } = loaded;
-  if (plan.empty) return { error: "None of those parts are available right now." };
+  if (plan.empty) return { error: t.accountErrors.nothingAvailable };
 
   const tier = await getViewerTier();
 
@@ -98,5 +103,5 @@ export async function confirmReorder(
 
   if (!result.ok) return { error: result.error };
 
-  redirect(`/account/orders?placed=${result.orderNumber}`);
+  redirect(`${localePath(locale, "/account/orders")}?placed=${result.orderNumber}`);
 }

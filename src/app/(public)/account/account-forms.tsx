@@ -7,6 +7,8 @@ import {
   type AccountFormState,
 } from "./actions";
 import { primaryButtonClass, secondaryButtonClass } from "@/lib/public-ui";
+import type { Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 
 const fieldClass =
   "min-h-[48px] w-full border border-white/12 bg-[#111] px-3.5 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none";
@@ -34,7 +36,14 @@ function Message({ state }: { state: AccountFormState }) {
 // Kept deliberately short — two fields. The spec warns that shops abandon
 // long wholesale signup forms, and staff can collect anything else when they
 // call to approve.
-export function WholesaleApplicationForm({ defaultPhone }: { defaultPhone: string }) {
+export function WholesaleApplicationForm({
+  defaultPhone,
+  locale = "en",
+}: {
+  defaultPhone: string;
+  locale?: Locale;
+}) {
+  const a = getDictionary(locale).account;
   const [state, formAction, pending] = useActionState<AccountFormState, FormData>(
     applyForWholesale,
     {},
@@ -43,15 +52,16 @@ export function WholesaleApplicationForm({ defaultPhone }: { defaultPhone: strin
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="locale" value={locale} />
       <div className="flex flex-col gap-1.5">
         <label htmlFor={`${uid}-company`} className={labelClass}>
-          Shop / business name
+          {a.shopName}
         </label>
         <input id={`${uid}-company`} name="companyName" required className={fieldClass} />
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor={`${uid}-phone`} className={labelClass}>
-          Best phone number
+          {a.bestPhone}
         </label>
         <input
           id={`${uid}-phone`}
@@ -63,39 +73,41 @@ export function WholesaleApplicationForm({ defaultPhone }: { defaultPhone: strin
         />
       </div>
       <button type="submit" disabled={pending} className={`${primaryButtonClass} disabled:opacity-60`}>
-        {pending ? "Sending…" : "Apply for trade pricing"}
+        {pending ? a.sending : a.applyButton}
       </button>
       <Message state={state} />
     </form>
   );
 }
 
-export function SaveVehicleForm() {
+export function SaveVehicleForm({ locale = "en" }: { locale?: Locale } = {}) {
+  const a = getDictionary(locale).account;
   const [state, formAction, pending] = useActionState<AccountFormState, FormData>(saveVehicle, {});
   const uid = useId();
 
   return (
     <form action={formAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <input type="hidden" name="locale" value={locale} />
       <div className="flex flex-1 flex-col gap-1.5">
         <label htmlFor={`${uid}-year`} className={labelClass}>
-          Year
+          {a.year}
         </label>
         <input id={`${uid}-year`} name="year" type="number" required className={fieldClass} />
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
         <label htmlFor={`${uid}-make`} className={labelClass}>
-          Make
+          {a.make}
         </label>
         <input id={`${uid}-make`} name="make" required className={fieldClass} />
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
         <label htmlFor={`${uid}-model`} className={labelClass}>
-          Model
+          {a.model}
         </label>
         <input id={`${uid}-model`} name="model" required className={fieldClass} />
       </div>
       <button type="submit" disabled={pending} className={`${secondaryButtonClass} disabled:opacity-60`}>
-        {pending ? "Saving…" : "Save"}
+        {pending ? a.saving : a.save}
       </button>
       <div className="sm:hidden">
         <Message state={state} />

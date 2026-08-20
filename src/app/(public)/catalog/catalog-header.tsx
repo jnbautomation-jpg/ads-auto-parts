@@ -49,7 +49,7 @@ export async function CatalogHeader({
         </Link>
 
         <Link
-          href={signedIn ? "/account" : "/account/sign-in"}
+          href={localePath(locale, signedIn ? "/account" : "/account/sign-in")}
           className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
         >
           {signedIn ? dict.nav.myAccount : dict.nav.signIn}

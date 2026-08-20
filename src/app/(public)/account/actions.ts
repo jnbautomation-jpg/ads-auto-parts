@@ -7,8 +7,21 @@ import { createClient } from "@/lib/supabase/server";
 import { getCustomerContext, getOrganizationId, requireCustomerContext } from "@/lib/customer-auth";
 import { canonicalMake, canonicalModel } from "@/lib/normalize";
 import { HONEYPOT_NAME, normalizePhone } from "@/lib/inquiry";
+import { isLocale, localePath, type Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 
 export type AccountFormState = { error?: string; notice?: string };
+
+/**
+ * Which language to answer in. Forms post a hidden `locale`, because a server
+ * action has no other way to know which version of the site the customer is
+ * on — and the spec is explicit that error messages must be translated, not
+ * just marketing copy.
+ */
+function localeOf(formData: FormData): Locale {
+  const raw = String(formData.get("locale") || "");
+  return isLocale(raw) ? raw : "en";
+}
 
 // Supabase's own minimum is 6; 8 is the shop's floor for a customer account
 // that will eventually hold order history.
@@ -24,10 +37,13 @@ export async function signUpCustomer(
   _prev: AccountFormState,
   formData: FormData,
 ): Promise<AccountFormState> {
+  const locale = localeOf(formData);
+  const t = getDictionary(locale);
+
   // Same honeypot as the quote form — this endpoint creates accounts, so it
   // is a bot target.
   if (String(formData.get(HONEYPOT_NAME) || "").trim() !== "") {
-    return { notice: "Check your email to confirm your account." };
+    return { notice: t.accountErrors.confirmEmail };
   }
 
   const email = String(formData.get("email") || "").trim().toLowerCase();
@@ -35,19 +51,19 @@ export async function signUpCustomer(
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
 
-  if (!email || !password) return { error: "Enter an email address and a password." };
+  if (!email || !password) return { error: t.accountErrors.emailAndPassword };
   if (tooLong(email, MAX.email) || tooLong(password, MAX.password) || tooLong(name, MAX.name)) {
-    return { error: "That's longer than we can accept — please shorten it." };
+    return { error: t.accountErrors.tooLong };
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Use at least ${MIN_PASSWORD_LENGTH} characters for your password.` };
+    return { error: t.accountErrors.passwordTooShort };
   }
   if (phone && normalizePhone(phone).length < 7) {
-    return { error: "That phone number doesn't look right." };
+    return { error: t.accountErrors.phoneInvalid };
   }
 
   const organizationId = await getOrganizationId();
-  if (!organizationId) return { error: "Something went wrong on our end — please call us instead." };
+  if (!organizationId) return { error: t.accountErrors.serverProblem };
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
@@ -56,9 +72,9 @@ export async function signUpCustomer(
     // Deliberately vague. A precise "that email is already registered"
     // turns this form into a way to test which of your customers have
     // accounts.
-    return { error: "We couldn't create that account. Try signing in instead." };
+    return { error: t.accountErrors.createFailed };
   }
-  if (!data.user) return { error: "We couldn't create that account. Please try again." };
+  if (!data.user) return { error: t.accountErrors.createFailed };
 
   // The Supabase auth user is the identity; this row is the shop's record of
   // them. Everyone starts RETAIL — wholesale is only ever granted by a staff
@@ -78,23 +94,26 @@ export async function signUpCustomer(
   // With email confirmation enabled in Supabase there is no session yet, so
   // don't pretend they're signed in.
   if (!data.session) {
-    return { notice: "Account created — check your email to confirm it, then sign in." };
+    return { notice: t.accountErrors.confirmEmail };
   }
 
-  redirect("/account");
+  redirect(localePath(locale, "/account"));
 }
 
 export async function signInCustomer(
   _prev: AccountFormState,
   formData: FormData,
 ): Promise<AccountFormState> {
+  const locale = localeOf(formData);
+  const t = getDictionary(locale);
+
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  if (!email || !password) return { error: "Enter your email and password." };
+  if (!email || !password) return { error: t.accountErrors.emailOrPassword };
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error || !data.user) return { error: "Invalid email or password." };
+  if (error || !data.user) return { error: t.accountErrors.invalidCredentials };
 
   // A staff member signing in here would have no customer account. Send them
   // to their own area rather than leaving them on a page that says they have
@@ -114,7 +133,7 @@ export async function signInCustomer(
     });
   }
 
-  redirect("/account");
+  redirect(localePath(locale, "/account"));
 }
 
 export async function signOutCustomer() {
@@ -127,22 +146,25 @@ export async function applyForWholesale(
   _prev: AccountFormState,
   formData: FormData,
 ): Promise<AccountFormState> {
+  const locale = localeOf(formData);
+  const t = getDictionary(locale);
+
   const { account } = await requireCustomerContext();
 
   const companyName = String(formData.get("companyName") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
 
-  if (!companyName) return { error: "Enter your shop or business name." };
-  if (tooLong(companyName, MAX.company)) return { error: "That business name is too long." };
+  if (!companyName) return { error: t.accountErrors.shopNameRequired };
+  if (tooLong(companyName, MAX.company)) return { error: t.accountErrors.shopNameTooLong };
   if (!phone || normalizePhone(phone).length < 7) {
-    return { error: "Enter a phone number we can reach you on." };
+    return { error: t.accountErrors.phoneInvalid };
   }
 
   if (account.wholesaleStatus === "PENDING") {
-    return { notice: "Your application is already with us — we'll be in touch." };
+    return { notice: t.accountErrors.alreadyApplied };
   }
   if (account.tier === "WHOLESALE") {
-    return { notice: "You already have a trade account." };
+    return { notice: t.accountErrors.alreadyTrade };
   }
 
   await prisma.customerAccount.update({
@@ -160,13 +182,16 @@ export async function applyForWholesale(
   });
 
   revalidatePath("/account");
-  return { notice: "Application received — we'll review it and get back to you." };
+  return { notice: t.accountErrors.applicationSent };
 }
 
 export async function saveVehicle(
   _prev: AccountFormState,
   formData: FormData,
 ): Promise<AccountFormState> {
+  const locale = localeOf(formData);
+  const t = getDictionary(locale);
+
   const { account } = await requireCustomerContext();
 
   // Normalized with the same rules as the catalog, so a saved vehicle
@@ -175,9 +200,9 @@ export async function saveVehicle(
   const model = canonicalModel(String(formData.get("model") || ""));
   const year = Number(formData.get("year"));
 
-  if (!make || !model) return { error: "Enter a make and model." };
+  if (!make || !model) return { error: t.accountErrors.vehicleRequired };
   if (!Number.isInteger(year) || year < 1980 || year > new Date().getFullYear() + 2) {
-    return { error: "Enter a valid year." };
+    return { error: t.accountErrors.yearInvalid };
   }
 
   try {
@@ -187,11 +212,11 @@ export async function saveVehicle(
   } catch {
     // Unique constraint on (account, make, model, year) — saving the same
     // vehicle twice is a no-op, not an error worth showing.
-    return { notice: "That vehicle is already saved." };
+    return { notice: t.accountErrors.vehicleDuplicate };
   }
 
   revalidatePath("/account");
-  return { notice: "Vehicle saved." };
+  return { notice: t.accountErrors.vehicleSaved };
 }
 
 export async function deleteVehicle(formData: FormData) {
