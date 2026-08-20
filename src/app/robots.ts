@@ -9,6 +9,7 @@ import { SITE_URL } from "@/lib/site";
 const PRIVATE_PATHS = [
   "/dashboard",
   "/products",
+  "/stock",
   "/suppliers",
   "/import",
   "/inquiries",

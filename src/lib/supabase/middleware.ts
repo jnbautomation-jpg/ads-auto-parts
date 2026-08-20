@@ -20,6 +20,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export const PRIVATE_PREFIXES = [
   "/dashboard",
   "/products",
+  "/stock",
   "/suppliers",
   "/import",
   "/inquiries",

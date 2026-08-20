@@ -44,6 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const NAV = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/products", label: "Products" },
+    { href: "/stock", label: "Stock check" },
     { href: "/suppliers", label: "Suppliers" },
     ...(canEditCatalog(user.role) ? [{ href: "/import", label: "Import" }] : []),
     { href: "/orders", label: "Orders", badge: newOrders },

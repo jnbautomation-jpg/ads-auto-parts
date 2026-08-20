@@ -529,6 +529,11 @@ model Product {
   hasMirrorHole Boolean?
   hasHandleHole Boolean?
 
+  // When someone last physically counted this part. Null means never — which
+  // for an imported catalog is most of it, and is exactly the staleness the
+  // spec warns undermines trust once checkout is live.
+  lastCountedAt DateTime?
+
   photos String[]
 
   isPublic Boolean @default(false)
@@ -592,6 +597,9 @@ model VehicleFit {
 enum StockMovementType {
   IN
   OUT
+  // Also what a physical shelf count records — logged even when the count
+  // matches, so "someone verified this" is an auditable event rather than an
+  // absence of movement. See src/lib/stock-audit.ts.
   ADJUSTMENT
 }
 
