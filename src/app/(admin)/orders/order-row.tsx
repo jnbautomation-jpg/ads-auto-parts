@@ -127,6 +127,16 @@ export function OrderRow({
               </form>
             ))}
 
+            {/* Spec 2B: label PDF from order data, replacing manual entry. */}
+            <a
+              href={`/orders/${order.id}/label`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center border border-black/20 px-3 font-[family-name:var(--font-oswald)] text-[11px] font-semibold tracking-[0.12em] text-black transition-colors hover:bg-[#f2f2f2]"
+            >
+              PRINT LABEL
+            </a>
+
             {canEditPayment && order.paymentStatus !== "PAID" ? (
               <form action={updatePaymentStatus}>
                 <input type="hidden" name="id" value={order.id} />
