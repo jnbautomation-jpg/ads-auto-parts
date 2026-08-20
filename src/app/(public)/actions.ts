@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 // so nothing about the org is exposed to the browser.
 import { ORG_SLUG } from "@/lib/site";
 import { HONEYPOT_NAME, normalizePhone, validateQuoteInput } from "@/lib/inquiry";
+import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
 
 export type QuoteFormState = { success?: boolean; error?: string };
 
@@ -27,6 +29,13 @@ export async function submitQuoteRequest(
     return { success: true };
   }
 
+  // The form says which language to answer in; anything unexpected falls back
+  // to English rather than throwing, so a tampered field cannot stop a lead
+  // from being filed.
+  const submittedLocale = String(formData.get("locale") || "");
+  const locale = isLocale(submittedLocale) ? submittedLocale : DEFAULT_LOCALE;
+  const dict = getDictionary(locale);
+
   const validation = validateQuoteInput({
     name: String(formData.get("name") || ""),
     phone: String(formData.get("phone") || ""),
@@ -34,7 +43,7 @@ export async function submitQuoteRequest(
     vehicle: String(formData.get("vehicle") || ""),
     partNeeded: String(formData.get("partNeeded") || ""),
     notes: String(formData.get("notes") || ""),
-  });
+  }, locale);
   if (!validation.ok) return { error: validation.error };
 
   const { name, phone, email, vehicle, partNeeded, notes } = validation.value;
@@ -42,7 +51,7 @@ export async function submitQuoteRequest(
 
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) {
-    return { error: "Something went wrong on our end — please call or text us instead." };
+    return { error: dict.errors.generic };
   }
 
   // Rate limit per phone number. Recent inquiries are fetched and compared on
@@ -58,9 +67,7 @@ export async function submitQuoteRequest(
   const digits = normalizePhone(phone);
   const fromSamePhone = recent.filter((r) => normalizePhone(r.phone ?? "") === digits).length;
   if (fromSamePhone >= RATE_LIMIT_MAX) {
-    return {
-      error: "We've already got your request — give us a call if it's urgent.",
-    };
+    return { error: dict.errors.alreadyGotRequest };
   }
 
   // Never trust a client-supplied productId directly — re-check it's a real,
@@ -74,6 +81,10 @@ export async function submitQuoteRequest(
     productId = product?.id ?? null;
   }
 
+  // These two prefixes stay English in both languages on purpose:
+  // parseQuoteMessage() reads them back out for the admin inquiries table, and
+  // the staff screens are English. Translating them here would make a Spanish
+  // lead show "—" for vehicle and part.
   const message =
     [vehicle ? `Vehicle: ${vehicle}` : null, partNeeded ? `Part needed: ${partNeeded}` : null, notes]
       .filter(Boolean)

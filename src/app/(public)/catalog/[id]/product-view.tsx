@@ -344,7 +344,7 @@ export async function ProductView({
           </div>
 
           <div id="quote">
-            <ProductQuoteForm productId={product.id} />
+            <ProductQuoteForm productId={product.id} locale={locale} />
           </div>
         </div>
       </div>

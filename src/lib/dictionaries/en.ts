@@ -213,9 +213,22 @@ export const en = {
     vehicle: "Vehicle (year, make, model)",
     partNeeded: "Part needed",
     notes: "Anything else? (paint code, side, photos to follow…)",
+    notesLabel: "Anything else?",
+    messageLabel: "Message",
+    message: "Message — vehicle, part, color, timing…",
     send: "Send request",
     sending: "Sending…",
     success: "Request sent — we'll get back to you fast.",
+    // Named in the "that <field> is too long" message below. Lower case
+    // because they appear mid-sentence.
+    fields: {
+      name: "name",
+      phone: "phone number",
+      email: "email address",
+      vehicle: "vehicle",
+      partNeeded: "part",
+      notes: "message",
+    },
   },
 
   vin: {
@@ -250,7 +263,11 @@ export const en = {
     nameAndPhoneRequired: "Name and phone are required.",
     phoneInvalid: "Please enter a phone number we can reach you on.",
     emailInvalid: "That email address doesn't look right.",
-    tooLong: "That's longer than we can accept — please shorten it.",
+    // Wraps a quote.fields label: "That phone number is too long — please
+    // shorten it." Split rather than interpolated because the two languages
+    // put the field name in different places.
+    tooLongBefore: "That ",
+    tooLongAfter: " is too long — please shorten it.",
     alreadyGotRequest: "We've already got your request — give us a call if it's urgent.",
     vinLength: "A VIN is 17 characters",
     vinAlphabet: "That VIN contains a letter VINs never use (I, O or Q). Check for a 1 or 0.",

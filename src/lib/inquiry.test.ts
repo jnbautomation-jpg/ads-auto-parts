@@ -6,6 +6,8 @@ import {
   parseQuoteMessage,
   validateQuoteInput,
 } from "./inquiry";
+import { en } from "./dictionaries/en";
+import { es } from "./dictionaries/es";
 
 const VALID = {
   name: "Jane Doe",
@@ -56,6 +58,37 @@ describe("validateQuoteInput", () => {
       const result = validateQuoteInput({ ...VALID, [field]: "x".repeat(limit + 1) });
       expect(result.ok, `${field} over limit should be rejected`).toBe(false);
     }
+  });
+
+  it("rejects in the language the form was submitted in", () => {
+    // The quote form is the Spanish site's main conversion point. An English
+    // rejection under a Spanish form reads as a broken page, and the customer
+    // calls a competitor instead of retyping.
+    expect(validateQuoteInput({ phone: "4077434644" }, "es")).toMatchObject({
+      ok: false,
+      error: es.errors.nameAndPhoneRequired,
+    });
+    expect(validateQuoteInput({ ...VALID, phone: "1" }, "es")).toMatchObject({
+      error: es.errors.phoneInvalid,
+    });
+    expect(validateQuoteInput({ ...VALID, email: "nope" }, "es")).toMatchObject({
+      error: es.errors.emailInvalid,
+    });
+  });
+
+  it("defaults to English, so callers that pass no locale are unchanged", () => {
+    expect(validateQuoteInput({ phone: "4077434644" })).toMatchObject({
+      error: en.errors.nameAndPhoneRequired,
+    });
+  });
+
+  it("names the offending field in the over-length message, in both languages", () => {
+    const tooLong = { ...VALID, phone: "1".repeat(QUOTE_LIMITS.phone + 1) };
+    const english = validateQuoteInput(tooLong);
+    const spanish = validateQuoteInput(tooLong, "es");
+    expect(english.ok).toBe(false);
+    if (!english.ok) expect(english.error).toBe("That phone number is too long — please shorten it.");
+    if (!spanish.ok) expect(spanish.error).toContain(es.quote.fields.phone);
   });
 
   it("accepts input exactly at each limit", () => {

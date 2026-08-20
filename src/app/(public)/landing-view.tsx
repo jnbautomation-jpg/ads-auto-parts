@@ -675,7 +675,7 @@ function ContactSection({ locale }: { locale: Locale }) {
             </div>
           </Reveal>
           <Reveal>
-            <QuoteForm />
+            <QuoteForm locale={locale} />
           </Reveal>
         </div>
       </div>

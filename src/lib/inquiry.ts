@@ -1,3 +1,6 @@
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
+
 // The public quote form (src/app/(public)/actions.ts) writes vehicle/part
 // into Inquiry.message as "Vehicle: ...\nPart needed: ...\n\n<notes>" since
 // the schema doesn't have dedicated columns for them. Pull them back out for
@@ -65,7 +68,14 @@ export type QuoteValidation =
   | { ok: true; value: QuoteInput }
   | { ok: false; error: string };
 
-export function validateQuoteInput(raw: Partial<Record<keyof QuoteInput, string>>): QuoteValidation {
+export function validateQuoteInput(
+  raw: Partial<Record<keyof QuoteInput, string>>,
+  // The form that submitted decides what language the rejection comes back
+  // in. Defaults to English so every existing caller is unchanged, and the
+  // English wording is identical to what it was before.
+  locale: Locale = DEFAULT_LOCALE,
+): QuoteValidation {
+  const dict = getDictionary(locale);
   const value: QuoteInput = {
     name: (raw.name ?? "").trim(),
     phone: (raw.phone ?? "").trim(),
@@ -76,36 +86,30 @@ export function validateQuoteInput(raw: Partial<Record<keyof QuoteInput, string>
   };
 
   if (!value.name || !value.phone) {
-    return { ok: false, error: "Name and phone are required." };
+    return { ok: false, error: dict.errors.nameAndPhoneRequired };
   }
 
   // Over-length input is rejected rather than silently truncated — a real
   // customer deserves to know their message did not go through intact.
   for (const [field, limit] of Object.entries(QUOTE_LIMITS) as [keyof QuoteInput, number][]) {
     if (value[field].length > limit) {
-      return { ok: false, error: `That ${FIELD_LABEL[field]} is too long — please shorten it.` };
+      return {
+        ok: false,
+        error: `${dict.errors.tooLongBefore}${dict.quote.fields[field]}${dict.errors.tooLongAfter}`,
+      };
     }
   }
 
   if (normalizePhone(value.phone).length < MIN_PHONE_DIGITS) {
-    return { ok: false, error: "Please enter a phone number we can reach you on." };
+    return { ok: false, error: dict.errors.phoneInvalid };
   }
 
   if (value.email && !EMAIL_RE.test(value.email)) {
-    return { ok: false, error: "That email address doesn't look right." };
+    return { ok: false, error: dict.errors.emailInvalid };
   }
 
   return { ok: true, value };
 }
-
-const FIELD_LABEL: Record<keyof QuoteInput, string> = {
-  name: "name",
-  phone: "phone number",
-  email: "email address",
-  vehicle: "vehicle",
-  partNeeded: "part",
-  notes: "message",
-};
 
 export function formatReceivedDate(date: Date): string {
   const now = new Date();

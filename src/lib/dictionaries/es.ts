@@ -223,9 +223,20 @@ export const es: Dictionary = {
     vehicle: "Vehículo (año, marca, modelo)",
     partNeeded: "Pieza que necesita",
     notes: "¿Algo más? (código de pintura, lado, fotos por enviar…)",
+    notesLabel: "¿Algo más?",
+    messageLabel: "Mensaje",
+    message: "Mensaje — vehículo, pieza, color, cuándo la necesita…",
     send: "Enviar solicitud",
     sending: "Enviando…",
     success: "Solicitud enviada — le respondemos pronto.",
+    fields: {
+      name: "nombre",
+      phone: "número de teléfono",
+      email: "correo electrónico",
+      vehicle: "vehículo",
+      partNeeded: "pieza",
+      notes: "mensaje",
+    },
   },
 
   vin: {
@@ -259,7 +270,11 @@ export const es: Dictionary = {
     nameAndPhoneRequired: "El nombre y el teléfono son obligatorios.",
     phoneInvalid: "Escriba un número de teléfono donde podamos localizarlo.",
     emailInvalid: "Ese correo electrónico no parece correcto.",
-    tooLong: "Eso es más largo de lo que podemos aceptar — por favor acórtelo.",
+    // "El campo <label>" rather than "Ese <label>": the field names are not
+    // all the same gender, so a leading demonstrative cannot agree with all
+    // of them.
+    tooLongBefore: "El campo ",
+    tooLongAfter: " es demasiado largo — por favor acórtelo.",
     alreadyGotRequest: "Ya recibimos su solicitud — llámenos si es urgente.",
     vinLength: "Un VIN tiene 17 caracteres",
     vinAlphabet: "Ese VIN tiene una letra que los VIN nunca usan (I, O o Q). Revise si es un 1 o un 0.",
