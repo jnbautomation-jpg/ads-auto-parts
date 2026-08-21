@@ -2,15 +2,38 @@
 // npm install --save-dev prisma dotenv
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
+import { resolveMigrationUrl } from "./src/lib/db-url";
+
+// Migrate needs a non-pooled connection (advisory locks, DDL) — Supabase's
+// SESSION pooler on port 5432, not the PgBouncer transaction pooler the app
+// uses at runtime.
+//
+// This used to read DIRECT_URL straight from the environment. Production had
+// it set to db.<ref>.supabase.co, which is IPv6-only and unreachable from a
+// Vercel build, so the first deploy that ran migrations died on
+// `P1001: Can't reach database server`. Nobody had changed that variable —
+// the build simply never connected to the database until migrate-on-deploy
+// shipped, so a wrong value sat harmless for months and then broke a release.
+//
+// resolveMigrationUrl falls back to deriving the session pooler from
+// DATABASE_URL, which must already be correct or the site could not serve a
+// page. DIRECT_URL still wins whenever it is usable; only the value that
+// cannot work under any circumstances is ignored. See src/lib/db-url.ts.
+const migration = resolveMigrationUrl(process.env);
+
+if (migration.warning) {
+  // Loud on purpose: the deploy now succeeds, so without this the
+  // misconfiguration would be invisible until someone hit a case the fallback
+  // does not cover.
+  console.warn(`[prisma] ${migration.warning}`);
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
-  // Migrate needs a non-pooled connection (advisory locks, DDL) — use Supabase's
-  // direct connection here, not the PgBouncer pooled one the app uses at runtime.
   datasource: {
-    url: process.env["DIRECT_URL"],
+    url: migration.url,
   },
 });
