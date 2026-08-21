@@ -4,11 +4,21 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
+import { localePath, type Locale } from "@/lib/i18n";
+import { LanguageToggle } from "@/components/language-toggle";
+import { getDictionary } from "@/lib/dictionaries";
 
 // Transparent over the hero, solidifies with a blurred dark background once
 // the hero has mostly scrolled past — matches the header treatment in the v2
 // design (hero sits behind the sticky header via a negative margin overlap).
-export function SiteHeader({ heroId }: { heroId: string }) {
+export function SiteHeader({
+  heroId,
+  locale = "en",
+}: {
+  heroId: string;
+  locale?: Locale;
+}) {
+  const dict = getDictionary(locale);
   const [solid, setSolid] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
 
@@ -36,24 +46,27 @@ export function SiteHeader({ heroId }: { heroId: string }) {
         solid ? "border-b border-[#E31E24]/45 bg-[#080808]/97" : "border-b border-white/0 bg-transparent"
       }`}
     >
-      <Link href="/">
+      <Link href={localePath(locale, "/")}>
         <BrandLogo size="md" />
       </Link>
       <div className="hidden items-center gap-9 lg:flex">
         <nav className="flex gap-[30px] font-[family-name:var(--font-barlow)] text-[13px] font-semibold tracking-[0.14em]">
           <a href="#parts" className="text-[#ccc] transition-colors hover:text-white">
-            PARTS
+            {dict.landing.nav.parts}
           </a>
           <a href="#why" className="text-[#ccc] transition-colors hover:text-white">
-            WHY ADS
+            {dict.landing.nav.why}
           </a>
           <a href="#delivery" className="text-[#ccc] transition-colors hover:text-white">
-            DELIVERY
+            {dict.landing.nav.delivery}
           </a>
           <a href="#contact" className="text-[#ccc] transition-colors hover:text-white">
-            CONTACT
+            {dict.landing.nav.contact}
           </a>
         </nav>
+        {/* Spanish speakers need a visible way in — the landing page is where
+            most of them arrive. */}
+        <LanguageToggle locale={locale} path="/" />
         <a
           href={`tel:${PHONE_HREF}`}
           className="rounded-none bg-[#E31E24] px-6 py-3 font-[family-name:var(--font-oswald)] text-[14px] font-bold tracking-[0.12em] text-white transition-colors hover:bg-[#ff3a40] active:scale-[0.97]"

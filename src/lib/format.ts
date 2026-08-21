@@ -1,3 +1,6 @@
+import type { Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
+
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -95,3 +98,60 @@ export const PART_SLUG_TO_TYPES: Record<string, string[]> = {
   "radiator-support": ["RADIATOR_SUPPORT"],
   "reinforcement-bars": ["REINFORCEMENT_BAR"],
 };
+
+// --- Locale-aware variants (Phase 2A spec step 10) -------------------------
+//
+// The functions above keep their English behaviour so every existing caller
+// is unchanged. These take a locale and are what the /es routes use.
+//
+// The spec is explicit that part type names and statuses must be translated,
+// not just marketing copy — a Spanish page listing "Quarter Panel" and
+// "IN STOCK" is only half-translated.
+
+export function formatPartTypeIn(partType: string, locale: Locale): string {
+  const dict = getDictionary(locale);
+  return (dict.partType as Record<string, string>)[partType] ?? formatPartType(partType);
+}
+
+export function formatPositionIn(position: string | null | undefined, locale: Locale): string {
+  const dict = getDictionary(locale);
+  if (!position) return dict.position.none;
+  return (dict.position as Record<string, string>)[position] ?? formatPosition(position);
+}
+
+/** Availability label + colour in the given language. Colours never change. */
+export function getAvailabilityIn(
+  quantity: number,
+  reorderPoint: number,
+  locale: Locale,
+): Availability {
+  const dict = getDictionary(locale);
+  const base = getAvailability(quantity, reorderPoint);
+  const key =
+    base.label === "IN STOCK" ? "IN_STOCK" : base.label === "LOW STOCK" ? "LOW_STOCK" : "CALL";
+  return { label: (dict.availability as Record<string, string>)[key], color: base.color };
+}
+
+/**
+ * Money in the given locale. Spanish-speaking customers in Florida are paying
+ * in dollars, so the CURRENCY stays USD — only the number formatting changes.
+ */
+export function formatMoneyIn(value: number | string, locale: Locale): string {
+  return new Intl.NumberFormat(locale === "es" ? "es-US" : "en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Number(value));
+}
+
+/**
+ * Catalog-category label ("Doors", "Puertas") for a URL slug.
+ *
+ * The Spanish names already exist as the landing page's tile names, so this
+ * reads them rather than introducing a second set that could disagree with the
+ * tiles about what a category is called. Falls back to the English label, then
+ * to the slug itself, so an unmapped slug degrades instead of rendering blank.
+ */
+export function formatPartSlugIn(slug: string, locale: Locale): string {
+  const tiles = getDictionary(locale).landing.tiles as Record<string, { name: string } | undefined>;
+  return tiles[slug]?.name ?? PART_SLUG_LABELS[slug] ?? slug;
+}

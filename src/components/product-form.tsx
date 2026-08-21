@@ -7,6 +7,7 @@ import { generateSkuBase } from "@/lib/sku";
 import { formatPartType, formatPosition } from "@/lib/format";
 import { PartType, PartPosition, PartCondition } from "@/generated/prisma/enums";
 import { saveProduct, type ProductFormState } from "@/app/(admin)/products/actions";
+import { RETAIL_MARKUP_USD } from "@/lib/pricing";
 import { buttonPrimaryClass, cardClass, inputClass, labelClass, linkMutedClass, sectionLabelClass } from "@/lib/admin-ui";
 
 const PART_TYPES = Object.values(PartType);
@@ -31,7 +32,18 @@ export type ProductFormValues = {
   quantity: number;
   reorderPoint: number;
   cost: string;
+  // Wholesale (trade accounts). Never shown publicly.
   price: string;
+  // Retail — the only price the public catalog displays.
+  retailPrice: string;
+  // Fitment detail. Empty string = unrecorded, which is NOT the same as "no"
+  // — see src/lib/fitment.ts.
+  oemPartNumber: string;
+  construction: string;
+  material: string;
+  paintPrep: string;
+  hasMirrorHole: string;
+  hasHandleHole: string;
   photos: string[];
   isPublic: boolean;
   supplierId: string;
@@ -56,6 +68,13 @@ const EMPTY_VALUES: ProductFormValues = {
   reorderPoint: 2,
   cost: "0",
   price: "0",
+  retailPrice: "0",
+  oemPartNumber: "",
+  construction: "",
+  material: "",
+  paintPrep: "",
+  hasMirrorHole: "",
+  hasHandleHole: "",
   photos: [],
   isPublic: true,
   supplierId: "",
@@ -297,8 +316,67 @@ export function ProductForm({
             <input type="number" name="cost" min={0} step="0.01" defaultValue={values.cost} className={inputClass} />
           </label>
           <label className={labelClass}>
-            PRICE ($)
+            WHOLESALE ($)
             <input type="number" name="price" min={0} step="0.01" defaultValue={values.price} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            RETAIL ($) — PUBLIC
+            <input
+              type="number"
+              name="retailPrice"
+              min={0}
+              step="0.01"
+              defaultValue={values.retailPrice}
+              placeholder={`wholesale + ${RETAIL_MARKUP_USD}`}
+              className={inputClass}
+            />
+          </label>
+          <label className={labelClass}>
+            OEM REFERENCE
+            <input type="text" name="oemPartNumber" defaultValue={values.oemPartNumber} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            CONSTRUCTION
+            <select name="construction" defaultValue={values.construction} className={inputClass}>
+              {/* "Not recorded" is the default and a real answer — leaving it
+                  blank is honest, guessing is what causes returns. */}
+              <option value="">Not recorded</option>
+              <option value="SHELL">Full shell</option>
+              <option value="SKIN">Skin only</option>
+            </select>
+          </label>
+          <label className={labelClass}>
+            MATERIAL
+            <select name="material" defaultValue={values.material} className={inputClass}>
+              <option value="">Not recorded</option>
+              <option value="STEEL">Steel</option>
+              <option value="ALUMINUM">Aluminum</option>
+            </select>
+          </label>
+          <label className={labelClass}>
+            PAINT PREP
+            <select name="paintPrep" defaultValue={values.paintPrep} className={inputClass}>
+              <option value="">Not recorded</option>
+              <option value="BARE">Bare</option>
+              <option value="PRIMED">Primed</option>
+              <option value="EDP_COATED">EDP coated</option>
+            </select>
+          </label>
+          <label className={labelClass}>
+            MIRROR HOLE
+            <select name="hasMirrorHole" defaultValue={values.hasMirrorHole} className={inputClass}>
+              <option value="">Not recorded</option>
+              <option value="yes">Pre-cut</option>
+              <option value="no">Not cut</option>
+            </select>
+          </label>
+          <label className={labelClass}>
+            HANDLE HOLE
+            <select name="hasHandleHole" defaultValue={values.hasHandleHole} className={inputClass}>
+              <option value="">Not recorded</option>
+              <option value="yes">Pre-cut</option>
+              <option value="no">Not cut</option>
+            </select>
           </label>
           <label className={labelClass}>
             BIN LOCATION

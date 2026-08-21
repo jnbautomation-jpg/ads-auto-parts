@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { PATHNAME_HEADER, stripLocale } from "@/lib/i18n";
 import { Oswald, Barlow, Barlow_Condensed } from "next/font/google";
+import { BUSINESS_NAME, SITE_URL } from "@/lib/site";
+import { isChatConfigured } from "@/lib/chat";
+import { ChatWidget } from "@/components/chat-widget";
 
 const oswald = Oswald({
   subsets: ["latin"],
@@ -20,10 +25,26 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
+  // Without metadataBase, Next resolves relative OG image paths against
+  // http://localhost:3000 and warns at build time — every shared link would
+  // preview a broken image.
+  metadataBase: new URL(SITE_URL),
   title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
   description:
     "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",
+  alternates: { canonical: "/" },
   openGraph: {
+    type: "website",
+    siteName: BUSINESS_NAME,
+    locale: "en_US",
+    url: SITE_URL,
+    title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
+    description:
+      "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",
+    images: ["/ads-logo.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
     title: "ADS Auto Door Store — New Aftermarket Body Parts | Orlando, FL",
     description:
       "Doors, hoods, fenders, bumpers and more — new, CAPA certified aftermarket auto body parts, delivered same-day across Central Florida.",
@@ -31,12 +52,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
+  // Rendered only when an API key is configured, so the bubble never appears
+  // as a button that does nothing. Mounted in the layout rather than in any
+  // page — notably it does not touch the frozen landing page component.
+  const chatEnabled = isChatConfigured();
+  const { locale } = stripLocale((await headers()).get(PATHNAME_HEADER) ?? "/");
+
   return (
     <div
       className={`${oswald.variable} ${barlow.variable} ${barlowCondensed.variable} motion-scope min-h-screen bg-[#050505] font-[family-name:var(--font-barlow)] text-white`}
     >
       {children}
+      {chatEnabled ? <ChatWidget locale={locale} /> : null}
     </div>
   );
 }

@@ -72,7 +72,7 @@ export default async function ProductsPage({
     capaCertified: p.capaCertified,
     quantity: p.quantity,
     reorderPoint: p.reorderPoint,
-    price: p.price.toString(),
+    retailPrice: p.retailPrice.toString(),
     isPublic: p.isPublic,
   }));
 

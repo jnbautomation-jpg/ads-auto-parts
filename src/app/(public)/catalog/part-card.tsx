@@ -1,7 +1,16 @@
 import Link from "next/link";
-import { formatFit, formatMoney, formatPartType, formatPosition, getAvailability } from "@/lib/format";
 import { getPartTypeImage } from "@/lib/part-images";
 import { badgeClass } from "@/lib/public-ui";
+import { canSeeWholesale, priceForViewer, type ViewerTier } from "@/lib/pricing";
+import { localePath, type Locale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/dictionaries";
+import {
+  formatFit,
+  formatMoneyIn,
+  formatPartTypeIn,
+  formatPositionIn,
+  getAvailabilityIn,
+} from "@/lib/format";
 
 const PHOTO_PLACEHOLDER = {
   backgroundImage: "repeating-linear-gradient(45deg,#1E1E1E 0,#1E1E1E 12px,#232323 12px,#232323 24px)",
@@ -15,7 +24,12 @@ export type PartCardData = {
   yearEnd: number;
   partType: string;
   position: string | null;
-  price: unknown;
+  retailPrice: unknown;
+  // Present ONLY for wholesale and staff viewers — productSelectFor() leaves
+  // it out of the query entirely for guests and retail customers, which is
+  // why it is optional here rather than always fetched and conditionally
+  // rendered.
+  price?: unknown;
   capaCertified: boolean;
   photos: string[];
   // Never the raw number — only ever a label derived from quantity/reorderPoint
@@ -27,17 +41,26 @@ export type PartCardData = {
 // Same card markup serves both the mobile horizontal-list layout (1B) and the
 // desktop vertical-grid layout (1A) — the breakpoint just flips the internal
 // flex direction rather than needing two components.
-export function PartCard({ product }: { product: PartCardData }) {
-  const availability = getAvailability(product.quantity, product.reorderPoint);
+export function PartCard({
+  product,
+  viewerTier,
+  locale = "en",
+}: {
+  product: PartCardData;
+  viewerTier: ViewerTier;
+  locale?: Locale;
+}) {
+  const dict = getDictionary(locale);
+  const availability = getAvailabilityIn(product.quantity, product.reorderPoint, locale);
   const typePos = product.position
-    ? `${formatPartType(product.partType)} — ${formatPosition(product.position)}`
-    : formatPartType(product.partType);
+    ? `${formatPartTypeIn(product.partType, locale)} — ${formatPositionIn(product.position, locale)}`
+    : formatPartTypeIn(product.partType, locale);
   const photo = product.photos[0];
   const defaultImage = getPartTypeImage(product.partType);
 
   return (
     <Link
-      href={`/catalog/${product.id}`}
+      href={localePath(locale, `/catalog/${product.id}`)}
       className="group flex border border-white/10 bg-[#1A1A1A] text-white transition-all duration-150 hover:-translate-y-1 hover:border-[#E31E24] hover:shadow-[0_10px_24px_rgba(0,0,0,0.5)] sm:block sm:hover:-translate-y-1"
     >
       <div
@@ -66,7 +89,14 @@ export function PartCard({ product }: { product: PartCardData }) {
         <span className="text-[12px] text-[#A1A1A1] sm:text-[13px]">{typePos}</span>
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 sm:mt-1.5 sm:border-t sm:border-white/10 sm:pt-3">
           <span className="font-[family-name:var(--font-oswald)] text-[17px] font-semibold sm:text-[20px]">
-            {formatMoney(product.price as never)}
+            {formatMoneyIn(priceForViewer(product, viewerTier) as never, locale)}
+            {canSeeWholesale(viewerTier) ? (
+              // Staff quote trade customers off this page, so the price on
+              // screen has to say which one it is.
+              <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-[0.14em] text-[#E31E24]">
+                {dict.product.tradePrice.toUpperCase()}
+              </span>
+            ) : null}
           </span>
           <span
             className={badgeClass}

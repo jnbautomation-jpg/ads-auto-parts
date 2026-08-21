@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth";
 import { ChangePasswordForm } from "./change-password-form";
 
 export default async function ForcePasswordChangePage() {
@@ -11,7 +12,11 @@ export default async function ForcePasswordChangePage() {
   // Defense in depth — proxy.ts already gates this route the same way, but
   // this page shouldn't render for someone who got here without the flag.
   if (!user) redirect("/login");
-  if (!user.app_metadata?.must_change_password) redirect("/dashboard");
+  // Only staff have this flag, and only staff belong on /dashboard — send
+  // anyone else home instead of into a redirect loop.
+  if (!user.app_metadata?.must_change_password) {
+    redirect((await getAuthContext()) ? "/dashboard" : "/");
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center px-5 py-12">

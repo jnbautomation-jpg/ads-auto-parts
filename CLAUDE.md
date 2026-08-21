@@ -1,5 +1,11 @@
 @AGENTS.md
 
+> **Picking up work on this project? Read [`CHANGELOG.md`](CHANGELOG.md) first.**
+> It records exactly where Phase 2 left off, what is blocked and on whom, and the
+> design decisions that must not be undone. It is kept current — trust it over
+> assumptions about the code.
+
+
 # ADS Auto Parts
 
 Inventory + public catalog for an Orlando auto body parts dealer.
@@ -30,7 +36,9 @@ Local development connects to a **separate dev Supabase project** — never prod
 
 Products are identified by **vehicle fit**: make / model / `yearStart`–`yearEnd` + `partType` + `position`.
 
-**There are no manufacturer part numbers in this catalog.** `Product.sku` is an org-generated code (e.g. `ACC-18-DR-L`), unique per org. Fit + part type is the real identity.
+**Part identity is fit + part type, never a manufacturer number.** `Product.sku` is an org-generated code (e.g. `ACC-18-DR-L`), unique per org, and it is what everything keys off.
+
+`Product.oemPartNumber` was added in Aug 2026 for the Phase 2 spec's fitment work. It is an **optional cross-reference** a shop can quote against an insurance estimate — deliberately not unique, nothing keys off it, and it does not change the identity rule above.
 
 `VehicleFit` handles parts fitting multiple vehicles — a shared bumper cover gets a second `VehicleFit` row, not a second `Product`. Search matches across *all* of a product's fits; the primary fit on `Product` is kept in sync by the single-fit admin form.
 
@@ -51,12 +59,14 @@ Enums (see `prisma/schema.prisma` for the authoritative list):
 - Theme is dark: black, red `#E31E24`, white. Red is reserved for the primary action and the CAPA mark, so it keeps meaning.
 - Part images (`src/lib/part-images.ts`) are **one shared image per part type**, never per product. Callers prefer `product.photos[0]` first; `getPartTypeImage()` returns `null` for "no default" — render a placeholder box, never a broken `<img>`.
 
-## DO NOT TOUCH: the landing page
+## The landing page: no restyling
 
-`src/app/(public)/page.tsx` was deliberately reverted to its pre-restyle state.
+`src/app/(public)/page.tsx` was deliberately reverted to its pre-restyle state. **Do not restyle it.** Its visual design is settled; changes here should be behavioural fixes with a specific reason, not aesthetic ones.
 
-- Its opacity-0 `Reveal` wrappers and the `CountUp` counters rendering `0 HR / 0 PM / 0%` before intersection are **accepted and intentional**. Do not fix or restyle them.
 - It defines its own local `sectionHeadingClass` and `badgeClass` and deliberately does **not** import `src/lib/public-ui.ts`. The catalog and product detail pages *do* use that shared scale. This divergence is correct — do not reconcile it.
+- Its opacity-0 `Reveal` wrappers are intentional. Leave them.
+
+**Superseded (Aug 2026):** this section previously also froze the `CountUp` counters rendering `0 HR / 0 PM / 0%` as "accepted and intentional". The Phase 2 build spec lists that as bug 1.11, and it is a real defect — the server rendered `0`, so any visitor who didn't scroll to the stats band, every crawler, and anyone without JS saw the homepage advertise zero. `CountUp` now takes the real value as its initial state and treats the animation as progressive enhancement. Spec 1.12 (mobile/desktop label variants both rendering into the markup) was fixed in the same pass. Neither changed the page's visual design.
 
 `src/lib/public-ui.ts` (public) and `src/lib/admin-ui.ts` (staff) are the shared type scales for everything else.
 

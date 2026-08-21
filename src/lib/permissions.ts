@@ -26,6 +26,15 @@ export function canEditCatalog(role: UserRole): boolean {
   return role === "OWNER" || role === "ADMIN";
 }
 
+// Approving a wholesale application grants trade pricing on every part, so
+// it sits with the roles that already control the catalog and its prices —
+// not with general staff. The spec's reason for manual approval is keeping
+// competitors out of trade pricing, which only works if the approval itself
+// is restricted.
+export function canApproveWholesale(role: UserRole): boolean {
+  return role === "OWNER" || role === "ADMIN";
+}
+
 // Recording stock in/out. Every authenticated role can do this today, but
 // kept as a named predicate (not just "always true" inline) so call sites
 // read the same way as every other check and stay correct if that changes.

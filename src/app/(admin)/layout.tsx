@@ -28,16 +28,29 @@ const barlow = Barlow({
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { organization, user } = await requireAuthContext();
 
-  const newInquiries = await prisma.inquiry.count({
-    where: { organizationId: organization.id, status: "NEW" },
-  });
+  const [newInquiries, pendingWholesale, newOrders, waitingAlerts] = await Promise.all([
+    prisma.inquiry.count({ where: { organizationId: organization.id, status: "NEW" } }),
+    // Badged like inquiries: a trade application sitting unreviewed is a
+    // shop that can't order at its price yet.
+    prisma.customerAccount.count({
+      where: { organizationId: organization.id, wholesaleStatus: "PENDING" },
+    }),
+    // Unfulfilled orders are the most time-sensitive thing on the dashboard.
+    prisma.order.count({ where: { organizationId: organization.id, status: "NEW" } }),
+    // Customers waiting on a part we didn't have.
+    prisma.partAlert.count({ where: { organizationId: organization.id, status: "ACTIVE" } }),
+  ]);
 
   const NAV = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/products", label: "Products" },
+    { href: "/stock", label: "Stock check" },
     { href: "/suppliers", label: "Suppliers" },
     ...(canEditCatalog(user.role) ? [{ href: "/import", label: "Import" }] : []),
+    { href: "/orders", label: "Orders", badge: newOrders },
     { href: "/inquiries", label: "Inquiries", badge: newInquiries },
+    { href: "/alerts", label: "Requests", badge: waitingAlerts },
+    { href: "/customers", label: "Customers", badge: pendingWholesale },
     ...(canManageStaff(user.role) ? [{ href: "/staff", label: "Staff" }] : []),
   ];
 

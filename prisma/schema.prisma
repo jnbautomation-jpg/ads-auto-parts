@@ -27,6 +27,10 @@ model Organization {
   suppliers     Supplier[]
   stockMovements StockMovement[]
   inquiries     Inquiry[]
+  customers     CustomerAccount[]
+  orders        Order[]
+  partAlerts    PartAlert[]
+  chatSessions  ChatSession[]
 
   @@map("organizations")
 }
@@ -46,12 +50,334 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  stockMovements StockMovement[]
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockMovements    StockMovement[]
+  reviewedCustomers CustomerAccount[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
   @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Customer accounts (Phase 2A — spec step 5)
+// ---------------------------------------------------------------------------
+
+// What a signed-in customer pays.
+enum CustomerTier {
+  RETAIL
+  WHOLESALE
+}
+
+// A wholesale application is approved by a human, never automatically — the
+// spec is explicit that self-signup would let competitors read trade pricing.
+enum WholesaleStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A shop or retail buyer. DELIBERATELY a separate table from User rather than
+// extra values on UserRole:
+//
+//   * User rows grant staff access — getAuthContext() looks a Supabase auth id
+//     up in `users`, and every admin page and server action is gated on the
+//     result. A customer must never appear there, so no bug in customer
+//     signup can ever mint a staff account.
+//   * Staff and customers carry genuinely different data (a shop has a
+//     company name and a wholesale application; staff have an org role).
+//
+// One person could in principle hold both a staff User and a CustomerAccount;
+// they are keyed independently by Supabase auth id and never merged.
+model CustomerAccount {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Supabase Auth user id (uuid). Unique globally, not just per org — one
+  // auth identity is exactly one customer account.
+  authUserId String @unique
+
+  email String
+  name  String?
+  phone String?
+
+  // Wholesale applicants only.
+  companyName String?
+
+  tier CustomerTier @default(RETAIL)
+
+  // null = never applied. PENDING blocks wholesale pricing until a staff
+  // member approves; tier is what actually resolves pricing, and only an
+  // approval sets it to WHOLESALE.
+  wholesaleStatus WholesaleStatus?
+  // Free-text reason shown to the applicant when rejected.
+  wholesaleNote   String?
+  appliedAt       DateTime?
+  reviewedAt      DateTime?
+  // Staff User.id who approved or rejected. SetNull so removing a staff
+  // member never deletes the customer's application history.
+  reviewedById    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewedBy    User?          @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  savedVehicles SavedVehicle[]
+  orders        Order[]
+  partAlerts    PartAlert[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, tier])
+  // Staff review queue: pending applications, oldest first.
+  @@index([organizationId, wholesaleStatus])
+  @@map("customer_accounts")
+}
+
+// "Saved vehicles" on the account dashboard — a shop that works on the same
+// cars repeatedly shouldn't retype the fit every visit.
+model SavedVehicle {
+  id                String @id @default(cuid())
+  customerAccountId String
+
+  make  String
+  model String
+  year  Int
+
+  label String?
+
+  createdAt DateTime @default(now())
+
+  customerAccount CustomerAccount @relation(fields: [customerAccountId], references: [id], onDelete: Cascade)
+
+  // The same vehicle saved twice is a mistake, not a feature.
+  @@unique([customerAccountId, make, model, year])
+  @@index([customerAccountId])
+  @@map("saved_vehicles")
+}
+
+// ---------------------------------------------------------------------------
+// AI chat (Phase 2B)
+// ---------------------------------------------------------------------------
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+// One browser's conversation. Keyed by an anonymous cookie, not by identity —
+// a customer can ask about parts without an account.
+//
+// Logged for two reasons: it is what the rate limiter counts (serverless
+// instances share no memory, so the limit has to live in the database), and
+// the transcript tells the shop what customers ask for that isn't in stock.
+model ChatSession {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Random opaque value from an httpOnly cookie. No PII.
+  sessionKey String @unique
+
+  locale String @default("en")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
+
+  @@index([organizationId, createdAt])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id            String @id @default(cuid())
+  chatSessionId String
+
+  role    ChatRole
+  content String
+
+  createdAt DateTime @default(now())
+
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  // Rate limiting counts recent rows, so this index carries that query.
+  @@index([chatSessionId, createdAt])
+  @@map("chat_messages")
+}
+
+// ---------------------------------------------------------------------------
+// Orders (Phase 2A — spec steps 7 & 8)
+// ---------------------------------------------------------------------------
+
+// Warehouse-facing lifecycle, matching the statuses the spec names.
+enum OrderStatus {
+  NEW
+  READY
+  DELIVERED
+  PICKED_UP
+  CANCELLED
+}
+
+enum FulfillmentMethod {
+  DELIVERY
+  PICKUP
+}
+
+// Payment is tracked separately from fulfilment: a part can be paid for and
+// not yet collected, or (for "reserve now, pay at pickup") collected and paid
+// at the counter.
+enum PaymentStatus {
+  UNPAID
+  DEPOSIT_PAID
+  PAID
+  REFUNDED
+}
+
+model Order {
+  id             String @id @default(cuid())
+  organizationId String
+
+  // Human-readable reference staff quote on the phone. Allocated from a
+  // Postgres sequence so two simultaneous checkouts can't collide.
+  orderNumber Int
+
+  // Null for a guest checkout — an order must not require an account.
+  customerAccountId String?
+
+  // Contact details are SNAPSHOT here rather than read through the account.
+  // A customer changing their phone number later must not rewrite the
+  // details the warehouse used to fulfil an order already shipped.
+  customerName  String
+  customerEmail String?
+  customerPhone String
+
+  status      OrderStatus       @default(NEW)
+  fulfillment FulfillmentMethod @default(PICKUP)
+  // Only for DELIVERY orders.
+  deliveryAddress String?
+
+  paymentStatus PaymentStatus @default(UNPAID)
+
+  // Stripe's payment intent. The spec is explicit that webhooks — not the
+  // client callback — are the source of truth for payment success, so this
+  // is what a webhook matches an order on. Unique so a replayed webhook
+  // can't create a second order.
+  stripePaymentIntentId String? @unique
+
+  // Which price tier the buyer was on when they ordered. Kept for the audit
+  // trail: it explains why a line item cost what it did.
+  pricedAsTier CustomerTier @default(RETAIL)
+
+  subtotal Decimal @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerAccount CustomerAccount? @relation(fields: [customerAccountId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+
+  @@unique([organizationId, orderNumber])
+  // Staff dashboard: filter by status, newest first.
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([customerAccountId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+
+  // SetNull, not Cascade: deleting a product must never erase the record of
+  // having sold it.
+  productId String?
+
+  // Snapshot of what was sold, at the price it sold for. Repricing a part or
+  // renaming a model later must not rewrite history — and for a deleted
+  // product this is the only remaining description.
+  sku         String
+  description String
+  unitPrice   Decimal @db.Decimal(10, 2)
+  quantity    Int
+  lineTotal   Decimal @db.Decimal(10, 2)
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// ---------------------------------------------------------------------------
+// Part alerts (Phase 2B — back-in-stock & price alerts)
+// ---------------------------------------------------------------------------
+
+enum AlertType {
+  BACK_IN_STOCK
+  PRICE_DROP
+}
+
+enum AlertStatus {
+  ACTIVE
+  NOTIFIED
+  CANCELLED
+}
+
+// "Turns every empty search result into a lead instead of a bounce."
+//
+// Captured from two places: an empty catalog search, and a part currently
+// showing CALL. The vehicle is stored as make/model/year rather than a
+// product id because the common case is a part the shop does not stock yet —
+// there is no product row to point at.
+model PartAlert {
+  id             String @id @default(cuid())
+  organizationId String
+
+  type AlertType @default(BACK_IN_STOCK)
+
+  // The vehicle and part they are waiting for. Normalized through
+  // src/lib/normalize.ts on write, so an alert for "cx 5" matches a CX-5
+  // arriving in stock.
+  make     String
+  model    String
+  year     Int?
+  partType PartType?
+
+  // Set only when the alert is about a specific listed part (price drop, or
+  // a part that is temporarily out).
+  productId String?
+
+  // Contact details. Phone is required — this shop calls people.
+  name  String?
+  phone String
+  email String?
+
+  customerAccountId String?
+
+  status     AlertStatus @default(ACTIVE)
+  notifiedAt DateTime?
+  // Free-text note staff add when they action it.
+  staffNote  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  customerAccount CustomerAccount? @relation(fields: [customerAccountId], references: [id], onDelete: SetNull)
+
+  // Staff queue: active alerts, oldest first.
+  @@index([organizationId, status, createdAt])
+  // Matching arriving stock to waiting customers.
+  @@index([organizationId, make, model, partType, status])
+  @@index([productId])
+  @@map("part_alerts")
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +414,31 @@ enum PartCondition {
   A
   B
   C
+}
+
+// ---------------------------------------------------------------------------
+// Fitment detail (spec section 4 — "directly cuts returns")
+// ---------------------------------------------------------------------------
+
+// A full door SHELL is the whole assembly; a SKIN is the outer panel only,
+// bonded over the existing frame. Ordering the wrong one is a wasted trip.
+enum PanelConstruction {
+  SHELL
+  SKIN
+}
+
+// Aluminium panels need different welding and different filler. A shop that
+// receives aluminium expecting steel cannot do the job that day.
+enum PanelMaterial {
+  STEEL
+  ALUMINUM
+}
+
+// How the panel arrives for paint.
+enum PaintPrep {
+  BARE
+  PRIMED
+  EDP_COATED
 }
 
 model Supplier {
@@ -142,8 +493,46 @@ model Product {
   quantity      Int @default(0)
   reorderPoint  Int @default(2)
 
-  cost  Decimal @db.Decimal(10, 2)
+  // What ADS paid the supplier. Staff-only, never leaves the admin screens.
+  cost Decimal @db.Decimal(10, 2)
+
+  // WHOLESALE price — what a trade account pays. Staff-only for now; when
+  // wholesale customer accounts land (Phase 2A) this is what those accounts
+  // see. Must never be selected by a public query. See src/lib/pricing.ts.
   price Decimal @db.Decimal(10, 2)
+
+  // RETAIL price — the only price the public catalog ever shows.
+  // Backfilled to price + RETAIL_MARKUP_USD; see
+  // scripts/backfill-retail-price.ts.
+  retailPrice Decimal @db.Decimal(10, 2)
+
+
+  // --- Fitment detail (spec section 4) -------------------------------------
+  //
+  // Every field here is NULLABLE and null means "we haven't recorded it",
+  // NOT "no". That distinction is the whole point: telling a shop a door has
+  // no mirror hole when nobody checked is worse than telling them nothing,
+  // because they'll order on the strength of it.
+  //
+  // NOTE on OEM numbers: CLAUDE.md says this catalog has no manufacturer part
+  // numbers and that fit + part type is the real identity. That is still
+  // true — sku remains the identity and this is an OPTIONAL cross-reference a
+  // shop can quote against an insurance estimate. It is deliberately not
+  // unique and nothing keys off it.
+  oemPartNumber String?
+
+  construction PanelConstruction?
+  material     PanelMaterial?
+  paintPrep    PaintPrep?
+
+  // Pre-cut openings. Null = unrecorded.
+  hasMirrorHole Boolean?
+  hasHandleHole Boolean?
+
+  // When someone last physically counted this part. Null means never — which
+  // for an imported catalog is most of it, and is exactly the staleness the
+  // spec warns undermines trust once checkout is live.
+  lastCountedAt DateTime?
 
   photos String[]
 
@@ -159,6 +548,8 @@ model Product {
   vehicleFits    VehicleFit[]
   stockMovements StockMovement[]
   inquiries      Inquiry[]
+  orderItems     OrderItem[]
+  partAlerts     PartAlert[]
 
   @@unique([organizationId, sku])
   // Public catalog / staff filtering by vehicle fit. Still used for the
@@ -206,6 +597,9 @@ model VehicleFit {
 enum StockMovementType {
   IN
   OUT
+  // Also what a physical shelf count records — logged even when the count
+  // matches, so "someone verified this" is an auditable event rather than an
+  // absence of movement. See src/lib/stock-audit.ts.
   ADJUSTMENT
 }
 

@@ -1,40 +1,60 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { PATHNAME_HEADER } from "@/lib/i18n";
 
-// Explicit allowlist — anything NOT listed here is private by default and
-// redirects to /login when signed out. Add new public routes here deliberately;
-// do not flip this to a denylist.
+// Staff-only route roots. Anything NOT listed here is treated as public,
+// which means an unknown URL renders the 404 page instead of bouncing a
+// customer to the staff sign-in screen (Phase 2 spec 1.1 — old ADS URLs are
+// still indexed in Google, and sending that traffic to a login form is both
+// a dead end for the customer and wasted crawl budget).
 //
-// PUBLIC (no auth):
-//   /              landing page
-//   /login
-//   /catalog       Phase 2 — public catalog browse (/catalog) + detail (/catalog/[id])
+// This is a denylist, so forgetting to add a new staff route here would make
+// it publicly *reachable* — but not publicly *readable*: every page under
+// (admin) renders inside (admin)/layout.tsx, which calls requireAuthContext()
+// and redirects to /login itself, and every mutating server action re-checks
+// auth and role independently. This middleware is the fast path, not the
+// security boundary.
 //
-// PROTECTED (everything else, by omission), currently:
-//   /dashboard
-//   /products (and subroutes: /products/new, /products/[id], /products/[id]/edit)
-//   /suppliers
-//   /import
-//   /inquiries
-//   /staff                     owner-only (checked in the page, not here)
-//   /force-password-change     authenticated, but only reachable while
-//                              must_change_password is set (see below)
+// src/lib/supabase/middleware.test.ts enumerates src/app/(admin)/ and fails
+// if any segment is missing from this list, so it cannot silently fall
+// behind the routes.
+export const PRIVATE_PREFIXES = [
+  "/dashboard",
+  "/products",
+  "/stock",
+  "/suppliers",
+  "/import",
+  "/inquiries",
+  "/alerts",
+  "/orders",
+  "/customers",
+  "/staff",
+  // Not under (admin), but authenticated-only: a signed-out visitor must not
+  // reach it.
+  "/force-password-change",
+];
 
-// Exact-match roots (checked with `===`, never a prefix — "/" must not swallow
-// every other route).
-const PUBLIC_EXACT_PATHS = ["/", "/login"];
+// Segment-aware prefix match: "/products" matches "/products" and
+// "/products/abc" but NOT "/products-recall", which a bare startsWith would
+// wrongly capture.
+export function isPrivatePath(pathname: string): boolean {
+  return PRIVATE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
-// Prefix paths for whole public sub-trees. "/catalog" here already covers
-// "/catalog/[id]" once that route exists — no separate entry needed.
-const PUBLIC_PREFIX_PATHS = ["/catalog"];
-
-function isPublicPath(pathname: string): boolean {
-  if (PUBLIC_EXACT_PATHS.includes(pathname)) return true;
-  return PUBLIC_PREFIX_PATHS.some((path) => pathname.startsWith(path));
+// Forwards the pathname to the root layout, which needs it for <html lang>
+// and has no other way to know the URL. Rebuilt from `request.headers` at
+// each call rather than snapshotted once, so it always carries whatever
+// cookies Supabase has just refreshed below.
+function passThrough(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  return { request: { headers } };
 }
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = NextResponse.next(passThrough(request));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,7 +66,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next(passThrough(request));
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );
@@ -63,18 +83,18 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  if (!user && !isPublicPath(pathname)) {
+  if (!user && isPrivatePath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
+  // NOTE: "already signed in, bounce off /login" is handled by the login page
+  // itself, not here. Middleware can't tell a staff session from a customer
+  // session without a database query, and bouncing a signed-in CUSTOMER to
+  // /dashboard produced an infinite loop: /dashboard has no `users` row for
+  // them, so requireAuthContext() sent them straight back to /login.
 
   // Staff accounts are created with a temp password and this flag set —
   // only the admin API (never the user's own session) can clear it, so it's
@@ -85,11 +105,8 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/force-password-change";
     return NextResponse.redirect(url);
   }
-  if (user && !mustChangePassword && pathname === "/force-password-change") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
+  // Same reasoning as above: leaving this page when the flag is clear is
+  // decided by the page, which can tell staff from customers.
 
   return supabaseResponse;
 }
