@@ -10,10 +10,13 @@
 //   * Letter-spacing is capped at 0.14em and only appears on those labels. The
 //     previous scale ran 0.22em–0.36em on 9–13px uppercase text, which was the
 //     single loudest "template" tell on the site.
-//   * Red (#E31E24) is reserved for the primary action and the CAPA mark, so it
-//     still means something when it appears.
-//   * Secondary text bottoms out at #B4B4B4 and micro-labels at #8A8A8A — the
-//     old #555/#666/#6B6B6B/#777 all failed WCAG AA on this dark ground.
+//   * Red is reserved for the primary action and the CAPA mark, so it still
+//     means something when it appears.
+//   * Colour comes from the tokens in globals.css, never from a literal. The
+//     site was near-black and every page carried its own hex values — 465 of
+//     them — which is what made moving to a light ground a project rather than
+//     an edit. Secondary text is --ink-muted and micro-labels --ink-faint;
+//     both are AA on --surface-page at these sizes.
 
 export const h1Class =
   "font-[family-name:var(--font-oswald)] text-[36px] font-semibold leading-[1.06] tracking-[-0.01em] lg:text-[56px]";
@@ -30,21 +33,22 @@ export const subHeadingClass =
 
 // The only place uppercase and letter-spacing survive.
 export const eyebrowClass =
-  "font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A8A8A]";
+  "font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-faint)]";
 
 export const bodyClass =
-  "font-[family-name:var(--font-barlow)] text-[15px] leading-[1.55] text-[#B4B4B4] lg:text-[16px]";
+  "font-[family-name:var(--font-barlow)] text-[15px] leading-[1.55] text-[var(--ink-muted)] lg:text-[16px]";
 
-export const mutedClass = "font-[family-name:var(--font-barlow)] text-[14px] text-[#8A8A8A]";
+export const mutedClass = "font-[family-name:var(--font-barlow)] text-[14px] text-[var(--ink-faint)]";
 
-// Keyboard focus has to be visible on a dark ground — the previous rule removed
-// the outline entirely and replaced it with a 1px border tint.
+// Keyboard focus has to stay visible — an earlier rule removed the outline
+// entirely and replaced it with a 1px border tint.
 export const focusRingClass =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E31E24]";
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]";
 
-export const primaryButtonClass = `flex min-h-[48px] items-center justify-center bg-[#E31E24] px-5 font-[family-name:var(--font-barlow)] text-[15px] font-semibold tracking-[0.01em] text-white transition-colors hover:bg-[#ff3a40] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`;
+// White text stays white here — it sits on red, not on the page ground.
+export const primaryButtonClass = `flex min-h-[48px] items-center justify-center bg-[var(--accent)] px-5 font-[family-name:var(--font-barlow)] text-[15px] font-semibold tracking-[0.01em] text-white transition-colors hover:bg-[var(--accent-hover)] ${"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ink)]"}`;
 
-export const secondaryButtonClass = `flex min-h-[48px] items-center justify-center border border-white/20 px-5 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-white transition-colors hover:border-[#E31E24] ${focusRingClass}`;
+export const secondaryButtonClass = `flex min-h-[48px] items-center justify-center border border-[var(--line-strong)] bg-[var(--surface-raised)] px-5 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] ${focusRingClass}`;
 
 // Small uppercase status/certification marks (CAPA, IN STOCK). Acronyms and
 // stock states read as labels, so they keep the label treatment.

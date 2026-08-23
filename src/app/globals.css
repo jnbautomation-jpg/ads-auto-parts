@@ -1,8 +1,62 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Public site palette — "workshop daylight"
+   ---------------------------------------------------------------------------
+   The public site used to be near-black throughout. It now reads as a lit
+   workshop rather than a dark UI: a cool grey ground the colour of primer,
+   white parts cards, and graphite bands at the top and bottom of the page.
+   Those bands are what keep it feeling like a parts supplier instead of a
+   generic light SaaS page — the industrial weight moves into the chrome
+   rather than covering everything.
+
+   Cool grey, not the warm cream that light rebrands default to. The subject
+   is painted steel, and cream reads as stationery.
+
+   Red is unchanged and still means what it meant: the primary action and the
+   CAPA mark, nothing else.
+
+   Every value here is used through a token. Adding a colour literal to a
+   public page is what produced 465 of them and made this change a project. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Grounds */
+  --surface-page: #F1F2F4;
+  --surface-raised: #FFFFFF;
+  --surface-sunken: #E6E8EB;
+  /* Header, footer and any band that needs to anchor the page. */
+  --surface-band: #17191C;
+  --surface-band-raised: #24272C;
+
+  /* Text. Muted and faint are both AA on --surface-page at body sizes;
+     the previous #B4B4B4 / #8A8A8A were tuned for a black ground and fail
+     badly on light. */
+  --ink: #15171A;
+  --ink-muted: #545B63;
+  --ink-faint: #666D75;
+  /* On the graphite bands. */
+  --ink-on-band: #FFFFFF;
+  --ink-on-band-muted: #B6BBC1;
+
+  /* Rules and edges. */
+  --line: #D9DCE0;
+  --line-strong: #B7BDC4;
+  --line-on-band: rgba(255, 255, 255, 0.14);
+
+  /* Brand. --accent-hover darkens rather than lightens: #ff3a40 was a
+     hover for a black ground and disappears against white. */
+  --accent: #E31E24;
+  --accent-hover: #BE181D;
+  --accent-soft: rgba(227, 30, 36, 0.08);
+
+  /* Stock states. Re-picked for a light ground — the old #4ADE80 and
+     #FBBF24 were chosen against black and fail contrast here. */
+  --stock-in: #1B7A3B;
+  --stock-low: #A65A07;
+  --stock-call: #6A7178;
+  --danger: #C0272D;
+
+  --background: var(--surface-page);
+  --foreground: var(--ink);
 }
 
 @theme inline {
@@ -12,12 +66,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* No prefers-color-scheme block: this is a designed light theme, not a
+   system-following one. A storefront that changes colour with the visitor's
+   OS setting cannot hold a brand. */
 
 body {
   background: var(--background);

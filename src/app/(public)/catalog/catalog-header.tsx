@@ -21,7 +21,7 @@ export async function CatalogHeader({
 
   return (
     <>
-    <div className="flex h-[60px] items-center justify-between gap-3 border-b border-white/10 px-4 lg:h-[72px] lg:px-10">
+    <div className="flex h-[60px] items-center justify-between gap-3 border-b border-[var(--line-on-band)] bg-[var(--surface-band)] px-4 lg:h-[72px] lg:px-10">
       <Link href={localePath(locale, "/")}>
         <BrandLogo size="md" />
       </Link>
@@ -30,14 +30,14 @@ export async function CatalogHeader({
         {/* When trade pricing is active, say so — otherwise a shop can't tell
             whether the numbers on screen are their price or the public one. */}
         {canSeeWholesale(tier) ? (
-          <span className="hidden border border-[#E31E24] px-2 py-[3px] font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[#E31E24] sm:inline">
+          <span className="hidden border border-[var(--accent)] px-2 py-[3px] font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)] sm:inline">
             {dict.nav.tradePricing}
           </span>
         ) : null}
 
         <Link
           href={localePath(locale, "/estimate")}
-          className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white lg:inline"
+          className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--ink-on-band-muted)] transition-colors hover:text-white lg:inline"
         >
           {dict.nav.uploadEstimate}
         </Link>
@@ -48,7 +48,7 @@ export async function CatalogHeader({
             phone CTA and the CAPA mark. */}
         <Link
           href={localePath(locale, "/vin")}
-          className="hidden items-center gap-1.5 border border-white/25 px-3 py-[7px] font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-white transition-colors hover:border-white hover:bg-white/5 lg:inline-flex"
+          className="hidden items-center gap-1.5 border border-white/30 px-3 py-[7px] font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-white transition-colors hover:border-white hover:bg-white/10 lg:inline-flex"
         >
           <VinIcon />
           {dict.nav.searchByVin}
@@ -56,7 +56,7 @@ export async function CatalogHeader({
 
         <Link
           href={localePath(locale, signedIn ? "/account" : "/account/sign-in")}
-          className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
+          className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--ink-on-band-muted)] transition-colors hover:text-white lg:inline"
         >
           {signedIn ? dict.nav.myAccount : dict.nav.signIn}
         </Link>
@@ -65,7 +65,7 @@ export async function CatalogHeader({
 
         <a
           href={`tel:${PHONE_HREF}`}
-          className="flex min-h-[44px] items-center bg-[#E31E24] px-3.5 font-[family-name:var(--font-oswald)] text-[13px] font-semibold tracking-[0.1em] text-white transition-colors hover:bg-[#ff3a40] active:scale-[0.97] lg:bg-transparent lg:px-0 lg:text-[16px] lg:tracking-[0.08em] lg:text-white lg:hover:bg-transparent lg:hover:text-[#ff4a50]"
+          className="flex min-h-[44px] items-center bg-[var(--accent)] px-3.5 font-[family-name:var(--font-oswald)] text-[13px] font-semibold tracking-[0.1em] text-white transition-colors hover:bg-[var(--accent-hover)] active:scale-[0.97] lg:bg-transparent lg:px-0 lg:text-[16px] lg:tracking-[0.08em] lg:text-white lg:hover:bg-transparent lg:hover:text-[var(--accent-hover)]"
         >
           {PHONE_DISPLAY}
         </a>
@@ -76,23 +76,23 @@ export async function CatalogHeader({
         header was a logo, a language toggle and a phone number — VIN lookup,
         estimate upload and accounts were unreachable, not just hard to find.
         Horizontally scrollable so a longer Spanish label cannot wrap the bar. */}
-    <nav className="flex items-center gap-2 overflow-x-auto border-b border-white/10 px-4 py-2.5 lg:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="flex items-center gap-2 overflow-x-auto border-b border-[var(--line-on-band)] bg-[var(--surface-band)] px-4 py-2.5 lg:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <Link
         href={localePath(locale, "/vin")}
-        className="flex min-h-[36px] shrink-0 items-center gap-1.5 border border-white/25 px-3 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-white transition-colors active:bg-white/10"
+        className="flex min-h-[36px] shrink-0 items-center gap-1.5 border border-white/30 px-3 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-white transition-colors active:bg-[var(--line)]"
       >
         <VinIcon />
         {dict.nav.searchByVin}
       </Link>
       <Link
         href={localePath(locale, "/estimate")}
-        className="flex min-h-[36px] shrink-0 items-center px-2.5 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors active:text-white"
+        className="flex min-h-[36px] shrink-0 items-center px-2.5 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--ink-on-band-muted)] transition-colors active:text-white"
       >
         {dict.nav.uploadEstimate}
       </Link>
       <Link
         href={localePath(locale, signedIn ? "/account" : "/account/sign-in")}
-        className="ml-auto flex min-h-[36px] shrink-0 items-center px-2.5 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors active:text-white"
+        className="ml-auto flex min-h-[36px] shrink-0 items-center px-2.5 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--ink-on-band-muted)] transition-colors active:text-white"
       >
         {signedIn ? dict.nav.myAccount : dict.nav.signIn}
       </Link>

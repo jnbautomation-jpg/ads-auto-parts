@@ -56,10 +56,14 @@ export function formatPosition(position: string | null | undefined): string {
 // screens (admin product list/detail) still show the real number.
 export type Availability = { label: string; color: string };
 
+// Re-picked when the public site moved to a light ground. The previous
+// #4ADE80 / #FBBF24 / #9CA3AF were chosen against near-black and fail contrast
+// on white — a "LOW STOCK" a customer cannot read is not a warning. These match
+// --stock-in / --stock-low / --stock-call in globals.css; change both together.
 export function getAvailability(quantity: number, reorderPoint: number): Availability {
-  if (quantity <= 0) return { label: "CALL", color: "#9CA3AF" };
-  if (quantity <= reorderPoint) return { label: "LOW STOCK", color: "#FBBF24" };
-  return { label: "IN STOCK", color: "#4ADE80" };
+  if (quantity <= 0) return { label: "CALL", color: "#6A7178" };
+  if (quantity <= reorderPoint) return { label: "LOW STOCK", color: "#A65A07" };
+  return { label: "IN STOCK", color: "#1B7A3B" };
 }
 
 // The landing page's "Browse by part" tiles link to /catalog?part=<slug>

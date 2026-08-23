@@ -29,10 +29,10 @@ import { getDictionary } from "@/lib/dictionaries";
 const COLUMN_LIMIT = 6;
 
 const headingClass =
-  "font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A8A8A]";
+  "font-[family-name:var(--font-barlow-condensed)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-on-band-muted)]";
 const linkClass =
-  "flex items-baseline justify-between gap-4 font-[family-name:var(--font-barlow)] text-[14px] text-[#B4B4B4] transition-colors hover:text-white";
-const countClass = "font-mono text-[12px] text-[#8A8A8A]";
+  "flex items-baseline justify-between gap-4 font-[family-name:var(--font-barlow)] text-[14px] text-[var(--ink-on-band-muted)] transition-colors hover:text-white";
+const countClass = "font-mono text-[12px] text-[var(--ink-on-band-muted)]";
 
 async function getFooterData(locale: Locale) {
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
@@ -80,12 +80,12 @@ export async function SiteFooter({ locale = "en" }: { locale?: Locale } = {}) {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-white/8 bg-[#070707] px-4 pt-12 lg:px-14 lg:pt-16">
+    <footer className="border-t border-[var(--line-on-band)] bg-[var(--surface-band)] px-4 pt-12 lg:px-14 lg:pt-16">
       <div className="mx-auto flex max-w-[1360px] flex-col gap-10">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr]">
           <div className="flex flex-col gap-4">
             <BrandLogo size="sm" />
-            <p className="font-[family-name:var(--font-barlow)] text-[14px] leading-[1.6] text-[#B4B4B4] lg:max-w-[34ch]">
+            <p className="font-[family-name:var(--font-barlow)] text-[14px] leading-[1.6] text-[var(--ink-on-band-muted)] lg:max-w-[34ch]">
               {dict.footer.tagline}
             </p>
           </div>
@@ -137,7 +137,7 @@ export async function SiteFooter({ locale = "en" }: { locale?: Locale } = {}) {
               listing — local search matches on the exact string. */}
           <div className="flex flex-col gap-3">
             <h2 className={headingClass}>{dict.footer.visitOrCall}</h2>
-            <address className="flex flex-col gap-2 font-[family-name:var(--font-barlow)] text-[14px] not-italic leading-[1.6] text-[#B4B4B4]">
+            <address className="flex flex-col gap-2 font-[family-name:var(--font-barlow)] text-[14px] not-italic leading-[1.6] text-[var(--ink-on-band-muted)]">
               <a
                 href={MAPS_URL}
                 target="_blank"
@@ -153,15 +153,15 @@ export async function SiteFooter({ locale = "en" }: { locale?: Locale } = {}) {
                 {EMAIL}
               </a>
             </address>
-            <div className="font-[family-name:var(--font-barlow)] text-[14px] leading-[1.6] text-[#8A8A8A]">
+            <div className="font-[family-name:var(--font-barlow)] text-[14px] leading-[1.6] text-[var(--ink-on-band-muted)]">
               {HOURS_DISPLAY_IN[locale]}
               <br />
-              <span className="text-[#B4B4B4]">{PHONE_NOTE_IN[locale]}</span>
+              <span className="text-[var(--ink-on-band-muted)]">{PHONE_NOTE_IN[locale]}</span>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-white/8 py-5 font-[family-name:var(--font-barlow)] text-[13px] text-[#8A8A8A]">
+        <div className="border-t border-[var(--line-on-band)] py-5 font-[family-name:var(--font-barlow)] text-[13px] text-[var(--ink-on-band-muted)]">
           © {year} {BUSINESS_NAME} · {LOCALITY}
         </div>
       </div>
