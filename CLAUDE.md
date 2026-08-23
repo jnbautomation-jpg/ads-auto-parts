@@ -56,12 +56,29 @@ Enums (see `prisma/schema.prisma` for the authoritative list):
 ## Public site rules
 
 - **Availability is shown as a label only.** `getAvailability()` in `src/lib/format.ts` returns `IN STOCK` (`#4ADE80`), `LOW STOCK` (`#FBBF24`), or `CALL` (`#9CA3AF`). **Never display exact quantities on public pages.**
-- Theme is dark: black, red `#E31E24`, white. Red is reserved for the primary action and the CAPA mark, so it keeps meaning.
+- **Theme is light** (changed Aug 2026 at the client's request — it previously ran near-black
+  throughout, which read as generic rather than as a parts supplier). A cool grey ground the colour
+  of primer, white cards, and graphite bands for the header, the footer and the landing hero, which
+  is where the industrial weight now lives. Cool grey deliberately, not warm cream: the subject is
+  painted steel.
+- **Colour comes from the tokens in `src/app/globals.css`, never from a literal.** The site carried
+  465 colour literals across 41 files, which is what made the light conversion a project rather
+  than an edit. `--surface-*`, `--ink-*`, `--line-*`, `--accent*`, `--stock-*`.
+- Anything on a dark band must state its own text colour rather than inherit — the `(public)`
+  layout sets ink for the page, so an inheriting band renders black on black.
+- Red `#E31E24` is still reserved for the primary action and the CAPA mark, so it keeps meaning.
+  `--accent-hover` is the darker shade, used for hover on light and for small red labels that would
+  otherwise miss AA.
 - Part images (`src/lib/part-images.ts`) are **one shared image per part type**, never per product. Callers prefer `product.photos[0]` first; `getPartTypeImage()` returns `null` for "no default" — render a placeholder box, never a broken `<img>`.
 
 ## The landing page: no restyling
 
 `src/app/(public)/page.tsx` was deliberately reverted to its pre-restyle state. **Do not restyle it.** Its visual design is settled; changes here should be behavioural fixes with a specific reason, not aesthetic ones.
+
+**Two deliberate exceptions, both made at the client's explicit request (Aug 2026):** a VIN entry
+point was added inside the hero search card, because the VIN lookup existed nowhere else a customer
+would start; and the sections below the hero were converted to the light theme. The hero itself
+keeps its dark ground and its layout is unchanged.
 
 - It defines its own local `sectionHeadingClass` and `badgeClass` and deliberately does **not** import `src/lib/public-ui.ts`. The catalog and product detail pages *do* use that shared scale. This divergence is correct — do not reconcile it.
 - Its opacity-0 `Reveal` wrappers are intentional. Leave them.
