@@ -292,6 +292,7 @@ export const es: Dictionary = {
       line2: "Nueva. Hoy mismo.",
       sub: "Puertas, cofres, salpicaderas, defensas y más — nuevas, certificadas CAPA, entregadas el mismo día en toda Florida Central en pedidos antes de las 12 PM.",
       searchByVehicle: "BUSQUE POR VEHÍCULO",
+      vinPrompt: "¿Tiene el VIN? Encuentre la pieza exacta para su vehículo",
       searchParts: "BUSCAR PIEZAS",
     },
     nav: {

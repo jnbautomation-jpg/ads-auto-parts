@@ -20,6 +20,7 @@ export async function CatalogHeader({
   const signedIn = tier !== "GUEST";
 
   return (
+    <>
     <div className="flex h-[60px] items-center justify-between gap-3 border-b border-white/10 px-4 lg:h-[72px] lg:px-10">
       <Link href={localePath(locale, "/")}>
         <BrandLogo size="md" />
@@ -41,10 +42,15 @@ export async function CatalogHeader({
           {dict.nav.uploadEstimate}
         </Link>
 
+        {/* Bordered rather than plain text: this used to be the third of
+            three identical grey links, and it is the feature customers are
+            told to use to get the right panel. Not red — red stays with the
+            phone CTA and the CAPA mark. */}
         <Link
           href={localePath(locale, "/vin")}
-          className="hidden font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors hover:text-white sm:inline"
+          className="hidden items-center gap-1.5 border border-white/25 px-3 py-[7px] font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-white transition-colors hover:border-white hover:bg-white/5 lg:inline-flex"
         >
+          <VinIcon />
           {dict.nav.searchByVin}
         </Link>
 
@@ -65,5 +71,47 @@ export async function CatalogHeader({
         </a>
       </div>
     </div>
+
+    {/* Everything in the row above is hidden below lg, so on a phone the
+        header was a logo, a language toggle and a phone number — VIN lookup,
+        estimate upload and accounts were unreachable, not just hard to find.
+        Horizontally scrollable so a longer Spanish label cannot wrap the bar. */}
+    <nav className="flex items-center gap-2 overflow-x-auto border-b border-white/10 px-4 py-2.5 lg:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <Link
+        href={localePath(locale, "/vin")}
+        className="flex min-h-[36px] shrink-0 items-center gap-1.5 border border-white/25 px-3 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-white transition-colors active:bg-white/10"
+      >
+        <VinIcon />
+        {dict.nav.searchByVin}
+      </Link>
+      <Link
+        href={localePath(locale, "/estimate")}
+        className="flex min-h-[36px] shrink-0 items-center px-2.5 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors active:text-white"
+      >
+        {dict.nav.uploadEstimate}
+      </Link>
+      <Link
+        href={localePath(locale, signedIn ? "/account" : "/account/sign-in")}
+        className="ml-auto flex min-h-[36px] shrink-0 items-center px-2.5 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4] transition-colors active:text-white"
+      >
+        {signedIn ? dict.nav.myAccount : dict.nav.signIn}
+      </Link>
+    </nav>
+    </>
+  );
+}
+
+// Barcode-ish mark. A VIN is a printed code on the car, so this reads as
+// "scan the number", which is what the page asks the customer to do.
+function VinIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M2 3v10M5 3v10M7.5 3v10M10.5 3v10M14 3v10"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
