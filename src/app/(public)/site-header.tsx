@@ -42,7 +42,7 @@ export function SiteHeader({
   return (
     <div
       ref={headerRef}
-      className={`sticky top-0 z-50 flex items-center justify-between px-4 py-3 backdrop-blur-md transition-colors duration-300 lg:px-14 lg:py-4 ${
+      className={`sticky top-0 z-50 flex items-center justify-between px-4 py-3 text-[var(--ink-on-band)] backdrop-blur-md transition-colors duration-300 lg:px-14 lg:py-4 ${
         solid ? "border-b border-[var(--accent)]/45 bg-[var(--surface-band)]/97" : "border-b border-white/0 bg-transparent"
       }`}
     >
