@@ -9,9 +9,9 @@ import { localePath, type Locale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
 
 const fieldClass =
-  "min-h-[48px] w-full border border-white/12 bg-[#111] px-3.5 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none";
+  "min-h-[48px] w-full border border-[var(--line)] bg-[var(--surface-raised)] px-3.5 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none";
 
-const labelClass = "font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#B4B4B4]";
+const labelClass = "font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--ink-muted)]";
 
 // One component for both sign-in and sign-up — the two forms differ only by
 // which action they post to and which extra fields they show. The spec warns
@@ -66,7 +66,7 @@ export function AuthForm({
           className={fieldClass}
         />
         {isSignUp ? (
-          <span className="font-[family-name:var(--font-barlow)] text-[12px] text-[#8A8A8A]">
+          <span className="font-[family-name:var(--font-barlow)] text-[12px] text-[var(--ink-faint)]">
             {a.passwordHint}
           </span>
         ) : null}
@@ -76,13 +76,13 @@ export function AuthForm({
         <>
           <div className="flex flex-col gap-1.5">
             <label htmlFor={`${uid}-name`} className={labelClass}>
-              {a.name} <span className="font-normal text-[#8A8A8A]">{a.optional}</span>
+              {a.name} <span className="font-normal text-[var(--ink-faint)]">{a.optional}</span>
             </label>
             <input id={`${uid}-name`} name="name" autoComplete="name" className={fieldClass} />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor={`${uid}-phone`} className={labelClass}>
-              {a.phone} <span className="font-normal text-[#8A8A8A]">{a.optional}</span>
+              {a.phone} <span className="font-normal text-[var(--ink-faint)]">{a.optional}</span>
             </label>
             <input
               id={`${uid}-phone`}
@@ -102,7 +102,7 @@ export function AuthForm({
       {state.error ? (
         <p
           aria-live="polite"
-          className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#f87171]"
+          className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--danger)]"
         >
           {state.error}
         </p>
@@ -110,24 +110,24 @@ export function AuthForm({
       {state.notice ? (
         <p
           aria-live="polite"
-          className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#4ade80]"
+          className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--stock-in)]"
         >
           {state.notice}
         </p>
       ) : null}
 
-      <p className="mt-1 text-center font-[family-name:var(--font-barlow)] text-[13px] text-[#8A8A8A]">
+      <p className="mt-1 text-center font-[family-name:var(--font-barlow)] text-[13px] text-[var(--ink-faint)]">
         {isSignUp ? (
           <>
             {a.haveAccount}{" "}
-            <Link href={localePath(locale, "/account/sign-in")} className="text-white underline">
+            <Link href={localePath(locale, "/account/sign-in")} className="text-[var(--ink)] underline">
               {a.signIn}
             </Link>
           </>
         ) : (
           <>
             {a.needAccount}{" "}
-            <Link href={localePath(locale, "/account/sign-up")} className="text-white underline">
+            <Link href={localePath(locale, "/account/sign-up")} className="text-[var(--ink)] underline">
               {a.createOne}
             </Link>
           </>

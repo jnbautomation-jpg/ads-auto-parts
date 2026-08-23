@@ -8,7 +8,7 @@ import type { Locale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
 
 const fieldClass =
-  "min-h-[44px] w-full border border-[#2A2A2A] bg-[#1A1A1A] px-3.5 py-3 text-[14px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none";
+  "min-h-[44px] w-full border border-[var(--line)] bg-[var(--surface-raised)] px-3.5 py-3 text-[14px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:outline-none";
 
 export function ProductQuoteForm({
   productId,
@@ -22,7 +22,7 @@ export function ProductQuoteForm({
   const uid = useId();
 
   return (
-    <form action={formAction} className="relative flex flex-col gap-3 border border-[#2A2A2A] p-5 lg:p-6">
+    <form action={formAction} className="relative flex flex-col gap-3 border border-[var(--line)] p-5 lg:p-6">
       <HoneypotField />
       <input type="hidden" name="productId" value={productId} />
       {/* Tells the action which language to answer in. */}
@@ -78,9 +78,9 @@ export function ProductQuoteForm({
       >
         {pending ? dict.quote.sending : dict.quote.send}
       </button>
-      {state.error ? <p className="text-center text-[13px] font-semibold text-[#f87171]">{state.error}</p> : null}
+      {state.error ? <p className="text-center text-[13px] font-semibold text-[var(--danger)]">{state.error}</p> : null}
       {state.success ? (
-        <p className="text-center text-[13px] font-semibold text-[#4ade80]">
+        <p className="text-center text-[13px] font-semibold text-[var(--stock-in)]">
           {dict.quote.success}
         </p>
       ) : null}

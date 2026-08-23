@@ -30,7 +30,7 @@ export function ReorderConfirmForm({
         {pending ? a.placingOrder : a.placeOrder}
       </button>
       {state.error ? (
-        <p aria-live="polite" className="text-center text-[13px] font-semibold text-[#f87171]">
+        <p aria-live="polite" className="text-center text-[13px] font-semibold text-[var(--danger)]">
           {state.error}
         </p>
       ) : null}

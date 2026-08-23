@@ -6,9 +6,9 @@ import { primaryButtonClass, secondaryButtonClass } from "@/lib/public-ui";
 import { HoneypotField } from "@/components/honeypot-field";
 
 const fieldClass =
-  "min-h-[46px] w-full border border-white/12 bg-[#111] px-3.5 font-[family-name:var(--font-barlow)] text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none";
+  "min-h-[46px] w-full border border-[var(--line)] bg-[var(--surface-raised)] px-3.5 font-[family-name:var(--font-barlow)] text-[15px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:outline-none";
 
-const labelClass = "font-[family-name:var(--font-barlow)] text-[12.5px] font-semibold text-[#B4B4B4]";
+const labelClass = "font-[family-name:var(--font-barlow)] text-[12.5px] font-semibold text-[var(--ink-muted)]";
 
 /**
  * "Tell me when you get one" — shown on an empty search and on a part that
@@ -44,7 +44,7 @@ export function PartAlertForm({
     return (
       <p
         aria-live="polite"
-        className="border border-[#4ade80]/30 bg-[#4ade80]/[0.06] px-4 py-3 text-center font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[#4ade80]"
+        className="border border-[var(--stock-in)]/35 bg-[var(--stock-in)]/[0.08] px-4 py-3 text-center font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[var(--stock-in)]"
       >
         {state.notice}
       </p>
@@ -95,7 +95,7 @@ export function PartAlertForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${uid}-email`} className={labelClass}>
-            Email <span className="font-normal text-[#8A8A8A]">(optional)</span>
+            Email <span className="font-normal text-[var(--ink-faint)]">(optional)</span>
           </label>
           <input id={`${uid}-email`} name="email" type="email" className={fieldClass} />
         </div>
@@ -106,7 +106,7 @@ export function PartAlertForm({
       </button>
 
       {state.error ? (
-        <p aria-live="polite" className="text-center text-[13px] font-semibold text-[#f87171]">
+        <p aria-live="polite" className="text-center text-[13px] font-semibold text-[var(--danger)]">
           {state.error}
         </p>
       ) : null}

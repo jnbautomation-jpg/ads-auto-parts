@@ -61,7 +61,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
   return (
     <div
-      className={`${oswald.variable} ${barlow.variable} ${barlowCondensed.variable} motion-scope min-h-screen bg-[#050505] font-[family-name:var(--font-barlow)] text-white`}
+      className={`${oswald.variable} ${barlow.variable} ${barlowCondensed.variable} motion-scope min-h-screen bg-[var(--surface-page)] font-[family-name:var(--font-barlow)] text-[var(--ink)]`}
     >
       {children}
       {chatEnabled ? <ChatWidget locale={locale} /> : null}

@@ -12,7 +12,7 @@ export function EstimateView({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
+    <div className="flex min-h-screen flex-col bg-[var(--surface-page)] font-[family-name:var(--font-barlow)] text-[var(--ink)]">
       <CatalogHeader locale={locale} path="/estimate" />
 
       <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-6 px-4 py-10 lg:py-14">
@@ -25,7 +25,7 @@ export function EstimateView({ locale }: { locale: Locale }) {
 
         <Link
           href={localePath(locale, "/catalog")}
-          className="mt-2 font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[#777] transition-colors hover:text-[#ccc]"
+          className="mt-2 font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
         >
           {dict.nav.backToCatalog.toUpperCase()}
         </Link>

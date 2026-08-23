@@ -80,9 +80,9 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
         <div
           role="dialog"
           aria-label={dict.chat.title}
-          className="fixed bottom-[84px] right-4 z-50 flex h-[min(520px,70vh)] w-[min(380px,calc(100vw-2rem))] flex-col border border-white/12 bg-[#111] shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+          className="fixed bottom-[84px] right-4 z-50 flex h-[min(520px,70vh)] w-[min(380px,calc(100vw-2rem))] flex-col border border-[var(--line)] bg-[var(--surface-raised)] shadow-[0_18px_44px_rgba(21,23,26,0.18)]"
         >
-          <div className="flex items-center justify-between border-b border-white/10 bg-[#1A1A1A] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[var(--line-on-band)] bg-[var(--surface-band)] px-4 py-3">
             <div className="flex flex-col">
               <span className="font-[family-name:var(--font-oswald)] text-[14px] font-semibold tracking-[0.06em] text-white">
                 {dict.chat.title}
@@ -95,7 +95,7 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
               type="button"
               onClick={() => setOpen(false)}
               aria-label={dict.chat.closeChat}
-              className="p-1 text-[20px] leading-none text-[#8A8A8A] transition-colors hover:text-white"
+              className="p-1 text-[20px] leading-none text-[var(--ink-on-band-muted)] transition-colors hover:text-white"
             >
               ×
             </button>
@@ -108,7 +108,7 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
                 className={`max-w-[85%] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] leading-[1.5] ${
                   m.role === "user"
                     ? "self-end bg-[#E31E24] text-white"
-                    : "self-start border border-white/10 bg-[#1A1A1A] text-[#E4E4E4]"
+                    : "self-start border border-[var(--line)] bg-[var(--surface-sunken)] text-[var(--ink)]"
                 }`}
               >
                 {/* Plain text on purpose — the model's output is never
@@ -117,13 +117,13 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
               </div>
             ))}
             {pending ? (
-              <div className="self-start border border-white/10 bg-[#1A1A1A] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] text-[#8A8A8A]">
+              <div className="self-start border border-[var(--line)] bg-[var(--surface-sunken)] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] text-[var(--ink-faint)]">
                 {dict.chat.checking}
               </div>
             ) : null}
           </div>
 
-          <form onSubmit={send} className="flex gap-2 border-t border-white/10 p-3">
+          <form onSubmit={send} className="flex gap-2 border-t border-[var(--line)] p-3">
             <label htmlFor="chat-input" className="sr-only">
               {dict.quote.messageLabel}
             </label>
@@ -134,7 +134,7 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
               onChange={(e) => setInput(e.target.value)}
               maxLength={1000}
               placeholder={dict.chat.placeholder}
-              className="min-h-[44px] flex-1 border border-white/12 bg-[#0A0A0A] px-3 font-[family-name:var(--font-barlow)] text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none"
+              className="min-h-[44px] flex-1 border border-[var(--line)] bg-[var(--surface-raised)] px-3 font-[family-name:var(--font-barlow)] text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none"
             />
             <button
               type="submit"
@@ -152,7 +152,7 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? dict.chat.close : dict.chat.open}
-        className="fixed bottom-5 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#E31E24] text-white shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-5 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_24px_rgba(21,23,26,0.28)] transition-transform hover:scale-105 active:scale-95"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path

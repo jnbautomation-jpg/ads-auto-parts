@@ -16,7 +16,7 @@ import {
 // boundaries are pinned explicitly.
 describe("getAvailability", () => {
   it("returns CALL when nothing is on hand", () => {
-    expect(getAvailability(0, 2)).toEqual({ label: "CALL", color: "#9CA3AF" });
+    expect(getAvailability(0, 2)).toEqual({ label: "CALL", color: "#6A7178" });
   });
 
   it("returns CALL for a negative quantity rather than falling through", () => {
@@ -24,11 +24,11 @@ describe("getAvailability", () => {
   });
 
   it("returns LOW STOCK at exactly the reorder point", () => {
-    expect(getAvailability(2, 2)).toEqual({ label: "LOW STOCK", color: "#FBBF24" });
+    expect(getAvailability(2, 2)).toEqual({ label: "LOW STOCK", color: "#A65A07" });
   });
 
   it("returns IN STOCK one above the reorder point", () => {
-    expect(getAvailability(3, 2)).toEqual({ label: "IN STOCK", color: "#4ADE80" });
+    expect(getAvailability(3, 2)).toEqual({ label: "IN STOCK", color: "#1B7A3B" });
   });
 
   it("treats a zero reorder point as in stock for any positive quantity", () => {

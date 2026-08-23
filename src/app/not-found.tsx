@@ -25,17 +25,17 @@ export default async function NotFound() {
   // No lang attribute on <main>: the root layout already sets it on <html>
   // from the same header.
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#050505] px-6 py-16 text-center text-white">
-      <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[#8A8A8A]">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--surface-page)] px-6 py-16 text-center text-[var(--ink)]">
+      <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-faint)]">
         404
       </p>
       <h1 className="text-[32px] font-semibold leading-tight">{dict.errors.notFoundTitle}</h1>
-      <p className="max-w-[46ch] text-[15px] leading-[1.55] text-[#B4B4B4]">
+      <p className="max-w-[46ch] text-[15px] leading-[1.55] text-[var(--ink-muted)]">
         {dict.errors.notFoundBody}
       </p>
       <Link
         href={localePath(locale, "/")}
-        className="mt-2 flex min-h-[48px] items-center justify-center bg-[#E31E24] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#ff3a40]"
+        className="mt-2 flex min-h-[48px] items-center justify-center bg-[var(--accent)] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[var(--accent-hover)]"
       >
         {dict.nav.backToHome}
       </Link>

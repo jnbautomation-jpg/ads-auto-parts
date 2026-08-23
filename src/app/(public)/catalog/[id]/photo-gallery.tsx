@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getPartTypeImage } from "@/lib/part-images";
 
 const PLACEHOLDER_STYLE = {
-  backgroundImage: "repeating-linear-gradient(45deg,#1E1E1E 0,#1E1E1E 12px,#232323 12px,#232323 24px)",
+  backgroundImage: "repeating-linear-gradient(45deg,#E4E7EA 0,#E4E7EA 12px,#DCE0E4 12px,#DCE0E4 24px)",
 };
 
 export function PhotoGallery({ photos, alt, partType }: { photos: string[]; alt: string; partType: string }) {
@@ -14,14 +14,14 @@ export function PhotoGallery({ photos, alt, partType }: { photos: string[]; alt:
     const defaultImage = getPartTypeImage(partType);
     return (
       <div
-        className="flex aspect-[4/3] items-center justify-center border border-white/10 bg-[#141414]"
+        className="flex aspect-[4/3] items-center justify-center border border-[var(--line)] bg-[#141414]"
         style={defaultImage ? undefined : PLACEHOLDER_STYLE}
       >
         {defaultImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={defaultImage} alt={alt} className="h-[70%] w-[70%] object-contain opacity-90" />
         ) : (
-          <span className="font-mono text-[13px] text-[#5A5A5A]">no photo yet</span>
+          <span className="font-mono text-[13px] text-[var(--ink-faint)]">no photo yet</span>
         )}
       </div>
     );
@@ -29,7 +29,7 @@ export function PhotoGallery({ photos, alt, partType }: { photos: string[]; alt:
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="aspect-[4/3] overflow-hidden border border-white/10">
+      <div className="aspect-[4/3] overflow-hidden border border-[var(--line)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={photos[selected]} alt={alt} className="h-full w-full object-cover" />
       </div>

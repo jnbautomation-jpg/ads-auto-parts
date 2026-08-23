@@ -34,18 +34,18 @@ export function DeliveryChecker() {
           inputMode="numeric"
           maxLength={10}
           placeholder="Your ZIP"
-          className="min-h-[44px] w-[130px] border border-white/12 bg-[#111] px-3 font-[family-name:var(--font-barlow)] text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none"
+          className="min-h-[44px] w-[130px] border border-[var(--line)] bg-[var(--surface-raised)] px-3 font-[family-name:var(--font-barlow)] text-[15px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:outline-none"
         />
         <button
           type="submit"
-          className="min-h-[44px] border border-white/20 px-4 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-white transition-colors hover:border-[#E31E24]"
+          className="min-h-[44px] border border-[var(--line-strong)] px-4 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--accent)]"
         >
           Check delivery
         </button>
       </form>
 
       {result === "invalid" ? (
-        <p aria-live="polite" className="text-[13px] text-[#f87171]">
+        <p aria-live="polite" className="text-[13px] text-[var(--danger)]">
           Enter a 5-digit ZIP code.
         </p>
       ) : result ? (
@@ -53,17 +53,17 @@ export function DeliveryChecker() {
           {result.zone === "ORLANDO" ? (
             <p className="font-semibold text-[#4ADE80]">Free delivery — you&apos;re in Orlando.</p>
           ) : result.zone === "CENTRAL_FL" ? (
-            <p className="font-semibold text-white">
+            <p className="font-semibold text-[var(--ink)]">
               We deliver to you across Central Florida.
             </p>
           ) : (
-            <p className="font-semibold text-[#FBBF24]">
+            <p className="font-semibold text-[var(--stock-low)]">
               You&apos;re outside our delivery area — call and we&apos;ll work something out.
             </p>
           )}
 
           {result.zone !== "OUTSIDE" ? (
-            <p className="text-[#B4B4B4]">
+            <p className="text-[var(--ink-muted)]">
               {result.sameDayAvailable
                 ? `Order in the next few hours and it goes out today — the cutoff is ${result.cutoffLabel}.`
                 : `Today's ${result.cutoffLabel} cutoff has passed, so this would go out tomorrow.`}
@@ -72,9 +72,9 @@ export function DeliveryChecker() {
 
           {/* An unknown fee is never guessed — the shop quotes it. */}
           {result.zone !== "ORLANDO" ? (
-            <p className="text-[#8A8A8A]">
+            <p className="text-[var(--ink-faint)]">
               Delivery cost depends on the address —{" "}
-              <a href={`tel:${PHONE_HREF}`} className="text-white underline">
+              <a href={`tel:${PHONE_HREF}`} className="text-[var(--ink)] underline">
                 call {PHONE_DISPLAY}
               </a>{" "}
               for an exact quote.
@@ -82,7 +82,7 @@ export function DeliveryChecker() {
           ) : null}
         </div>
       ) : (
-        <p className="text-[12.5px] text-[#8A8A8A]">
+        <p className="text-[12.5px] text-[var(--ink-faint)]">
           Free in Orlando · same-day across Central FL before {SAME_DAY_CUTOFF_LABEL}
         </p>
       )}

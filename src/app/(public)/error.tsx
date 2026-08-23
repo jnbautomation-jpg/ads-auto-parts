@@ -54,7 +54,7 @@ export default function PublicError({
       {error.digest ? (
         // Lets the shop quote a specific failure to whoever is maintaining
         // the site, instead of "a page broke sometime yesterday".
-        <p className="font-[family-name:var(--font-barlow)] text-[12px] text-[#8A8A8A]">
+        <p className="font-[family-name:var(--font-barlow)] text-[12px] text-[var(--ink-faint)]">
           {dict.errors.reference}: {error.digest}
         </p>
       ) : null}

@@ -36,7 +36,7 @@ export async function AuthView({
 
       <Link
         href={localePath(locale, "/catalog")}
-        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[#777] transition-colors hover:text-[#ccc]"
+        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
       >
         {getDictionary(locale).nav.backToCatalog.toUpperCase()}
       </Link>

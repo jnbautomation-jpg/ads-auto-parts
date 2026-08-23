@@ -33,7 +33,7 @@ export async function CustomerOrdersView({
       </div>
 
       {placed ? (
-        <p className="border border-[#4ade80]/30 bg-[#4ade80]/[0.06] px-4 py-3 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[#4ade80]">
+        <p className="border border-[var(--stock-in)]/35 bg-[var(--stock-in)]/[0.08] px-4 py-3 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[var(--stock-in)]">
           ADS-{placed}: {a.orderPlaced}
         </p>
       ) : null}
@@ -43,7 +43,7 @@ export async function CustomerOrdersView({
       ) : (
         <ul className="flex flex-col gap-3">
           {orders.map((o) => (
-            <li key={o.id} className="flex flex-col gap-2.5 border border-white/10 bg-[#111] p-5">
+            <li key={o.id} className="flex flex-col gap-2.5 border border-[var(--line)] bg-[var(--surface-raised)] p-5">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="font-[family-name:var(--font-oswald)] text-[16px] font-semibold">
                   {orderNumberLabel(o.orderNumber)}
@@ -56,10 +56,10 @@ export async function CustomerOrdersView({
                   })}
                 </span>
                 <span className="ml-auto flex items-center gap-2">
-                  <span className={`${badgeClass} border-white/25 text-[#D4D4D4]`}>
+                  <span className={`${badgeClass} border-[var(--line-strong)] text-[var(--ink-muted)]`}>
                     {ORDER_STATUS_LABEL[o.status]}
                   </span>
-                  <span className={`${badgeClass} border-white/25 text-[#D4D4D4]`}>
+                  <span className={`${badgeClass} border-[var(--line-strong)] text-[var(--ink-muted)]`}>
                     {PAYMENT_STATUS_LABEL[o.paymentStatus]}
                   </span>
                   <span className="font-[family-name:var(--font-oswald)] text-[16px] font-semibold">
@@ -70,7 +70,7 @@ export async function CustomerOrdersView({
 
               <ul className="flex flex-col gap-0.5">
                 {o.items.map((i) => (
-                  <li key={i.id} className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[#B4B4B4]">
+                  <li key={i.id} className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[var(--ink-muted)]">
                     {i.quantity}× {i.description} ({i.sku})
                   </li>
                 ))}
@@ -90,7 +90,7 @@ export async function CustomerOrdersView({
 
       <Link
         href={localePath(locale, "/account")}
-        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[#777] transition-colors hover:text-[#ccc]"
+        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
       >
         {a.backToAccount}
       </Link>

@@ -111,7 +111,7 @@ export async function CatalogView({
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
+      <div className="flex min-h-screen flex-col bg-[var(--surface-page)] font-[family-name:var(--font-barlow)] text-[var(--ink)]">
         <CatalogHeader locale={locale} path="/catalog" />
         <div className="flex flex-1 items-center justify-center text-sm text-[#999]">Catalog unavailable.</div>
       </div>
@@ -229,11 +229,11 @@ export async function CatalogView({
       : null;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
+    <div className="min-h-screen bg-[var(--surface-page)] font-[family-name:var(--font-barlow)] text-[var(--ink)]">
       <CatalogHeader locale={locale} path="/catalog" />
 
       {/* search band */}
-      <div id="find-your-part" className="border-b border-white/10 bg-[#1A1A1A] px-4 py-6 lg:px-10 lg:py-7">
+      <div id="find-your-part" className="border-b border-[var(--line)] bg-[var(--surface-raised)] px-4 py-6 lg:px-10 lg:py-7">
         <div className="mx-auto flex max-w-[1360px] flex-col gap-3.5">
           <span className={eyebrowClass}>{dict.catalog.findYourPart}</span>
           <CatalogFilters
@@ -249,7 +249,7 @@ export async function CatalogView({
             <div className="flex gap-2 overflow-x-auto lg:hidden">
               <a
                 href="#find-your-part"
-                className="whitespace-nowrap border border-[#E31E24] bg-[#1A1A1A] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] font-medium text-white"
+                className="whitespace-nowrap border border-[var(--accent)] bg-[var(--surface-raised)] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] font-medium text-[var(--ink)]"
               >
                 {dict.catalog.filters}
               </a>
@@ -257,7 +257,7 @@ export async function CatalogView({
                 <Link
                   key={chip.key}
                   href={href({ [chip.key]: null })}
-                  className="whitespace-nowrap border border-[#2A2A2A] px-3 py-2 text-[13px] text-[#D4D4D4]"
+                  className="whitespace-nowrap border border-[var(--line)] px-3 py-2 text-[13px] text-[var(--ink-muted)]"
                 >
                   {chip.label} ×
                 </Link>
@@ -269,61 +269,61 @@ export async function CatalogView({
 
       <div className="mx-auto grid max-w-[1360px] grid-cols-1 lg:grid-cols-[260px_1fr]">
         {/* sidebar (desktop only) */}
-        <aside className="hidden flex-col gap-8 border-r border-white/10 px-7 py-8 lg:flex">
+        <aside className="hidden flex-col gap-8 border-r border-[var(--line)] px-7 py-8 lg:flex">
           <div className="flex flex-col gap-3.5">
-            <span className={`border-b border-[#2A2A2A] pb-2.5 ${eyebrowClass}`}>{dict.catalog.make}</span>
+            <span className={`border-b border-[var(--line)] pb-2.5 ${eyebrowClass}`}>{dict.catalog.make}</span>
             {makeCounts.map((m) => (
               <Link
                 key={m.make}
                 href={href({ make: make === m.make ? null : m.make })}
-                className="flex items-center gap-2.5 text-[14px] text-[#D4D4D4] hover:text-white"
+                className="flex items-center gap-2.5 text-[14px] text-[var(--ink-muted)] hover:text-[var(--ink)]"
               >
                 <span
                   className="h-3.5 w-3.5 border"
                   style={
                     make === m.make
-                      ? { borderColor: "#4A4A4A", background: "#E31E24", boxShadow: "inset 0 0 0 3px #0A0A0A" }
-                      : { borderColor: "#4A4A4A" }
+                      ? { borderColor: "var(--accent)", background: "var(--accent)", boxShadow: "inset 0 0 0 3px #0A0A0A" }
+                      : { borderColor: "var(--line-strong)" }
                   }
                 />
                 {m.make}
-                <span className="ml-auto font-mono text-[12px] text-[#9A9A9A]">{m._count._all}</span>
+                <span className="ml-auto font-mono text-[12px] text-[var(--ink-faint)]">{m._count._all}</span>
               </Link>
             ))}
           </div>
 
           <div className="flex flex-col gap-3.5">
-            <span className={`border-b border-[#2A2A2A] pb-2.5 ${eyebrowClass}`}>{dict.catalog.partType}</span>
+            <span className={`border-b border-[var(--line)] pb-2.5 ${eyebrowClass}`}>{dict.catalog.partType}</span>
             {partTypeOptions.map((pt) => (
               <Link
                 key={pt.value}
                 href={href({ partType: params.partType === pt.value ? null : pt.value, part: null })}
-                className="flex items-center gap-2.5 text-[14px] text-[#D4D4D4] hover:text-white"
+                className="flex items-center gap-2.5 text-[14px] text-[var(--ink-muted)] hover:text-[var(--ink)]"
               >
                 <span
                   className="h-3.5 w-3.5 border"
                   style={
                     params.partType === pt.value
-                      ? { borderColor: "#4A4A4A", background: "#E31E24", boxShadow: "inset 0 0 0 3px #0A0A0A" }
-                      : { borderColor: "#4A4A4A" }
+                      ? { borderColor: "var(--accent)", background: "var(--accent)", boxShadow: "inset 0 0 0 3px #0A0A0A" }
+                      : { borderColor: "var(--line-strong)" }
                   }
                 />
                 {pt.label}
-                <span className="ml-auto font-mono text-[12px] text-[#9A9A9A]">{pt.count}</span>
+                <span className="ml-auto font-mono text-[12px] text-[var(--ink-faint)]">{pt.count}</span>
               </Link>
             ))}
           </div>
 
           <Link
             href={href({ capa: capaOnly ? null : "1" })}
-            className="flex items-center gap-2.5 border-t border-[#2A2A2A] pt-5 text-[14px] text-[#D4D4D4] hover:text-white"
+            className="flex items-center gap-2.5 border-t border-[var(--line)] pt-5 text-[14px] text-[var(--ink-muted)] hover:text-[var(--ink)]"
           >
             <span
               className="h-3.5 w-3.5 border"
               style={
                 capaOnly
-                  ? { borderColor: "#4A4A4A", background: "#E31E24", boxShadow: "inset 0 0 0 3px #0A0A0A" }
-                  : { borderColor: "#4A4A4A" }
+                  ? { borderColor: "var(--accent)", background: "var(--accent)", boxShadow: "inset 0 0 0 3px #0A0A0A" }
+                  : { borderColor: "var(--line-strong)" }
               }
             />
             {dict.catalog.capaOnly}
@@ -340,12 +340,12 @@ export async function CatalogView({
           <p className={`-mt-2 ${bodyClass}`}>{summary || dict.catalog.showingEverything}</p>
 
           {products.length === 0 ? (
-            <div className="flex flex-col items-center gap-4 border border-white/10 bg-[#111] px-6 py-16 text-center">
-              <div className="flex h-14 w-14 items-center justify-center border border-[#2A2A2A]">
-                <span className="font-[family-name:var(--font-oswald)] text-2xl text-[#E31E24]">0</span>
+            <div className="flex flex-col items-center gap-4 border border-[var(--line)] bg-[var(--surface-raised)] px-6 py-16 text-center">
+              <div className="flex h-14 w-14 items-center justify-center border border-[var(--line)]">
+                <span className="font-[family-name:var(--font-oswald)] text-2xl text-[var(--accent)]">0</span>
               </div>
               <span className={subHeadingClass}>{dict.catalog.noMatchTitle}</span>
-              <p className="max-w-sm text-sm text-[#A1A1A1]">
+              <p className="max-w-sm text-sm text-[var(--ink-muted)]">
                 {dict.catalog.noMatchBody}
               </p>
               <a

@@ -16,7 +16,7 @@ import {
 export type { FitRow };
 
 const selectClass =
-  "min-h-[44px] border border-[#2A2A2A] bg-[#0A0A0A] px-3.5 text-[15px] text-white lg:border-0";
+  "min-h-[44px] border border-[var(--line)] bg-[var(--surface-page)] px-3.5 text-[15px] text-[var(--ink)] lg:border-0";
 
 // Phase 2 spec 1.4: "Cascade Year → Make → Model → Part so only valid
 // combinations are selectable."
@@ -75,7 +75,7 @@ export function CatalogFilters({
     <form
       action={action}
       method="GET"
-      className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.2fr_1.2fr_1.4fr_160px] lg:gap-px lg:border lg:border-[#2A2A2A] lg:bg-[#2A2A2A]"
+      className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_1.2fr_1.2fr_1.4fr_160px] lg:gap-px lg:border lg:border-[var(--line)] lg:bg-[var(--line)]"
     >
       {/* sr-only labels are position:absolute, so they stay out of the
           grid's flow and don't consume a column. */}

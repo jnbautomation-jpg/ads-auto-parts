@@ -19,9 +19,9 @@ function statusLabelFor(status: string, a: ReturnType<typeof getDictionary>["acc
 }
 
 function statusColor(status: string): string {
-  if (status === "UNCHANGED") return "border-white/25 text-[#D4D4D4]";
-  if (status === "PRICE_CHANGED") return "border-[#FBBF24] text-[#FBBF24]";
-  return "border-[#f87171] text-[#f87171]";
+  if (status === "UNCHANGED") return "border-[var(--line-strong)] text-[var(--ink-muted)]";
+  if (status === "PRICE_CHANGED") return "border-[var(--stock-low)] text-[var(--stock-low)]";
+  return "border-[var(--danger)] text-[var(--danger)]";
 }
 
 export async function ReorderView({
@@ -50,31 +50,31 @@ export async function ReorderView({
       </div>
 
       {plan.hasChanges ? (
-        <p className="border-l-2 border-[#FBBF24] bg-[#FBBF24]/[0.06] px-4 py-3 font-[family-name:var(--font-barlow)] text-[14px] text-[#FBBF24]">
+        <p className="border-l-2 border-[var(--stock-low)] bg-[var(--stock-low)]/[0.08] px-4 py-3 font-[family-name:var(--font-barlow)] text-[14px] text-[var(--stock-low)]">
           {a.somethingChanged}
         </p>
       ) : null}
 
-      <ul className="flex flex-col divide-y divide-white/10 border-y border-white/10">
+      <ul className="flex flex-col divide-y divide-[var(--line)] border-y border-[var(--line)]">
         {plan.lines.map((line) => (
           <li key={line.sku} className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 py-3.5">
-            <span className="font-[family-name:var(--font-barlow)] text-[14.5px] font-medium text-white">
+            <span className="font-[family-name:var(--font-barlow)] text-[14.5px] font-medium text-[var(--ink)]">
               {line.wantedQuantity}× {line.description}
             </span>
-            <span className="font-mono text-[12px] text-[#8A8A8A]">{line.sku}</span>
+            <span className="font-mono text-[12px] text-[var(--ink-faint)]">{line.sku}</span>
 
             <span className="ml-auto flex flex-wrap items-center gap-2.5">
               {line.status === "PRICE_CHANGED" && line.currentUnitPrice !== null ? (
                 <span className="font-[family-name:var(--font-barlow)] text-[13.5px]">
-                  <span className="text-[#8A8A8A] line-through">
+                  <span className="text-[var(--ink-faint)] line-through">
                     {formatMoney(line.previousUnitPrice)}
                   </span>{" "}
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-[var(--ink)]">
                     {formatMoney(line.currentUnitPrice)}
                   </span>
                 </span>
               ) : line.currentUnitPrice !== null ? (
-                <span className="font-[family-name:var(--font-barlow)] text-[13.5px] font-semibold text-white">
+                <span className="font-[family-name:var(--font-barlow)] text-[13.5px] font-semibold text-[var(--ink)]">
                   {formatMoney(line.currentUnitPrice)}
                 </span>
               ) : null}
@@ -105,7 +105,7 @@ export async function ReorderView({
 
       <Link
         href={localePath(locale, "/account/orders")}
-        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[#777] transition-colors hover:text-[#ccc]"
+        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
       >
         {a.backToOrders}
       </Link>
