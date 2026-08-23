@@ -21,7 +21,7 @@ export async function CatalogHeader({
 
   return (
     <>
-    <div className="flex h-[60px] items-center justify-between gap-3 border-b border-[var(--line-on-band)] bg-[var(--surface-band)] px-4 lg:h-[72px] lg:px-10">
+    <div className="flex h-[60px] items-center justify-between gap-3 border-b border-[var(--line-on-band)] bg-[var(--surface-band)] text-[var(--ink-on-band)] px-4 lg:h-[72px] lg:px-10">
       <Link href={localePath(locale, "/")}>
         <BrandLogo size="md" />
       </Link>
@@ -76,7 +76,7 @@ export async function CatalogHeader({
         header was a logo, a language toggle and a phone number — VIN lookup,
         estimate upload and accounts were unreachable, not just hard to find.
         Horizontally scrollable so a longer Spanish label cannot wrap the bar. */}
-    <nav className="flex items-center gap-2 overflow-x-auto border-b border-[var(--line-on-band)] bg-[var(--surface-band)] px-4 py-2.5 lg:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="flex items-center gap-2 overflow-x-auto border-b border-[var(--line-on-band)] bg-[var(--surface-band)] text-[var(--ink-on-band)] px-4 py-2.5 lg:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <Link
         href={localePath(locale, "/vin")}
         className="flex min-h-[36px] shrink-0 items-center gap-1.5 border border-white/30 px-3 font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-white transition-colors active:bg-[var(--line)]"

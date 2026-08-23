@@ -13,7 +13,7 @@ import {
 } from "@/lib/format";
 
 const PHOTO_PLACEHOLDER = {
-  backgroundImage: "repeating-linear-gradient(45deg,#1E1E1E 0,#1E1E1E 12px,#232323 12px,#232323 24px)",
+  backgroundImage: "repeating-linear-gradient(45deg,#E4E7EA 0,#E4E7EA 12px,#DCE0E4 12px,#DCE0E4 24px)",
 };
 
 export type PartCardData = {
@@ -74,7 +74,7 @@ export function PartCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={defaultImage} alt={typePos} className="h-[72%] w-[72%] object-contain opacity-90" />
         ) : (
-          <span className="font-mono text-[10px] text-[#5A5A5A]">no photo</span>
+          <span className="font-mono text-[10px] text-[var(--ink-faint)]">no photo</span>
         )}
         {product.capaCertified ? (
           <span className={`absolute left-1.5 top-1.5 ${badgeClass} border-[var(--accent)] bg-[var(--surface-page)] text-[var(--accent)] sm:left-2.5 sm:top-2.5`}>

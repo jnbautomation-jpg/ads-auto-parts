@@ -29,7 +29,7 @@ export function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) {
   ].filter((l) => Boolean(l.href));
 
   return (
-    <section className="flex flex-col gap-5 border-t border-white/8 px-4 py-12 lg:px-14 lg:py-16">
+    <section className="flex flex-col gap-5 border-t border-[var(--line)] px-4 py-12 lg:px-14 lg:py-16">
       <div className="mx-auto flex w-full max-w-[1060px] flex-col gap-6">
         <div className="flex flex-col gap-2">
           <span className={eyebrowClass}>{dict.trust.eyebrow}</span>
@@ -40,28 +40,28 @@ export function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1.5 border border-white/10 bg-[#111] p-4">
-            <span className={`${badgeClass} self-start border-[#E31E24] text-[#E31E24]`}>
+          <div className="flex flex-col gap-1.5 border border-[var(--line)] bg-[var(--surface-raised)] p-4">
+            <span className={`${badgeClass} self-start border-[var(--accent)] text-[var(--accent)]`}>
               {dict.trust.newPartsBadge}
             </span>
-            <p className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[#B4B4B4]">
+            <p className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[var(--ink-muted)]">
               {dict.trust.newPartsBody}
             </p>
           </div>
-          <div className="flex flex-col gap-1.5 border border-white/10 bg-[#111] p-4">
-            <span className={`${badgeClass} self-start border-white/25 text-white`}>
+          <div className="flex flex-col gap-1.5 border border-[var(--line)] bg-[var(--surface-raised)] p-4">
+            <span className={`${badgeClass} self-start border-[var(--line-strong)] text-[var(--ink)]`}>
               {dict.trust.warehouseBadge}
             </span>
-            <p className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[#B4B4B4]">
+            <p className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[var(--ink-muted)]">
               {BUSINESS_NAME} {dict.trust.warehouseBefore} {LOCALITY} {dict.trust.warehouseAfter}
             </p>
           </div>
-          <div className="flex flex-col gap-1.5 border border-white/10 bg-[#111] p-4">
-            <span className={`${badgeClass} self-start border-white/25 text-white`}>
+          <div className="flex flex-col gap-1.5 border border-[var(--line)] bg-[var(--surface-raised)] p-4">
+            <span className={`${badgeClass} self-start border-[var(--line-strong)] text-[var(--ink)]`}>
               {dict.trust.personBadge}
             </span>
-            <p className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[#B4B4B4]">
-              <a href={`tel:${PHONE_HREF}`} className="text-white underline">
+            <p className="font-[family-name:var(--font-barlow)] text-[13.5px] text-[var(--ink-muted)]">
+              <a href={`tel:${PHONE_HREF}`} className="text-[var(--ink)] underline">
                 {PHONE_DISPLAY}
               </a>{" "}
               {dict.trust.personAfter}
@@ -78,7 +78,7 @@ export function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) {
                 href={l.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-[family-name:var(--font-barlow)] text-[13.5px] font-semibold text-[#B4B4B4] underline transition-colors hover:text-white"
+                className="font-[family-name:var(--font-barlow)] text-[13.5px] font-semibold text-[var(--ink-muted)] underline transition-colors hover:text-[var(--ink)]"
               >
                 {l.label}
               </a>
@@ -86,9 +86,9 @@ export function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) {
           </div>
         ) : null}
 
-        <p className="font-[family-name:var(--font-barlow)] text-[13px] text-[#8A8A8A]">
+        <p className="font-[family-name:var(--font-barlow)] text-[13px] text-[var(--ink-faint)]">
           {dict.trust.returnsPrompt}{" "}
-          <Link href={localePath(locale, "/returns")} className="text-white underline">
+          <Link href={localePath(locale, "/returns")} className="text-[var(--ink)] underline">
             {dict.trust.returnsLink}
           </Link>
           .

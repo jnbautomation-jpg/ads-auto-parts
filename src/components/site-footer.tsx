@@ -80,7 +80,7 @@ export async function SiteFooter({ locale = "en" }: { locale?: Locale } = {}) {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-[var(--line-on-band)] bg-[var(--surface-band)] px-4 pt-12 lg:px-14 lg:pt-16">
+    <footer className="border-t border-[var(--line-on-band)] bg-[var(--surface-band)] text-[var(--ink-on-band)] px-4 pt-12 lg:px-14 lg:pt-16">
       <div className="mx-auto flex max-w-[1360px] flex-col gap-10">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr]">
           <div className="flex flex-col gap-4">

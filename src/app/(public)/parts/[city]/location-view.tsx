@@ -87,7 +87,7 @@ export async function LocationView({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
+    <div className="flex min-h-screen flex-col bg-[var(--surface-page)] font-[family-name:var(--font-barlow)] text-[var(--ink)]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(schema) }}
@@ -107,20 +107,20 @@ export async function LocationView({
 
         {/* The genuinely local facts: distance and what delivery means here. */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1 border border-white/10 bg-[#111] p-4">
+          <div className="flex flex-col gap-1 border border-[var(--line)] bg-[var(--surface-raised)] p-4">
             <span className={eyebrowClass}>{locale === "es" ? "Distancia" : "Distance"}</span>
             <span className="font-[family-name:var(--font-oswald)] text-[20px] font-semibold">
               {locale === "es"
                 ? `~${location.approxMiles} millas`
                 : `~${location.approxMiles} miles`}
             </span>
-            <span className="text-[13px] text-[#8A8A8A]">
+            <span className="text-[13px] text-[var(--ink-faint)]">
               {locale === "es"
                 ? `unos ${location.approxDriveMinutes} min desde el almacén`
                 : `about ${location.approxDriveMinutes} min from our warehouse`}
             </span>
           </div>
-          <div className="flex flex-col gap-1 border border-white/10 bg-[#111] p-4">
+          <div className="flex flex-col gap-1 border border-[var(--line)] bg-[var(--surface-raised)] p-4">
             <span className={eyebrowClass}>{locale === "es" ? "Entrega" : "Delivery"}</span>
             <span className="font-[family-name:var(--font-oswald)] text-[20px] font-semibold">
               {delivery.sameDayAvailable
@@ -131,18 +131,18 @@ export async function LocationView({
                   ? "Al día siguiente"
                   : "Next day"}
             </span>
-            <span className="text-[13px] text-[#8A8A8A]">
+            <span className="text-[13px] text-[var(--ink-faint)]">
               {locale === "es"
                 ? `pedidos antes de las ${delivery.cutoffLabel}`
                 : `on orders before ${delivery.cutoffLabel}`}
             </span>
           </div>
-          <div className="flex flex-col gap-1 border border-white/10 bg-[#111] p-4">
+          <div className="flex flex-col gap-1 border border-[var(--line)] bg-[var(--surface-raised)] p-4">
             <span className={eyebrowClass}>{locale === "es" ? "En existencia" : "In stock now"}</span>
             <span className="font-[family-name:var(--font-oswald)] text-[20px] font-semibold">
               {total}
             </span>
-            <span className="text-[13px] text-[#8A8A8A]">
+            <span className="text-[13px] text-[var(--ink-faint)]">
               {locale === "es" ? "piezas listas para enviar" : "parts ready to ship"}
             </span>
           </div>
@@ -160,7 +160,7 @@ export async function LocationView({
                 <Link
                   key={p.partType}
                   href={`${catalogHref}?partType=${p.partType}`}
-                  className={`${badgeClass} border-white/25 text-[#D4D4D4] transition-colors hover:border-[#E31E24] hover:text-white`}
+                  className={`${badgeClass} border-[var(--line-strong)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--ink)]`}
                 >
                   {formatPartType(p.partType)} · {p._count._all}
                 </Link>
@@ -177,7 +177,7 @@ export async function LocationView({
                 <Link
                   key={m.make}
                   href={`${catalogHref}?make=${encodeURIComponent(m.make)}`}
-                  className={`${badgeClass} border-white/25 text-[#D4D4D4] transition-colors hover:border-[#E31E24] hover:text-white`}
+                  className={`${badgeClass} border-[var(--line-strong)] text-[var(--ink-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--ink)]`}
                 >
                   {m.make}
                 </Link>
@@ -186,7 +186,7 @@ export async function LocationView({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row">
+        <div className="flex flex-col gap-3 border-t border-[var(--line)] pt-6 sm:flex-row">
           <Link href={catalogHref} className={primaryButtonClass}>
             {locale === "es" ? "Ver el catálogo" : "Browse the catalog"}
           </Link>

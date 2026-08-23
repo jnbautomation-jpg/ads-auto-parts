@@ -282,8 +282,8 @@ export async function CatalogView({
                   className="h-3.5 w-3.5 border"
                   style={
                     make === m.make
-                      ? { borderColor: "#4A4A4A", background: "#E31E24", boxShadow: "inset 0 0 0 3px #0A0A0A" }
-                      : { borderColor: "#4A4A4A" }
+                      ? { borderColor: "var(--accent)", background: "var(--accent)", boxShadow: "inset 0 0 0 3px #0A0A0A" }
+                      : { borderColor: "var(--line-strong)" }
                   }
                 />
                 {m.make}
@@ -304,8 +304,8 @@ export async function CatalogView({
                   className="h-3.5 w-3.5 border"
                   style={
                     params.partType === pt.value
-                      ? { borderColor: "#4A4A4A", background: "#E31E24", boxShadow: "inset 0 0 0 3px #0A0A0A" }
-                      : { borderColor: "#4A4A4A" }
+                      ? { borderColor: "var(--accent)", background: "var(--accent)", boxShadow: "inset 0 0 0 3px #0A0A0A" }
+                      : { borderColor: "var(--line-strong)" }
                   }
                 />
                 {pt.label}
@@ -322,8 +322,8 @@ export async function CatalogView({
               className="h-3.5 w-3.5 border"
               style={
                 capaOnly
-                  ? { borderColor: "#4A4A4A", background: "#E31E24", boxShadow: "inset 0 0 0 3px #0A0A0A" }
-                  : { borderColor: "#4A4A4A" }
+                  ? { borderColor: "var(--accent)", background: "var(--accent)", boxShadow: "inset 0 0 0 3px #0A0A0A" }
+                  : { borderColor: "var(--line-strong)" }
               }
             />
             {dict.catalog.capaOnly}

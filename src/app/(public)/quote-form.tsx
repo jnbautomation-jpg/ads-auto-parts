@@ -21,7 +21,7 @@ const PART_OPTIONS = Object.keys(PART_SLUG_TO_TYPES).map((slug) => ({
 }));
 
 const fieldClass =
-  "h-[50px] w-full border border-white/12 bg-[#111] px-3.5 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none";
+  "h-[50px] w-full border border-[var(--line)] bg-[var(--surface-raised)] px-3.5 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none";
 
 export function QuoteForm({ id, locale = "en" }: { id?: string; locale?: Locale }) {
   const dict = getDictionary(locale);
@@ -35,7 +35,7 @@ export function QuoteForm({ id, locale = "en" }: { id?: string; locale?: Locale 
     <form
       id={id}
       action={formAction}
-      className="relative flex flex-col gap-3 self-start border border-white/8 border-t-2 border-t-[#E31E24] bg-[#1A1A1A] p-[18px] lg:gap-3 lg:p-[26px]"
+      className="relative flex flex-col gap-3 self-start border border-[var(--line)] border-t-2 border-t-[#E31E24] bg-[var(--surface-raised)] p-[18px] lg:gap-3 lg:p-[26px]"
     >
       <HoneypotField />
       {/* Tells the action which language to answer in. */}
@@ -102,7 +102,7 @@ export function QuoteForm({ id, locale = "en" }: { id?: string; locale?: Locale 
         name="notes"
         placeholder={dict.quote.notes}
         rows={3}
-        className="resize-y border border-white/12 bg-[#111] px-3.5 py-3 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none"
+        className="resize-y border border-[var(--line)] bg-[var(--surface-raised)] px-3.5 py-3 font-[family-name:var(--font-barlow)] text-[15px] font-medium text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(227,30,36,0.15)] focus:outline-none"
       />
 
       <button
@@ -114,12 +114,12 @@ export function QuoteForm({ id, locale = "en" }: { id?: string; locale?: Locale 
       </button>
 
       {state.error ? (
-        <p className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#f87171]">
+        <p className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--danger)]">
           {state.error}
         </p>
       ) : null}
       {state.success ? (
-        <p className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#4ade80]">
+        <p className="text-center font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--stock-in)]">
           {dict.quote.success}
         </p>
       ) : null}

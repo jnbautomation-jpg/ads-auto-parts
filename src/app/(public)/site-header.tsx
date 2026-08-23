@@ -43,7 +43,7 @@ export function SiteHeader({
     <div
       ref={headerRef}
       className={`sticky top-0 z-50 flex items-center justify-between px-4 py-3 backdrop-blur-md transition-colors duration-300 lg:px-14 lg:py-4 ${
-        solid ? "border-b border-[#E31E24]/45 bg-[#080808]/97" : "border-b border-white/0 bg-transparent"
+        solid ? "border-b border-[var(--accent)]/45 bg-[var(--surface-band)]/97" : "border-b border-white/0 bg-transparent"
       }`}
     >
       <Link href={localePath(locale, "/")}>
@@ -69,14 +69,14 @@ export function SiteHeader({
         <LanguageToggle locale={locale} path="/" />
         <a
           href={`tel:${PHONE_HREF}`}
-          className="rounded-none bg-[#E31E24] px-6 py-3 font-[family-name:var(--font-oswald)] text-[14px] font-bold tracking-[0.12em] text-white transition-colors hover:bg-[#ff3a40] active:scale-[0.97]"
+          className="rounded-none bg-[var(--accent)] px-6 py-3 font-[family-name:var(--font-oswald)] text-[14px] font-bold tracking-[0.12em] text-white transition-colors hover:bg-[var(--accent-hover)] active:scale-[0.97]"
         >
           {PHONE_DISPLAY}
         </a>
       </div>
       <a
         href={`tel:${PHONE_HREF}`}
-        className="flex items-center gap-1.5 bg-[#E31E24] px-3.5 py-2.5 font-[family-name:var(--font-oswald)] text-[13px] font-semibold tracking-[0.08em] text-white transition-colors hover:bg-[#ff3a40] active:scale-[0.97] lg:hidden"
+        className="flex items-center gap-1.5 bg-[var(--accent)] px-3.5 py-2.5 font-[family-name:var(--font-oswald)] text-[13px] font-semibold tracking-[0.08em] text-white transition-colors hover:bg-[var(--accent-hover)] active:scale-[0.97] lg:hidden"
       >
         {PHONE_DISPLAY}
       </a>

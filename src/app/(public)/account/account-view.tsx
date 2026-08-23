@@ -38,7 +38,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
         <form action={signOutCustomer}>
           <button
             type="submit"
-            className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[#8A8A8A] underline transition-colors hover:text-white"
+            className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--ink-faint)] underline transition-colors hover:text-[var(--ink)]"
           >
             {a.signOut}
           </button>
@@ -46,12 +46,12 @@ export async function AccountView({ locale }: { locale: Locale }) {
       </header>
 
       {/* --- Pricing tier --- */}
-      <section className="flex flex-col gap-3 border border-white/10 bg-[#111] p-5 lg:p-6">
+      <section className="flex flex-col gap-3 border border-[var(--line)] bg-[var(--surface-raised)] p-5 lg:p-6">
         <span className={eyebrowClass}>{a.yourPricing}</span>
         <div className="flex flex-wrap items-center gap-3">
           <span
             className={`${badgeClass} ${
-              isWholesale ? "border-[#E31E24] text-[#E31E24]" : "border-white/25 text-white"
+              isWholesale ? "border-[var(--accent)] text-[var(--accent)]" : "border-[var(--line-strong)] text-[var(--ink)]"
             }`}
           >
             {isWholesale ? a.tradeAccount : a.retail}
@@ -64,7 +64,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
 
       {/* --- Wholesale application --- */}
       {!isWholesale ? (
-        <section className="flex flex-col gap-3 border border-white/10 bg-[#111] p-5 lg:p-6">
+        <section className="flex flex-col gap-3 border border-[var(--line)] bg-[var(--surface-raised)] p-5 lg:p-6">
           <span className={eyebrowClass}>{a.tradeHeading}</span>
 
           {status === "PENDING" ? (
@@ -73,7 +73,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
               <p className={bodyClass}>
                 We&apos;re reviewing it. Applications are approved by a person, not automatically,
                 so give us a little time — call{" "}
-                <a href={`tel:${PHONE_HREF}`} className="text-white underline">
+                <a href={`tel:${PHONE_HREF}`} className="text-[var(--ink)] underline">
                   {PHONE_DISPLAY}
                 </a>{" "}
                 if it&apos;s urgent.
@@ -97,7 +97,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
       ) : null}
 
       {/* --- Orders --- */}
-      <section className="flex flex-col gap-3 border border-white/10 bg-[#111] p-5 lg:p-6">
+      <section className="flex flex-col gap-3 border border-[var(--line)] bg-[var(--surface-raised)] p-5 lg:p-6">
         <span className={eyebrowClass}>{a.ordersHeading}</span>
         <p className={bodyClass}>
 {a.ordersIntro}
@@ -108,7 +108,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
       </section>
 
       {/* --- Saved vehicles --- */}
-      <section className="flex flex-col gap-4 border border-white/10 bg-[#111] p-5 lg:p-6">
+      <section className="flex flex-col gap-4 border border-[var(--line)] bg-[var(--surface-raised)] p-5 lg:p-6">
         <div className="flex flex-col gap-1.5">
           <span className={eyebrowClass}>{a.savedVehicles}</span>
           <p className={bodyClass}>
@@ -117,12 +117,12 @@ export async function AccountView({ locale }: { locale: Locale }) {
         </div>
 
         {vehicles.length > 0 ? (
-          <ul className="flex flex-col divide-y divide-white/10 border-y border-white/10">
+          <ul className="flex flex-col divide-y divide-[var(--line)] border-y border-[var(--line)]">
             {vehicles.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-3 py-3">
                 <Link
                   href={`${localePath(locale, "/catalog")}?year=${v.year}&make=${encodeURIComponent(v.make)}&model=${encodeURIComponent(v.model)}`}
-                  className="font-[family-name:var(--font-barlow)] text-[15px] font-medium text-white hover:text-[#E31E24]"
+                  className="font-[family-name:var(--font-barlow)] text-[15px] font-medium text-[var(--ink)] hover:text-[var(--accent)]"
                 >
                   {formatFit(v.make, v.model, v.year, v.year)}
                 </Link>
@@ -131,7 +131,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
                   <button
                     type="submit"
                     aria-label={`Remove ${v.year} ${v.make} ${v.model}`}
-                    className="font-[family-name:var(--font-barlow)] text-[13px] text-[#8A8A8A] transition-colors hover:text-[#f87171]"
+                    className="font-[family-name:var(--font-barlow)] text-[13px] text-[var(--ink-faint)] transition-colors hover:text-[var(--danger)]"
                   >
                     {a.remove}
                   </button>
@@ -140,7 +140,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
             ))}
           </ul>
         ) : (
-          <p className="font-[family-name:var(--font-barlow)] text-[14px] text-[#8A8A8A]">
+          <p className="font-[family-name:var(--font-barlow)] text-[14px] text-[var(--ink-faint)]">
             {a.nothingSaved}
           </p>
         )}
@@ -150,7 +150,7 @@ export async function AccountView({ locale }: { locale: Locale }) {
 
       <Link
         href={localePath(locale, "/catalog")}
-        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[#777] transition-colors hover:text-[#ccc]"
+        className="text-center font-[family-name:var(--font-barlow)] text-[12px] font-semibold tracking-[0.14em] text-[var(--ink-faint)] transition-colors hover:text-[var(--ink-muted)]"
       >
         {getDictionary(locale).nav.backToCatalog.toUpperCase()}
       </Link>

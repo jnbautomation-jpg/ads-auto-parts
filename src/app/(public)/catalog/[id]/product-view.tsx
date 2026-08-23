@@ -192,15 +192,15 @@ export async function ProductView({
   });
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] font-[family-name:var(--font-barlow)] text-white">
+    <div className="min-h-screen bg-[var(--surface-page)] font-[family-name:var(--font-barlow)] text-[var(--ink)]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(productSchema) }}
       />
       <CatalogHeader locale={locale} path={`/catalog/${product.id}`} />
 
-      <div className="border-b border-white/10 px-4 py-3.5 text-[13px] text-[#9A9A9A] lg:px-10">
-        <Link href={localePath(locale, "/catalog")} className="text-[#A1A1A1] hover:text-white">
+      <div className="border-b border-[var(--line)] px-4 py-3.5 text-[13px] text-[var(--ink-faint)] lg:px-10">
+        <Link href={localePath(locale, "/catalog")} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
           {dict.nav.backToResults}
         </Link>
         <span className="mx-2">/</span>
@@ -215,16 +215,16 @@ export async function ProductView({
         <div className="flex flex-col gap-3">
           <PhotoGallery photos={product.photos} alt={`${fitLabel} — ${title}`} partType={product.partType} />
 
-          <div className="mt-3 flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-5 lg:p-6">
+          <div className="mt-3 flex flex-col gap-2.5 border border-[var(--line)] bg-[var(--surface-raised)] p-5 lg:p-6">
             <span className={eyebrowClass}>{dict.product.deliveryPickup}</span>
-            <div className="grid grid-cols-1 gap-1.5 text-[14px] text-[#D4D4D4] sm:grid-cols-2 sm:gap-x-6">
+            <div className="grid grid-cols-1 gap-1.5 text-[14px] text-[var(--ink-muted)] sm:grid-cols-2 sm:gap-x-6">
               <span>{dict.product.sameDay}</span>
               <span>{dict.product.freeOrlando}</span>
               <span>{dict.product.localPickup}</span>
               <span>{dict.product.phones247}</span>
             </div>
             {/* Spec 2B ZIP estimator, placed where a buyer is deciding. */}
-            <div className="border-t border-white/10 pt-3">
+            <div className="border-t border-[var(--line)] pt-3">
               <DeliveryChecker />
             </div>
           </div>
@@ -234,7 +234,7 @@ export async function ProductView({
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap gap-2">
               {product.capaCertified ? (
-                <span className={`${badgeClass} border-[#E31E24] bg-[#0A0A0A] text-[#E31E24]`}>{dict.product.capaCertified}</span>
+                <span className={`${badgeClass} border-[var(--accent)] bg-[var(--surface-page)] text-[var(--accent)]`}>{dict.product.capaCertified}</span>
               ) : null}
               <span
                 className={badgeClass}
@@ -249,24 +249,24 @@ export async function ProductView({
             <span className={bodyClass}>{fitLabel}</span>
           </div>
 
-          <div className="flex items-baseline gap-3.5 border-y border-white/10 py-4">
+          <div className="flex items-baseline gap-3.5 border-y border-[var(--line)] py-4">
             <span className="font-[family-name:var(--font-oswald)] text-[30px] font-semibold lg:text-[38px]">
               {formatMoneyIn(priceForViewer(product, viewerTier), locale)}
             </span>
             {canSeeWholesale(viewerTier) ? (
-              <span className={`${badgeClass} border-[#E31E24] text-[#E31E24]`}>{dict.product.tradePrice}</span>
+              <span className={`${badgeClass} border-[var(--accent)] text-[var(--accent)]`}>{dict.product.tradePrice}</span>
             ) : null}
-            <span className="text-[13px] text-[#9A9A9A]">
+            <span className="text-[13px] text-[var(--ink-faint)]">
               {product.capaCertified ? dict.product.newAftermarketCapa : dict.product.newAftermarket}
             </span>
           </div>
 
           <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-[14px]">
-            <span className="text-[#9A9A9A]">{dict.product.partTypeLabel}</span>
+            <span className="text-[var(--ink-faint)]">{dict.product.partTypeLabel}</span>
             <span>{formatPartTypeIn(product.partType, locale)}</span>
-            <span className="text-[#9A9A9A]">{dict.product.positionLabel}</span>
+            <span className="text-[var(--ink-faint)]">{dict.product.positionLabel}</span>
             <span>{formatPositionIn(product.position, locale)}</span>
-            <span className="text-[#9A9A9A]">{dict.product.conditionLabel}</span>
+            <span className="text-[var(--ink-faint)]">{dict.product.conditionLabel}</span>
             <span>
               {dict.product.grade} {product.condition}
               {product.conditionNotes ? ` — ${product.conditionNotes}` : ""}
@@ -278,26 +278,26 @@ export async function ProductView({
               guessed at, because a wrong "No" causes the very return this is
               meant to prevent. */}
           {fitment.length > 0 ? (
-            <div className="flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-4 lg:p-5">
+            <div className="flex flex-col gap-2.5 border border-[var(--line)] bg-[var(--surface-raised)] p-4 lg:p-5">
               <span className={eyebrowClass}>{dict.fitment.heading}</span>
               <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[14px]">
                 {fitment.map((row) => (
                   <Fragment key={row.label}>
-                    <span className="text-[#9A9A9A]">{row.label}</span>
+                    <span className="text-[var(--ink-faint)]">{row.label}</span>
                     <span>{row.value}</span>
                   </Fragment>
                 ))}
               </div>
-              <p className="font-[family-name:var(--font-barlow)] text-[12.5px] text-[#8A8A8A]">
+              <p className="font-[family-name:var(--font-barlow)] text-[12.5px] text-[var(--ink-faint)]">
                 {dict.fitment.askUs}
               </p>
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-2.5 border border-white/10 bg-[#1A1A1A] p-4 lg:p-5">
+          <div className="flex flex-col gap-2.5 border border-[var(--line)] bg-[var(--surface-raised)] p-4 lg:p-5">
             <span className={eyebrowClass}>{dict.product.fitsThese}</span>
             {product.vehicleFits.map((fit) => (
-              <span key={fit.id} className="border-b border-[#242424] pb-2 text-[14px] text-[#D4D4D4] last:border-b-0">
+              <span key={fit.id} className="border-b border-[#242424] pb-2 text-[14px] text-[var(--ink-muted)] last:border-b-0">
                 {formatFit(fit.make, fit.model, fit.yearStart, fit.yearEnd)}
                 {fit.position ? ` — ${formatPositionIn(fit.position, locale)}` : ""}
               </span>
@@ -338,7 +338,7 @@ export async function ProductView({
       </div>
 
       {/* sticky mobile call bar */}
-      <div className="sticky bottom-0 border-t border-white/10 bg-[#0A0A0A] p-3 lg:hidden">
+      <div className="sticky bottom-0 border-t border-[var(--line)] bg-[var(--surface-page)] p-3 lg:hidden">
         <a
           href={`tel:${PHONE_HREF}`}
           className={primaryButtonClass}
@@ -349,7 +349,7 @@ export async function ProductView({
 
       {related.length > 0 ? (
         <div className="mx-auto max-w-[1360px] px-4 pb-10 lg:px-10">
-          <div className="flex flex-col gap-4 border-t border-white/10 pt-8">
+          <div className="flex flex-col gap-4 border-t border-[var(--line)] pt-8">
             <span className={eyebrowClass}>{dict.product.oftenNeededWith}</span>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
               {related.map((r) => (
