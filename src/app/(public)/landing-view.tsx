@@ -350,6 +350,24 @@ function Hero({ data, locale }: { data: SearchData; locale: Locale }) {
               {dict.landing.hero.searchParts}
             </button>
           </div>
+
+          {/* The landing page never mentioned the VIN lookup — it was reachable
+              only from the catalog header, where it is hidden below 640px. This
+              sits inside the search card because that is where someone who has
+              come to find a part is already looking, and a VIN is the surest
+              way to get the right panel. */}
+          <Link
+            href={localePath(locale, "/vin")}
+            className="group inline-flex items-center gap-2 self-start pt-0.5 font-[family-name:var(--font-barlow)] text-[13px] font-medium text-[#9A9A9A] transition-colors hover:text-white lg:text-[13.5px]"
+          >
+            {dict.landing.hero.vinPrompt}
+            <span
+              aria-hidden="true"
+              className="text-[#E31E24] transition-transform group-hover:translate-x-0.5"
+            >
+              &rarr;
+            </span>
+          </Link>
         </form>
 
         <div className="flex flex-wrap gap-2" style={{ animation: "rise 0.6s 0.7s both" }}>

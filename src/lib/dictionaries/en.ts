@@ -287,6 +287,10 @@ export const en = {
       line2: "Brand new. Today.",
       sub: "Doors, hoods, fenders, bumpers and more — new, CAPA certified, delivered same-day across Central Florida on orders before 12 PM.",
       searchByVehicle: "SEARCH BY VEHICLE",
+      // The VIN lookup was reachable only from the catalog header, and that
+      // link is hidden below 640px — so on a phone there was no route to it
+      // at all, and no mention of it anywhere on the landing page.
+      vinPrompt: "Know your VIN? Get the exact part for your vehicle",
       searchParts: "SEARCH PARTS",
     },
     nav: {
