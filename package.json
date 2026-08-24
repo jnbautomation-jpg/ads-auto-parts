@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "npm run clean:dupes --silent && next dev",
     "build": "prisma generate && prisma migrate deploy && next build",
     "build:ci": "prisma generate && next build",
     "db:migrate:deploy": "prisma migrate deploy",
@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "npm run clean:dupes --silent && tsc --noEmit",
-    "test": "vitest run",
+    "test": "npm run clean:dupes --silent && vitest run",
     "test:watch": "vitest",
     "postinstall": "prisma generate",
     "db:seed": "tsx scripts/seed-owner.ts",
@@ -19,7 +19,7 @@
     "reset:products": "tsx scripts/reset-products.ts",
     "backfill:retail": "tsx scripts/backfill-retail-price.ts",
     "clean:vehicles": "tsx scripts/clean-vehicle-data.ts",
-    "clean:dupes": "find . -path ./node_modules -prune -o -name '* [0-9].ts' -type f -print -delete 2>/dev/null; true"
+    "clean:dupes": "find . -path ./node_modules -prune -o \\( -name '* [0-9].ts' -o -name '* [0-9].tsx' -o -name '* [0-9].css' -o -name '* [0-9].mjs' -o -name '* [0-9].json' \\) -type f -print -delete 2>/dev/null; true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.119.0",

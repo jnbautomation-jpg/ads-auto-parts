@@ -45,9 +45,10 @@ real revenue.
 
 Merging PR #2 first keeps the review simpler.
 
-**The single blocker for going live:** the `sales@autodoorstoreorlando.com` mailbox does not exist
-yet, and every "email us" link now points at it. Either create it, or revert
-`EMAIL` in `src/lib/site.ts` to the old Gmail temporarily — Luca has been offered both.
+**Resolved (Aug 2026):** the `sales@autodoorstoreorlando.com` mailbox was never created, and the
+public address is back on the shop's working Gmail. That is a decision, not a stopgap — see the
+comment above `EMAIL` in `src/lib/site.ts`. Spec 1.14's point (get off a personal account and onto
+the business domain) still stands whenever the shop wants it, and it is a one-line change.
 
 ---
 
