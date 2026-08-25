@@ -104,6 +104,14 @@ export function PartCard({
           >
             {availability.label}
           </span>
+          {/* Exact count, shown publicly at the client's request (Aug 2026).
+              Suppressed at zero, where "0 available" beside CALL reads as a
+              dead end rather than an invitation to phone. */}
+          {product.quantity > 0 ? (
+            <span className="font-[family-name:var(--font-barlow)] text-[12px] text-[var(--ink-faint)]">
+              {product.quantity} {dict.availability.unitsAvailable}
+            </span>
+          ) : null}
         </div>
       </div>
     </Link>

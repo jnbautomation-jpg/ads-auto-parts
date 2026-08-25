@@ -17,6 +17,9 @@ export const en = {
   // Stock states. The public site shows these labels and never a count.
   availability: {
     IN_STOCK: "IN STOCK",
+    // Shown next to the label, not inside it — the label itself must stay
+    // free of digits (i18n.test.ts pins that).
+    unitsAvailable: "available",
     LOW_STOCK: "LOW STOCK",
     CALL: "CALL",
   },
@@ -71,6 +74,8 @@ export const en = {
     newAftermarket: "New aftermarket",
     newAftermarketCapa: "New aftermarket · CAPA certified",
     tradePrice: "Trade price",
+    youSave: "You save",
+    retailIs: "Retail",
     partTypeLabel: "Part type",
     positionLabel: "Position",
     conditionLabel: "Condition",

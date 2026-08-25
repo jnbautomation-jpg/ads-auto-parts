@@ -10,6 +10,7 @@ import { formatFit } from "@/lib/format";
 import {
   canSeeWholesale,
   priceForViewer,
+  tradeSavingFor,
   productSelectFor,
   type ViewerTier,
 } from "@/lib/pricing";
@@ -138,6 +139,7 @@ export async function ProductView({
   if (!product) notFound();
 
   const availability = getAvailabilityIn(product.quantity, product.reorderPoint, locale);
+  const tradeSaving = tradeSavingFor(product, viewerTier);
   const title = product.position
     ? `${formatPartTypeIn(product.partType, locale)} — ${formatPositionIn(product.position, locale)}`
     : formatPartTypeIn(product.partType, locale);
@@ -242,6 +244,11 @@ export async function ProductView({
               >
                 {availability.label}
               </span>
+              {product.quantity > 0 ? (
+                <span className="font-[family-name:var(--font-barlow)] text-[13px] text-[var(--ink-faint)]">
+                  {product.quantity} {dict.availability.unitsAvailable}
+                </span>
+              ) : null}
             </div>
             <h1 className={`mt-1 ${pageTitleClass}`}>
               {title}
@@ -255,6 +262,19 @@ export async function ProductView({
             </span>
             {canSeeWholesale(viewerTier) ? (
               <span className={`${badgeClass} border-[var(--accent)] text-[var(--accent)]`}>{dict.product.tradePrice}</span>
+            ) : null}
+            {/* A trade account is only worth having if the saving is visible.
+                Computed from this product's own two prices, so a hand-set
+                retail price can't produce a saving the customer didn't get. */}
+            {tradeSaving !== null ? (
+              <span className="flex items-baseline gap-2 text-[13px]">
+                <span className="text-[var(--ink-faint)] line-through">
+                  {formatMoneyIn(product.retailPrice.toString(), locale)}
+                </span>
+                <span className="font-semibold text-[var(--stock-in)]">
+                  {dict.product.youSave} {formatMoneyIn(tradeSaving, locale)}
+                </span>
+              </span>
             ) : null}
             <span className="text-[13px] text-[var(--ink-faint)]">
               {product.capaCertified ? dict.product.newAftermarketCapa : dict.product.newAftermarket}

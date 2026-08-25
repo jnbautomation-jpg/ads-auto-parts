@@ -25,6 +25,7 @@ export const es: Dictionary = {
 
   availability: {
     IN_STOCK: "EN EXISTENCIA",
+    unitsAvailable: "disponibles",
     LOW_STOCK: "POCAS UNIDADES",
     CALL: "LLÁMENOS",
   },
@@ -78,6 +79,8 @@ export const es: Dictionary = {
     newAftermarket: "Nueva, aftermarket",
     newAftermarketCapa: "Nueva, aftermarket · Certificada CAPA",
     tradePrice: "Precio mayorista",
+    youSave: "Usted ahorra",
+    retailIs: "Público",
     partTypeLabel: "Tipo de pieza",
     positionLabel: "Posición",
     conditionLabel: "Condición",

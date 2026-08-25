@@ -4,6 +4,7 @@ import {
   RETAIL_MARKUP_USD,
   canSeeWholesale,
   defaultRetailPrice,
+  tradeSavingFor,
   priceForViewer,
   productSelectFor,
   retailMarginPercent,
@@ -105,3 +106,37 @@ describe("viewer tiers", () => {
 function round(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+describe("tradeSavingFor", () => {
+  it("returns the difference between retail and trade for a wholesale viewer", () => {
+    expect(tradeSavingFor({ retailPrice: "469.00", price: "369.00" }, "WHOLESALE")).toBe(100);
+  });
+
+  it("returns null for a retail viewer even if a trade price is present", () => {
+    // Belt and braces: productSelectFor already withholds `price` from retail
+    // reads, so this should be unreachable — but a saving badge is exactly the
+    // kind of thing a future refactor would render before checking the tier.
+    expect(tradeSavingFor({ retailPrice: "469.00", price: "369.00" }, "RETAIL")).toBeNull();
+    expect(tradeSavingFor({ retailPrice: "469.00", price: "369.00" }, "GUEST")).toBeNull();
+  });
+
+  it("returns null when there is no trade price on the product", () => {
+    expect(tradeSavingFor({ retailPrice: "469.00" }, "WHOLESALE")).toBeNull();
+  });
+
+  it("returns null rather than zero or a negative saving", () => {
+    // "You save $0" reads as a broken page.
+    expect(tradeSavingFor({ retailPrice: "369.00", price: "369.00" }, "WHOLESALE")).toBeNull();
+    expect(tradeSavingFor({ retailPrice: "300.00", price: "369.00" }, "WHOLESALE")).toBeNull();
+  });
+
+  it("uses the product's real prices, not the flat markup constant", () => {
+    // A hand-set retail price must not produce a badge quoting a saving the
+    // customer did not actually get.
+    expect(tradeSavingFor({ retailPrice: "500.00", price: "369.00" }, "WHOLESALE")).toBe(131);
+  });
+
+  it("returns null on a malformed price instead of NaN", () => {
+    expect(tradeSavingFor({ retailPrice: "abc", price: "369.00" }, "WHOLESALE")).toBeNull();
+  });
+});
