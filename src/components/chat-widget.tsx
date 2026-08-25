@@ -87,7 +87,7 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
               <span className="font-[family-name:var(--font-oswald)] text-[14px] font-semibold tracking-[0.06em] text-white">
                 {dict.chat.title}
               </span>
-              <span className="font-[family-name:var(--font-barlow)] text-[11px] text-[#8A8A8A]">
+              <span className="font-[family-name:var(--font-barlow)] text-[11px] text-[var(--ink-on-band-muted)]">
                 {dict.chat.subtitle}
               </span>
             </div>
@@ -107,7 +107,7 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
                 key={i}
                 className={`max-w-[85%] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] leading-[1.5] ${
                   m.role === "user"
-                    ? "self-end bg-[#E31E24] text-white"
+                    ? "self-end bg-[var(--accent)] text-white"
                     : "self-start border border-[var(--line)] bg-[var(--surface-sunken)] text-[var(--ink)]"
                 }`}
               >
@@ -134,12 +134,12 @@ export function ChatWidget({ locale = "en" }: { locale?: Locale } = {}) {
               onChange={(e) => setInput(e.target.value)}
               maxLength={1000}
               placeholder={dict.chat.placeholder}
-              className="min-h-[44px] flex-1 border border-[var(--line)] bg-[var(--surface-raised)] px-3 font-[family-name:var(--font-barlow)] text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#E31E24] focus:outline-none"
+              className="min-h-[44px] flex-1 border border-[var(--line)] bg-[var(--surface-raised)] px-3 font-[family-name:var(--font-barlow)] text-[15px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:outline-none"
             />
             <button
               type="submit"
               disabled={pending || !input.trim()}
-              className="min-h-[44px] shrink-0 bg-[#E31E24] px-4 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-white transition-colors hover:bg-[#ff3a40] disabled:opacity-40"
+              className="min-h-[44px] shrink-0 bg-[var(--accent)] px-4 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40"
             >
               {dict.chat.send}
             </button>
