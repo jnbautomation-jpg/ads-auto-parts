@@ -55,17 +55,14 @@ Enums (see `prisma/schema.prisma` for the authoritative list):
 
 ## Public site rules
 
-- **Availability is a label plus, since Aug 2026, the exact count.** `getAvailability()` in
-  `src/lib/format.ts` returns `IN STOCK` (`--stock-in`), `LOW STOCK` (`--stock-low`) or `CALL`
-  (`--stock-call`), and the catalog card and product page print `<n> available` beside it.
-  **The label itself still never contains a digit** — `i18n.test.ts` pins that, and the count is a
-  separate element.
-  This reverses the original rule, at the client's explicit instruction. The reasons it was a rule
-  are unchanged and worth knowing before anyone argues it back and forth again: a competitor can
+- **Availability is shown as a label only.** `getAvailability()` in `src/lib/format.ts` returns
+  `IN STOCK` (`--stock-in`), `LOW STOCK` (`--stock-low`) or `CALL` (`--stock-call`).
+  **Never display exact quantities on public pages.** `i18n.test.ts` pins that an availability
+  label never contains a digit.
+  Public counts were briefly added in Aug 2026 at the client's request and removed again the same
+  day at their request. The reasons the rule exists, for whoever raises it next: a competitor can
   read the shop's whole stock position off the site, "1 left" makes retail buyers hesitate, and the
-  number is wrong the moment a part sells over the phone. The client was told all three and chose
-  to show counts to everyone. A count of zero is suppressed — "0 available" next to CALL reads as a
-  dead end rather than an invitation to phone.
+  number is wrong the moment a part sells over the phone.
 - **Theme is light** (changed Aug 2026 at the client's request — it previously ran near-black
   throughout, which read as generic rather than as a parts supplier). A cool grey ground the colour
   of primer, white cards, and graphite bands for the header, the footer and the landing hero, which

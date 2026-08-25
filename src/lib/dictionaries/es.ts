@@ -25,7 +25,6 @@ export const es: Dictionary = {
 
   availability: {
     IN_STOCK: "EN EXISTENCIA",
-    unitsAvailable: "disponibles",
     LOW_STOCK: "POCAS UNIDADES",
     CALL: "LLÁMENOS",
   },

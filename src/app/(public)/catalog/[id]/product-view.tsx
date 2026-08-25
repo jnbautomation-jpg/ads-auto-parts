@@ -244,11 +244,6 @@ export async function ProductView({
               >
                 {availability.label}
               </span>
-              {product.quantity > 0 ? (
-                <span className="font-[family-name:var(--font-barlow)] text-[13px] text-[var(--ink-faint)]">
-                  {product.quantity} {dict.availability.unitsAvailable}
-                </span>
-              ) : null}
             </div>
             <h1 className={`mt-1 ${pageTitleClass}`}>
               {title}
