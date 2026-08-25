@@ -144,12 +144,60 @@ const TILES = [
   { slug: "reinforcement-bars", img: "/part-images/reinforcement-bar.webp", alt: "Reinforcement bar" },
 ];
 
+// Icons for the "Why ADS" cards. Each one had an identical red diamond, which
+// told the reader nothing — four decorations where four meanings belonged.
+// Stroke-drawn at a 24 grid so they hold up at 18px, and they inherit
+// currentColor so the card controls the tint.
+function IconCertified() {
+  // A certification rosette: seal, tick, ribbon. CAPA is an independent test
+  // the shop passes, so the mark should read as "approved by someone else".
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px] lg:h-5 lg:w-5" aria-hidden="true">
+      <circle cx="12" cy="9.5" r="6.2" />
+      <path d="m9.3 9.6 1.9 1.9 3.5-3.7" />
+      <path d="M8.7 15.4 7.4 21l4.6-2.3 4.6 2.3-1.3-5.6" />
+    </svg>
+  );
+}
+
+function IconSameDay() {
+  // Map pin — the claim is geographic: same-day across Central Florida.
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px] lg:h-5 lg:w-5" aria-hidden="true">
+      <path d="M12 21.2c3.6-4 6.2-7 6.2-10.3a6.2 6.2 0 1 0-12.4 0c0 3.3 2.6 6.3 6.2 10.3Z" />
+      <circle cx="12" cy="10.6" r="2.3" />
+    </svg>
+  );
+}
+
+function IconDispatch() {
+  // Clock — the claim is a deadline, 24 hours.
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px] lg:h-5 lg:w-5" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 7.2V12l3.2 1.9" />
+    </svg>
+  );
+}
+
+function IconDelivery() {
+  // A van, because the shop delivers it themselves rather than shipping it.
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px] lg:h-5 lg:w-5" aria-hidden="true">
+      <path d="M1.8 6.4h11.4v9.8H1.8z" />
+      <path d="M13.2 9.6h3.5l3.5 3.3v3.3h-7z" />
+      <circle cx="6.4" cy="17.8" r="1.9" />
+      <circle cx="16.8" cy="17.8" r="1.9" />
+    </svg>
+  );
+}
+
 function whyFor(dict: Dictionary) {
   return [
-    { title: dict.landing.why.capaTitle, body: dict.landing.why.capaBody },
-    { title: dict.landing.why.sameDayTitle, body: dict.landing.why.sameDayBody },
-    { title: dict.landing.why.dispatchTitle, body: dict.landing.why.dispatchBody },
-    { title: dict.landing.why.freeTitle, body: dict.landing.why.freeBody },
+    { title: dict.landing.why.capaTitle, body: dict.landing.why.capaBody, Icon: IconCertified },
+    { title: dict.landing.why.sameDayTitle, body: dict.landing.why.sameDayBody, Icon: IconSameDay },
+    { title: dict.landing.why.dispatchTitle, body: dict.landing.why.dispatchBody, Icon: IconDispatch },
+    { title: dict.landing.why.freeTitle, body: dict.landing.why.freeBody, Icon: IconDelivery },
   ];
 }
 
@@ -506,8 +554,8 @@ function WhyADS({ categoryCount, locale }: { categoryCount: number; locale: Loca
           {why.map((w, i) => (
             <Reveal key={w.title} delay={i * 80}>
               <div className="flex h-full gap-3.5 border border-[var(--line)] bg-[var(--surface-raised)] p-[18px] lg:flex-col lg:gap-3.5 lg:p-6">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--accent)]/50 lg:h-10 lg:w-10">
-                  <span className="h-2.5 w-2.5 rotate-45 bg-[var(--accent)] lg:h-3 lg:w-3" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--accent)]/50 text-[var(--accent)] lg:h-10 lg:w-10">
+                  <w.Icon />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="font-[family-name:var(--font-oswald)] text-[14px] font-semibold uppercase tracking-[0.14em] lg:text-[16px]">
