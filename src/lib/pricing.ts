@@ -84,6 +84,29 @@ export function priceForViewer(
 }
 
 /**
+ * What a trade viewer is saving against the public price on this part.
+ *
+ * Computed from the two prices actually on the product rather than assuming
+ * RETAIL_MARKUP_USD: a part can carry a hand-set retail price, and a receipt
+ * or a badge that quotes a saving the customer did not get is worse than
+ * showing nothing.
+ *
+ * Returns null for anyone who cannot see wholesale, and for a saving of zero
+ * or less — "you save $0" reads as a broken page.
+ */
+export function tradeSavingFor(
+  product: { retailPrice: unknown; price?: unknown },
+  tier: ViewerTier,
+): number | null {
+  if (!canSeeWholesale(tier) || product.price == null) return null;
+  const retail = Number(product.retailPrice);
+  const trade = Number(product.price);
+  if (!Number.isFinite(retail) || !Number.isFinite(trade)) return null;
+  const saving = retail - trade;
+  return saving > 0 ? saving : null;
+}
+
+/**
  * Prisma `select` for public product reads. Deliberately omits `price`,
  * `cost`, `binLocation`, and `supplierId` — anything a customer must never
  * see, kept out of the query rather than filtered after it.

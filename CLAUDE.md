@@ -55,7 +55,14 @@ Enums (see `prisma/schema.prisma` for the authoritative list):
 
 ## Public site rules
 
-- **Availability is shown as a label only.** `getAvailability()` in `src/lib/format.ts` returns `IN STOCK` (`#4ADE80`), `LOW STOCK` (`#FBBF24`), or `CALL` (`#9CA3AF`). **Never display exact quantities on public pages.**
+- **Availability is shown as a label only.** `getAvailability()` in `src/lib/format.ts` returns
+  `IN STOCK` (`--stock-in`), `LOW STOCK` (`--stock-low`) or `CALL` (`--stock-call`).
+  **Never display exact quantities on public pages.** `i18n.test.ts` pins that an availability
+  label never contains a digit.
+  Public counts were briefly added in Aug 2026 at the client's request and removed again the same
+  day at their request. The reasons the rule exists, for whoever raises it next: a competitor can
+  read the shop's whole stock position off the site, "1 left" makes retail buyers hesitate, and the
+  number is wrong the moment a part sells over the phone.
 - **Theme is light** (changed Aug 2026 at the client's request — it previously ran near-black
   throughout, which read as generic rather than as a parts supplier). A cool grey ground the colour
   of primer, white cards, and graphite bands for the header, the footer and the landing hero, which

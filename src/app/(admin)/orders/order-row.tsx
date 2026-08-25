@@ -14,6 +14,10 @@ export type OrderRowData = {
   paymentStatus: string;
   paymentLabel: string;
   fulfillment: string;
+  fulfillmentLabel: string;
+  /** Null for a pickup, and null for a delivery whose address isn't set yet. */
+  deliveryAddress: string | null;
+  customerEmail: string | null;
   total: string;
   placed: string;
   items: string[];
@@ -101,6 +105,28 @@ export function OrderRow({
 
       {open ? (
         <div className="flex flex-col gap-2.5 border-l-2 border-black/10 pl-3">
+          {/* Where it's going. The order carried a delivery address all along
+              and staff could not see it — they were reading it off the label
+              PDF or phoning the customer back. */}
+          <div className="flex flex-col gap-0.5">
+            <span className="font-[family-name:var(--font-oswald)] text-[10.5px] font-semibold tracking-[0.14em] text-[#8a8a8a]">
+              {order.fulfillmentLabel.toUpperCase()}
+            </span>
+            <span className="font-[family-name:var(--font-barlow)] text-[13px] text-[#333]">
+              {order.fulfillment === "DELIVERY"
+                ? order.deliveryAddress?.trim() || "Address not set — call the customer"
+                : "Collecting at the warehouse"}
+            </span>
+            {order.customerEmail ? (
+              <a
+                href={`mailto:${order.customerEmail}`}
+                className="font-[family-name:var(--font-barlow)] text-[13px] text-[#333] underline"
+              >
+                {order.customerEmail}
+              </a>
+            ) : null}
+          </div>
+
           <ul className="flex flex-col gap-1">
             {order.items.map((item) => (
               <li key={item} className="font-[family-name:var(--font-barlow)] text-[13px] text-[#333]">
@@ -135,6 +161,17 @@ export function OrderRow({
               className="inline-flex h-9 items-center border border-black/20 px-3 font-[family-name:var(--font-oswald)] text-[11px] font-semibold tracking-[0.12em] text-black transition-colors hover:bg-[#f2f2f2]"
             >
               PRINT LABEL
+            </a>
+
+            {/* Opens in the browser's PDF viewer, so it can be printed for the
+                counter or emailed to the customer without downloading it. */}
+            <a
+              href={`/orders/${order.id}/receipt`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center border border-black/20 px-3 font-[family-name:var(--font-oswald)] text-[11px] font-semibold tracking-[0.12em] text-black transition-colors hover:bg-[#f2f2f2]"
+            >
+              RECEIPT
             </a>
 
             {canEditPayment && order.paymentStatus !== "PAID" ? (

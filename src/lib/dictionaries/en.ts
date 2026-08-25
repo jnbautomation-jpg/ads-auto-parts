@@ -71,6 +71,8 @@ export const en = {
     newAftermarket: "New aftermarket",
     newAftermarketCapa: "New aftermarket · CAPA certified",
     tradePrice: "Trade price",
+    youSave: "You save",
+    retailIs: "Retail",
     partTypeLabel: "Part type",
     positionLabel: "Position",
     conditionLabel: "Condition",
