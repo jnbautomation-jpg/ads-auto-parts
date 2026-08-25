@@ -38,19 +38,16 @@ export const PHONE_DISPLAY = "(407) 743-4644";
 // Bare digits for tel:/sms: hrefs — never render this one.
 export const PHONE_HREF = "4077434644";
 
-// Phase 2 spec 1.14 moved this off the personal Gmail account to the business
-// domain — but sales@autodoorstoreorlando.com does not exist yet, and this
-// address is what every quote link and "email us" link on the public site
-// points at. A live storefront advertising a mailbox nobody reads is worse
-// than one advertising a Gmail that works.
+// DECIDED (Aug 2026): the shop is staying on this address. The Gmail is
+// monitored and works, and a domain mailbox that nobody reads is worse than a
+// Gmail that someone does. Spec 1.14 wanted the address off a personal account
+// and onto the business domain; that is a real improvement whenever the shop
+// wants it, but it is now a choice rather than an outstanding task.
 //
-// ⚠️ TEMPORARY. Put the line below back the moment the mailbox exists:
+// If that day comes, it is this one line — nothing else in the codebase
+// hard-codes an address:
 //
 //     export const EMAIL = "sales@autodoorstoreorlando.com";
-//
-// Spec 1.14 is not withdrawn, it is deferred. Nothing else in the codebase
-// hard-codes an address — site.ts is the single source — so restoring it is
-// this one line.
 export const EMAIL = "autodoorstorewest@gmail.com";
 
 export const ADDRESS = "6950 Venture Cir, Orlando, FL 32807";
