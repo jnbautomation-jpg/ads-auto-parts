@@ -5,6 +5,7 @@ import { Oswald, Barlow, Barlow_Condensed } from "next/font/google";
 import { BUSINESS_NAME, SITE_URL } from "@/lib/site";
 import { isChatConfigured } from "@/lib/chat";
 import { ChatWidget } from "@/components/chat-widget";
+import { SiteAnalytics } from "@/components/site-analytics";
 
 const oswald = Oswald({
   subsets: ["latin"],
@@ -65,6 +66,7 @@ export default async function PublicLayout({ children }: { children: React.React
     >
       {children}
       {chatEnabled ? <ChatWidget locale={locale} /> : null}
+      <SiteAnalytics />
     </div>
   );
 }
