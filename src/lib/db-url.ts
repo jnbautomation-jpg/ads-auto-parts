@@ -47,6 +47,30 @@ export function sessionPoolerFrom(transactionPoolerUrl: string): string {
     .replace(/[?&]$/, "");
 }
 
+/**
+ * A connection string with its password replaced by a placeholder.
+ *
+ * The build log is the only place the DIRECT_URL warning is ever read, and
+ * Vercel build logs are visible to everyone on the project — so the derived
+ * value can be shown to say WHICH host and port are wanted, but the password
+ * inside it absolutely cannot. Everything except the password is either
+ * already public or already in the dashboard.
+ *
+ * Fails closed: anything that does not parse as a URL with credentials comes
+ * back fully redacted rather than being printed on the assumption it is safe.
+ */
+export function redactPassword(url: string): string {
+  // The password group is GREEDY and the host group forbids "@", so the split
+  // happens at the LAST "@" rather than the first. A non-greedy password stops
+  // at the first one, and a password containing "@" — which Supabase generates
+  // — then has its tail printed as if it were part of the host. That is the
+  // exact failure this function exists to prevent.
+  const match = /^([a-z+]+:\/\/)([^:@/]+):(.*)@([^@]+)$/i.exec(url);
+  if (!match) return "<unparseable connection string>";
+  const [, scheme, user, , host] = match;
+  return `${scheme}${user}:<password>@${host}`;
+}
+
 export type MigrationUrl = {
   url: string | undefined;
   /** Where the value came from, for the log line at build time. */
@@ -71,14 +95,21 @@ export function resolveMigrationUrl(env: Record<string, string | undefined>): Mi
   }
 
   if (runtime && !isUnreachableDirectHost(runtime)) {
+    const derived = sessionPoolerFrom(runtime);
+    // The warning names the exact value to set, with the password redacted.
+    // Saying only "fix DIRECT_URL" leaves whoever reads the build log hunting
+    // through the Supabase dashboard for a string that differs from the one
+    // they already have by a port and a query flag — which is how it came to
+    // be wrong in the first place.
+    const fix = `Set it to: ${redactPassword(derived)} (same password as DATABASE_URL).`;
+
     return {
-      url: sessionPoolerFrom(runtime),
+      url: derived,
       source: "derived-from-DATABASE_URL",
       warning: direct
         ? "DIRECT_URL points at db.<ref>.supabase.co, which is IPv6-only and unreachable from a " +
-          "Vercel build. Using the session pooler derived from DATABASE_URL instead. Fix " +
-          "DIRECT_URL to Supabase's Session pooler string to silence this."
-        : "DIRECT_URL is not set. Using the session pooler derived from DATABASE_URL.",
+          `Vercel build. Using the session pooler derived from DATABASE_URL instead. ${fix}`
+        : `DIRECT_URL is not set. Using the session pooler derived from DATABASE_URL. ${fix}`,
     };
   }
 

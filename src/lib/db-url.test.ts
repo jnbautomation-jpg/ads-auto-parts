@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isUnreachableDirectHost, resolveMigrationUrl, sessionPoolerFrom } from "./db-url";
+import {
+  isUnreachableDirectHost,
+  redactPassword,
+  resolveMigrationUrl,
+  sessionPoolerFrom,
+} from "./db-url";
 
 const POOLER_6543 =
   "postgresql://postgres.abc123:pw@aws-0-ca-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
@@ -90,5 +95,59 @@ describe("resolveMigrationUrl", () => {
   it("treats blank strings as unset", () => {
     const r = resolveMigrationUrl({ DIRECT_URL: "   ", DATABASE_URL: POOLER_6543 });
     expect(r.source).toBe("derived-from-DATABASE_URL");
+  });
+});
+
+// The DIRECT_URL warning is read in the Vercel build log, which everyone on
+// the project can see. It names the value to set so nobody has to go hunting
+// for it — which means it must never carry the password there.
+describe("redactPassword", () => {
+  it("removes the password and keeps everything needed to identify the host", () => {
+    expect(
+      redactPassword("postgresql://postgres.abcd:s3cr3t@aws-0-us-east-1.pooler.supabase.com:5432/postgres"),
+    ).toBe("postgresql://postgres.abcd:<password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres");
+  });
+
+  // Supabase generates passwords containing "@". Splitting on the FIRST "@"
+  // treats everything after it as the host and prints it — so this is the case
+  // that decides whether the warning is safe to log at all.
+  it("redacts a password containing an @, splitting on the last one", () => {
+    const redacted = redactPassword("postgresql://user:p@ss:zzz9/x@host:5432/db");
+    expect(redacted).not.toContain("zzz9");
+    expect(redacted).toBe("postgresql://user:<password>@host:5432/db");
+  });
+
+  it("fails closed on anything it cannot parse, rather than printing it", () => {
+    expect(redactPassword("not a url")).toBe("<unparseable connection string>");
+    expect(redactPassword("")).toBe("<unparseable connection string>");
+  });
+
+  it("never leaks the password of a real derived URL", () => {
+    const secret = "hunter2-swordfish";
+    const url = `postgresql://postgres.ref:${secret}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`;
+    expect(redactPassword(url)).not.toContain(secret);
+  });
+});
+
+describe("the DIRECT_URL warning", () => {
+  const DATABASE_URL =
+    "postgresql://postgres.ref:s3cr3t@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
+
+  it("names the exact value to set", () => {
+    const result = resolveMigrationUrl({
+      DATABASE_URL,
+      DIRECT_URL: "postgresql://postgres:s3cr3t@db.ref.supabase.co:5432/postgres",
+    });
+    expect(result.warning).toContain("aws-0-us-east-1.pooler.supabase.com:5432");
+  });
+
+  it("does not put the password in the build log", () => {
+    const result = resolveMigrationUrl({
+      DATABASE_URL,
+      DIRECT_URL: "postgresql://postgres:s3cr3t@db.ref.supabase.co:5432/postgres",
+    });
+    expect(result.warning).not.toContain("s3cr3t");
+    // The URL Prisma actually connects with still has the real password.
+    expect(result.url).toContain("s3cr3t");
   });
 });

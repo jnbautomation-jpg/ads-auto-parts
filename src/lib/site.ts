@@ -7,31 +7,15 @@
 // listing: keep it byte-identical to the listing, don't reformat it.
 
 import type { Locale } from "@/lib/i18n";
+import { resolveSiteUrl } from "@/lib/site-url";
 
 // Single-tenant public site — every public query and lead scopes to this org.
 export const ORG_SLUG = "ads-auto-parts";
 
 // Absolute origin for canonical URLs, Open Graph images, and the sitemap.
-// Metadata needs an absolute base; without one Next falls back to
-// http://localhost:3000 and every shared link points at nothing.
-//
-// Resolution order:
-//   1. NEXT_PUBLIC_SITE_URL — set this in Vercel once the real domain is
-//      attached. It is the only one that survives a domain change.
-//   2. VERCEL_PROJECT_PRODUCTION_URL — the project's production domain,
-//      injected by Vercel. Deliberately NOT VERCEL_URL, which is unique per
-//      deployment and would make canonical URLs point at a preview build.
-//   3. localhost, for `npm run dev`.
-function resolveSiteUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return explicit.replace(/\/+$/, "");
-
-  const vercelProduction = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-  if (vercelProduction) return `https://${vercelProduction.replace(/\/+$/, "")}`;
-
-  return "http://localhost:3000";
-}
-
+// The resolution itself lives in site-url.ts so next.config.ts can share it —
+// the www redirect has to agree with the canonical host, and two copies of
+// this logic would eventually disagree.
 export const SITE_URL = resolveSiteUrl();
 
 export const PHONE_DISPLAY = "(407) 743-4644";
