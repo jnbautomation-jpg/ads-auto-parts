@@ -12,26 +12,9 @@
 import { formatFit, formatPartType, formatPosition } from "@/lib/format";
 import { formatReceivedAt, normalizePhone } from "@/lib/inquiry";
 import { collapse } from "@/lib/normalize";
-import { EMAIL, SITE_URL } from "@/lib/site";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { SITE_URL } from "@/lib/site";
+import { escapeHtml, sendEmail, shopRecipients } from "@/lib/email";
 import { DEFAULT_LOCALE, LOCALE_LABEL, type Locale } from "@/lib/i18n";
-
-/**
- * Who gets told about a new lead.
- *
- * Defaults to the shop's own published contact address — the one already in
- * site.ts and already printed on every page — because that is the mailbox the
- * shop actually reads. Override with a comma-separated list to add marketing
- * or a second owner without a code change.
- */
-export function leadRecipients(): string[] {
-  const configured = process.env.LEAD_EMAIL_TO?.trim();
-  if (!configured) return [EMAIL];
-  return configured
-    .split(",")
-    .map((address) => address.trim())
-    .filter(Boolean);
-}
 
 /** The product a lead was filed against, when it came from a listing rather than the landing page. */
 export type LeadProduct = {
@@ -188,7 +171,7 @@ function renderValue({ value, kind }: Row): string {
 export async function sendLeadNotification(lead: Lead): Promise<void> {
   const { subject, text, html } = buildLeadEmail(lead);
   const result = await sendEmail({
-    to: leadRecipients(),
+    to: shopRecipients(),
     subject,
     text,
     html,

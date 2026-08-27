@@ -50,6 +50,18 @@ const MIN_PHONE_DIGITS = 7;
 // to adjudicate RFC 5322. Email is optional on this form anyway.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Shared with the checkout, where an address is required rather than optional
+ * — a customer who pays online has to be able to receive a receipt.
+ *
+ * Exported so there is one answer to "is this an email" on the customer side.
+ * (src/lib/alerts.ts still carries its own copy of this regex; folding that in
+ * is a tidy-up for its own change, not this one.)
+ */
+export function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value.trim());
+}
+
 /** Digits only, for comparing two differently-formatted spellings of the same number. */
 export function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
