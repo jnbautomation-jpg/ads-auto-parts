@@ -86,6 +86,13 @@ export const en = {
     notFoundTitle: "We can't find that part",
     notFoundBody:
       "It may have sold, or the link may be out of date. We stock far more than we list online — browse the catalog or call and we'll check the shelf for you.",
+    // The four contact buttons under the price. They were hardcoded English
+    // in product-view.tsx, so the Spanish product page showed English
+    // buttons directly beneath translated copy.
+    callCta: "Call",
+    textCta: "Text",
+    emailCta: "Email",
+    quoteCta: "Quote",
     oftenNeededWith: "Often needed with this",
     browseCatalog: "Browse the catalog",
   },
@@ -470,6 +477,86 @@ export const en = {
     close: "Close parts assistant",
     closeChat: "Close chat",
     failedBefore: "I couldn't reach the shop just now — please call",
+  },
+
+  checkout: {
+    // Cart
+    cartTitle: "Your cart",
+    cartLabel: "Cart",
+    cartEmptyTitle: "Nothing in your cart yet",
+    cartEmptyBody:
+      "Browse the catalog and add the parts you need — or call us and we'll pull them for you.",
+    browseCatalog: "Browse parts",
+    remove: "Remove",
+    quantityLabel: "Qty",
+    subtotal: "Subtotal",
+    orderTotal: "Total to pay",
+    itemsHeading: "Parts in this order",
+    goToCheckout: "Checkout",
+    addToCart: "Add to cart",
+    added: "Added",
+    viewCart: "View cart",
+    soldOut: "Sold out",
+    // Shown against a line whose stock dropped below what is in the cart.
+    onlyLeft: "Only a few left — quantity reduced",
+
+    // Checkout page
+    title: "Checkout",
+    intro:
+      "Pay online and we'll have your parts ready. Everything is new aftermarket stock from our Orlando warehouse.",
+    contactHeading: "Where we reach you",
+    name: "Full name",
+    phone: "Phone",
+    email: "Email",
+    emailHelper: "Your receipt and order number go here.",
+    fulfillmentHeading: "Pickup or delivery",
+    pickup: "Pick up at the warehouse",
+    pickupNote: "We'll text you the moment it's on the counter.",
+    delivery: "Deliver to me",
+    deliveryNote: "Same-day across Central Florida on orders placed before 12 PM.",
+    address: "Street address",
+    zip: "ZIP code",
+    notes: "Anything we should know?",
+    notesPlaceholder: "Paint code, gate code, best time to call…",
+    paymentHeading: "Payment",
+    pay: "Pay",
+    paying: "Taking payment…",
+    cardSafety: "Card details go straight to Stripe. We never see them and never store them.",
+    unavailableTitle: "Online payment isn't switched on yet",
+    unavailableBody: "Call or text us and we'll take the order over the phone.",
+
+    // Confirmation
+    successTitle: "Order confirmed",
+    successBody: "Thanks — we've got your order and a receipt is on its way to your inbox.",
+    orderNumberLabel: "Order number",
+    keepNumber: "Quote this number if you call us about the order.",
+    processingTitle: "Confirming your payment",
+    processingBody:
+      "This takes a moment. Leave this page open — it updates as soon as the bank answers.",
+
+    // Named in the "that <field> is too long" message.
+    fields: {
+      name: "name",
+      phone: "phone number",
+      email: "email address",
+      deliveryAddress: "address",
+      notes: "note",
+    },
+
+    errors: {
+      nameRequired: "We need a name for the order.",
+      phoneRequired: "We need a phone number in case there's a problem with the part.",
+      emailRequired: "We need an email address to send your receipt to.",
+      addressRequired: "Enter the street address we're delivering to.",
+      zipInvalid: "That ZIP code doesn't look right — five digits, please.",
+      zipOutside:
+        "We don't have a set delivery rate for that ZIP yet. Choose pickup, or call us and we'll quote the freight.",
+      cartEmpty: "There's nothing in your cart.",
+      soldOut: "One of those parts sold while you were checking out — check your cart and try again.",
+      paymentFailed:
+        "That payment didn't go through. Nothing was charged — try another card, or give us a call.",
+      unavailable: "We can't take card payments right now. Please call or text us instead.",
+    },
   },
 
   footer: {

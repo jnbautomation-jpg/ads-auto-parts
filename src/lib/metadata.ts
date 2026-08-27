@@ -32,11 +32,23 @@ export function pageMetadata(
     title,
     description,
     images = [DEFAULT_SHARE_IMAGE],
-  }: { title: string; description: string; images?: string[] },
+    robots,
+  }: {
+    title: string;
+    description: string;
+    images?: string[];
+    /**
+     * For pages that exist for one visitor and have nothing to index — the
+     * cart, the checkout, the order confirmation. Left undefined everywhere
+     * else so the site-wide default still applies.
+     */
+    robots?: Metadata["robots"];
+  },
 ): Metadata {
   return {
     title,
     description,
+    ...(robots ? { robots } : {}),
     alternates: alternatesFor(locale, path),
     openGraph: {
       type: "website",

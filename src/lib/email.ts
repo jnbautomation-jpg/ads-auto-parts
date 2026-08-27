@@ -16,7 +16,7 @@
 // key, so swapping providers stays one function body rather than a grep.
 
 import { Resend } from "resend";
-import { BUSINESS_NAME } from "@/lib/site";
+import { BUSINESS_NAME, EMAIL } from "@/lib/site";
 
 /**
  * Envelope sender.
@@ -37,6 +37,28 @@ import { BUSINESS_NAME } from "@/lib/site";
  */
 function emailFrom(): string {
   return process.env.EMAIL_FROM?.trim() || `${BUSINESS_NAME} <onboarding@resend.dev>`;
+}
+
+/**
+ * Where the shop's own notifications go — new leads, new paid orders.
+ *
+ * Defaults to the address already published on every page (EMAIL in site.ts),
+ * because that is the mailbox the shop actually reads. Override with a
+ * comma-separated list to add marketing or a second owner without a code
+ * change:
+ *
+ *     SHOP_EMAIL_TO="autodoorstorewest@gmail.com,connie@example.com"
+ *
+ * One list rather than one per message type: the shop is a shop. If leads and
+ * orders ever genuinely need different inboxes, that is the point to split it.
+ */
+export function shopRecipients(): string[] {
+  const configured = process.env.SHOP_EMAIL_TO?.trim();
+  if (!configured) return [EMAIL];
+  return configured
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
 }
 
 export type EmailMessage = {

@@ -42,13 +42,13 @@ import {
   bodyClass,
   eyebrowClass,
   pageTitleClass,
-  primaryButtonClass,
   secondaryButtonClass,
 } from "@/lib/public-ui";
 import { CatalogHeader } from "../catalog-header";
 import { PhotoGallery } from "./photo-gallery";
 import { SiteFooter } from "@/components/site-footer";
 import { ProductQuoteForm } from "./product-quote-form";
+import { AddToCartButton } from "@/components/add-to-cart-button";
 
 // Wrapped in React's cache() so generateMetadata and the page body share one
 // database round-trip per request instead of each issuing their own.
@@ -312,38 +312,45 @@ export async function ProductView({
           <div className="flex flex-col gap-2.5 border border-[var(--line)] bg-[var(--surface-raised)] p-4 lg:p-5">
             <span className={eyebrowClass}>{dict.product.fitsThese}</span>
             {product.vehicleFits.map((fit) => (
-              <span key={fit.id} className="border-b border-[#242424] pb-2 text-[14px] text-[var(--ink-muted)] last:border-b-0">
+              <span key={fit.id} className="border-b border-[var(--line)] pb-2 text-[14px] text-[var(--ink-muted)] last:border-b-0">
                 {formatFit(fit.make, fit.model, fit.yearStart, fit.yearEnd)}
                 {fit.position ? ` — ${formatPositionIn(fit.position, locale)}` : ""}
               </span>
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-            <a
-              href={`tel:${PHONE_HREF}`}
-              className={primaryButtonClass}
-            >
-              Call
-            </a>
-            <a
-              href={smsHref}
-              className={secondaryButtonClass}
-            >
-              Text
-            </a>
-            <a
-              href={emailHref}
-              className={secondaryButtonClass}
-            >
-              Email
-            </a>
-            <a
-              href="#quote"
-              className={secondaryButtonClass}
-            >
-              Quote
-            </a>
+          {/* Buying is now the primary action, so it takes the red and the
+              full width; the four contact routes drop to secondary. They are
+              not removed — half this shop's business still starts with a
+              phone call, and a customer who wants to check fitment before
+              paying needs that route to stay obvious. */}
+          <div className="flex flex-col gap-2.5">
+            <AddToCartButton
+              productId={product.id}
+              locale={locale}
+              soldOut={product.quantity <= 0}
+              labels={{
+                add: dict.checkout.addToCart,
+                added: dict.checkout.added,
+                view: dict.checkout.viewCart,
+                soldOut: dict.checkout.soldOut,
+              }}
+            />
+
+            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              <a href={`tel:${PHONE_HREF}`} className={secondaryButtonClass}>
+                {dict.product.callCta}
+              </a>
+              <a href={smsHref} className={secondaryButtonClass}>
+                {dict.product.textCta}
+              </a>
+              <a href={emailHref} className={secondaryButtonClass}>
+                {dict.product.emailCta}
+              </a>
+              <a href="#quote" className={secondaryButtonClass}>
+                {dict.product.quoteCta}
+              </a>
+            </div>
           </div>
 
           <div id="quote">
@@ -353,12 +360,20 @@ export async function ProductView({
       </div>
 
       {/* sticky mobile call bar */}
-      <div className="sticky bottom-0 border-t border-[var(--line)] bg-[var(--surface-page)] p-3 lg:hidden">
-        <a
-          href={`tel:${PHONE_HREF}`}
-          className={primaryButtonClass}
-        >
-          Call {PHONE_DISPLAY}
+      <div className="sticky bottom-0 grid grid-cols-2 gap-2.5 border-t border-[var(--line)] bg-[var(--surface-page)] p-3 lg:hidden">
+        <AddToCartButton
+          productId={product.id}
+          locale={locale}
+          soldOut={product.quantity <= 0}
+          labels={{
+            add: dict.checkout.addToCart,
+            added: dict.checkout.added,
+            view: dict.checkout.viewCart,
+            soldOut: dict.checkout.soldOut,
+          }}
+        />
+        <a href={`tel:${PHONE_HREF}`} className={secondaryButtonClass}>
+          {dict.product.callCta} {PHONE_DISPLAY}
         </a>
       </div>
 
