@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   QUOTE_LIMITS,
   formatReceivedAt,
@@ -125,12 +125,58 @@ describe("parseQuoteMessage", () => {
 });
 
 describe("formatReceivedDate", () => {
+  // Every assertion here depends on what day it is, in two zones at once, so
+  // the clock is frozen rather than left to whenever CI happens to run.
+  // Sep 10 2026, 8 AM in Orlando — a plain mid-morning with no rollover in
+  // play, so the tests that do care about rollover can set their own.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-10T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("labels today's date as Today", () => {
     expect(formatReceivedDate(new Date())).toBe("Today");
   });
 
   it("formats an older date as month and day", () => {
     expect(formatReceivedDate(new Date("2026-03-04T12:00:00Z"))).toMatch(/Mar \d+/);
+  });
+
+  // A Vercel function runs in UTC. Every lead taken after about 8 PM Orlando
+  // time is already tomorrow in UTC, so the admin table used to stamp it with
+  // a date the shop had not reached yet.
+  it("shows the Orlando date for a late-evening lead, not the server's", () => {
+    // 01:30 UTC on the 28th is 9:30 PM on the 27th in Orlando.
+    expect(formatReceivedDate(new Date("2026-08-28T01:30:00Z"))).toBe("Aug 27");
+  });
+
+  // Standard time, to pin that the offset is read from the zone rather than
+  // hardcoded at the -4 that happens to hold in August.
+  it("handles the same rollover on the winter side of DST", () => {
+    // 02:30 UTC on Jan 15 is 9:30 PM on Jan 14 in Orlando (UTC-5).
+    expect(formatReceivedDate(new Date("2026-01-15T02:30:00Z"))).toBe("Jan 14");
+  });
+
+  // The other half of the bug: "Today" has to mean today *in Orlando*. Once
+  // the server's clock has rolled over but the shop's has not, every lead
+  // from earlier the same working day stopped saying Today.
+  it("still says Today once the server's date is ahead of the shop's", () => {
+    // 01:30 UTC on the 28th — 9:30 PM on the 27th, Orlando.
+    vi.setSystemTime(new Date("2026-08-28T01:30:00Z"));
+
+    // 2 PM the same Orlando day.
+    expect(formatReceivedDate(new Date("2026-08-27T18:00:00Z"))).toBe("Today");
+  });
+
+  it("does not say Today for a lead from the shop's previous day", () => {
+    vi.setSystemTime(new Date("2026-08-28T01:30:00Z"));
+
+    // 2 PM on the 26th in Orlando — a day earlier for the shop.
+    expect(formatReceivedDate(new Date("2026-08-26T18:00:00Z"))).toBe("Aug 26");
   });
 });
 
