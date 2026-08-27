@@ -1,35 +1,59 @@
 # Changelog — Phase 2
 
-**Last updated:** 20 August 2026
-**Branch:** `feat/customer-accounts` (34 commits ahead of `main`)
-**Status:** every Phase 2 spec item that does not require someone else's decision is built and verified.
+**Last updated:** 25 August 2026
+**Branch:** `main` (deployed). One PR open: #11.
+**Live at:** https://www.autodoorstoreorlando.com
 
 > **Reading this to pick up work?** Start at [Where we left off](#where-we-left-off), then
-> [Decisions not to undo](#decisions-not-to-undo). The spec this implements is
-> `ADS-Phase2-Build-Spec.pdf` (the client's document, not in the repo — Luca has it).
+> [Outstanding](#outstanding--blocked-on-people) and [Decisions not to undo](#decisions-not-to-undo).
+> The spec this implements is `ADS-Phase2-Build-Spec.pdf` (the client's document, not in the repo —
+> Luca has it).
 
 ---
 
 ## Where we left off
 
-Nothing is half-finished. The last completed task was **finishing the Spanish site** (six commits,
-20 Aug). The i18n requirement had been recorded as done a commit earlier; it was not. What was
-missing was not visible from the routes list or from any test, which is why it survived:
+**The site is live and everything built is deployed.** Eleven PRs merged. What follows is the
+state on 25 August 2026.
 
-- `/es/estimate` and `/es/returns` did not exist, while both English pages advertised an hreflang
-  alternate at those URLs — so the "Subir presupuesto" link in the header of **every** Spanish page
-  pointed at a 404, and so did the language toggle on two English pages.
-- Both site footers, the landing page's contact block, and the trust-signals band rendered in
-  English on Spanish pages, and their links walked the visitor back into English.
-- Both quote forms — the site's conversion point — were English, as were the validation messages
-  the server sent back to them.
-- `<html lang>` was hard-coded `"en"` on every page, and Spanish pages shared to WhatsApp or
-  Facebook previewed as English.
-- The 404 pages, the public error boundary and the chat bubble answered in English.
+### Live and working
 
-`dict.quote`, `dict.errors` and `dict.product.notFound*` already held most of the strings — they
-were written during the original i18n pass and never wired to anything. Two tests now hold the line
-(see [Decisions not to undo](#decisions-not-to-undo) 9 and 10).
+Light theme, Spanish site at `/es`, VIN lookup, insurance-estimate upload, returns page, customer
+accounts, orders, catalogue-grounded AI chat (answering in both languages against real stock),
+mobile navigation, order receipts, 592 products across 10 part types.
+
+### Open PR
+
+**#11 — ad conversion tracking + favicon.** Google Ads and Meta Pixel were never carried over from
+the old Wix site, so two live campaigns have been reporting zero conversions since launch. Adds
+both tags plus a `generate_lead` / `Lead` event on quote submission, and replaces Next.js's default
+favicon with the shop's logo mark. Needs JJ to merge.
+
+### The one that is costing money right now
+
+**Form leads reach nobody.** `submitQuoteRequest` writes an Inquiry row and returns. There is no
+mail library in the project at all — no email is ever sent, to anyone. Leads are visible only on
+`/inquiries` in the admin, which nobody opens.
+
+The marketing director (Connie Lothian) reported this on 10, 13 and 17 August and twice offered to
+pause the Google Ads over it. Her test leads are sitting in `/inquiries`. **This is the highest
+priority item in the project** — ad spend is buying leads that nobody sees.
+
+Fixing it needs an email provider chosen and credentialed. Resend is the obvious fit on Vercel.
+Nothing is built yet; this is a green field.
+
+### Also raised by marketing, not yet addressed
+
+- **No blog.** The old Wix site had blog pages Google had indexed. That SEO is lost. Rebuilding
+  needs the old post content — exportable from Wix, or recoverable from Google's cache.
+- **Old URLs still 404.** They no longer land on the staff login (spec 1.1 fixed that), but there
+  is no 301 map, so live Google Ads clicks on old URLs hit a 404 and the shop pays for them.
+  Blocked on the old URL list from Search Console.
+- **Sitemap never submitted** to Search Console. The sitemap itself is valid and serving 603 URLs.
+  Submission has to happen in Connie's Search Console account.
+- **Google Ads conversion label** not supplied. `GOOGLE_LEAD_CONVERSION_LABEL` in
+  `src/lib/tracking.ts` is empty, so the lead event shows in reports but does not register as a
+  campaign conversion until marketing sends the label from the Ads UI.
 
 **Everything remaining is blocked on a person, not on code.** See
 [Outstanding](#outstanding--blocked-on-people). Do not start building those without an answer —
@@ -56,7 +80,7 @@ the business domain) still stands whenever the shop wants it, and it is a one-li
 
 | Check | State |
 | --- | --- |
-| Unit tests | 319 passing across 25 files |
+| Unit tests | 348 passing across 27 files |
 | CI | Green — lint, typecheck, tests, production build, on Node 20 and 24 |
 | Live-site regression sweep | 46 checks passing — predates the i18n completion pass, not re-run since |
 | Working tree | Clean |
@@ -195,7 +219,33 @@ These were deliberate. Changing them re-introduces a bug that was specifically f
 7. **Local landing pages must stay genuinely different from each other**, or Google treats them as
    doorway pages. `src/lib/locations.ts` has the warning and a test enforces it.
 
-8. **The chat can only learn catalogue facts through its one tool.** No catalogue data goes in the
+8. **Public pages never show an exact stock count.** Counts were added on 25 Aug at the client's
+   request and removed the same day at their request. The reasons the rule exists, so the next
+   person starts from the reasoning: a competitor can read the shop's whole stock position off the
+   site, "1 left" makes retail buyers hesitate, and the number is wrong the moment a part sells
+   over the phone. `i18n.test.ts` pins that an availability label never contains a digit.
+
+9. **The public site is light; the header, footer and landing hero are graphite bands.** Changed
+   25 Aug at the client's request — near-black throughout read as generic rather than as a parts
+   supplier. **Anything on a dark band must state its own text colour rather than inherit**: the
+   `(public)` layout sets ink for the page, so an inheriting band renders black on black. That bug
+   shipped twice — once on the hero, once on the landing header's logo.
+
+10. **Colour comes from tokens in `globals.css`, never a literal.** The site carried 465 colour
+    literals across 41 files, which is what made the light conversion a project rather than an edit.
+
+11. **The public email stays on `autodoorstorewest@gmail.com`.** `sales@autodoorstoreorlando.com`
+    was never created and the client decided not to create it. Spec 1.14 is a choice now, not a
+    task. One line in `site.ts` if it ever changes.
+
+12. **Ad tracking IDs live in `site.ts`, not env vars.** They are public identifiers that appear in
+    the page source by design. An empty string disables that tag.
+
+13. **The lead conversion event fires only after the server confirms the lead is saved**, wrapped
+    in try/catch. A blocked tracker must never cost the shop a lead, and a tracking exception must
+    never surface to a customer who has just successfully sent one.
+
+14. **The chat can only learn catalogue facts through its one tool.** No catalogue data goes in the
    prompt. That is what stops it inventing parts or prices.
 
 9. **Every public page exists in both languages, and a test enforces it.**
@@ -228,44 +278,56 @@ These were deliberate. Changing them re-introduces a bug that was specifically f
 
 ## Outstanding — blocked on people
 
+### Highest priority — Luca
+
+- **Choose an email provider so form leads reach a human.** Nothing built yet. See
+  [Where we left off](#where-we-left-off). Every day this waits, ad spend buys leads nobody sees.
+- **Send Connie the Google Ads conversion label request** and get the old URL list out of Search
+  Console so the 301 map can be written.
+- **Set a spend limit on the Anthropic account.** The chat is public and answering; the key is
+  live in Vercel. Not done as of 25 Aug.
+- Export the Wix blog content if the shop wants that SEO back.
+- Exclude the project folder from iCloud. `clean:dupes` now cleans `.tsx` too and runs before
+  `dev` and `test`, so it self-heals — but the copies keep appearing.
+
 ### JJ
 
-- **Stripe checkout.** Everything around it exists — orders, stock that can't oversell, statuses,
-  labels. Spec asks for card / Apple Pay / Google Pay, and for the **webhook** to be the source of
-  truth for payment, not the client callback. `Order.stripePaymentIntentId` is already on the model
-  and is unique so a replayed webhook can't double-create.
-- **www → non-www redirect** — a Vercel domain setting.
-- **Check Vercel's Preview environment points at the dev database**, not production.
-- **Review and merge** PR #2, then this branch.
+- **Merge PR #11.**
+- **Stripe checkout.** Not started. Customers still cannot pay on the site — this is the single
+  largest gap between "live site" and "working business". Everything around it exists: orders,
+  stock that cannot oversell, statuses, labels, receipts. `Order.stripePaymentIntentId` is on the
+  model and unique so a replayed webhook cannot double-create. The spec wants card / Apple Pay /
+  Google Pay and the **webhook** as the source of truth for payment, not the client callback.
+- **Fix `DIRECT_URL` in Vercel Production.** The build no longer fails on it — `prisma.config.ts`
+  derives the session pooler from `DATABASE_URL` when `DIRECT_URL` points at the IPv6-only host —
+  but it prints a warning on every deploy until it is corrected.
+- Make the `verify` checks required before merging to `main`. They run on every PR; nothing blocks
+  a merge while they are red.
+- `www` → non-www redirect.
+- Confirm the Preview environment points at the dev database, not production.
 
 ### Matthew
 
-- Rewards earn/redeem rates.
-- Reserve-now deposit amount and hold expiry.
-- Flat `$100` markup vs a percentage (`RETAIL_MARKUP_USD` in `src/lib/pricing.ts`; a flat amount is
-  +50% on a $199 part and +19% on a $539 one).
-- Delivery ZIP zones and the out-of-city fee (`src/lib/delivery.ts` — currently says "call for a
+- Real business hours. Site says Mon–Fri 9–5; Facebook says always open. Both languages read from
+  `HOURS_DISPLAY_IN` in `src/lib/site.ts`, so it is one edit.
+- Sign-off on the returns policy — `/returns` is live with draft terms.
+- Delivery ZIP zones and the out-of-city fee (`src/lib/delivery.ts` currently says "call for a
   quote" rather than guessing).
-- Sign-off on the returns policy (`/returns` — draft).
-- Real business hours (site says Mon–Fri 9–5; Facebook says always open).
 - Google / Facebook / Yelp / eBay URLs (`REVIEW_LINKS` in `src/lib/site.ts` — links are hidden
   while empty rather than shipped broken).
+- **Rewards earn/redeem rates** and the **reserve-now deposit and hold expiry**. Both features are
+  unbuilt and blocked entirely on these numbers.
+- *Settled 25 Aug:* the flat $100 markup stays (`RETAIL_MARKUP_USD`). The client confirmed it when
+  asking for the trade discount display.
 
-### Luca
+### Legwork — not code
 
-- Create the `sales@` mailbox (**the deploy blocker**).
-- `ANTHROPIC_API_KEY` in Vercel to switch the chat on, plus a spend limit. Without it the widget
-  doesn't render and the endpoint hands off to the phone number.
-- Export old indexed URLs from Search Console for the 301 map.
-- Make CI a required status check in GitHub branch protection.
-- Exclude the project from iCloud sync (see gotchas).
-
-### Legwork
-
-Part photographs; the first stock count (`/stock` ranks what to count first); filling in fitment
-detail as parts are handled.
-
----
+- **Part photographs.** Every part still shows a generic category image. Highest-value non-code job.
+- The first stock count (`/stock` ranks what to count first).
+- Check the live catalogue against the workbook before importing anything. The importer only
+  **creates** — it never updates — and SKUs are unique, so re-importing overlapping rows either
+  fails or duplicates. A replacement import needs the catalogue cleared first
+  (`scripts/reset-products.ts`), which needs production database access.
 
 ## Gotchas
 
