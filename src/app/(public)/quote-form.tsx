@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { useActionState, useEffect, useId } from "react";
 import { submitQuoteRequest, type QuoteFormState } from "./actions";
 import { eyebrowClass, primaryButtonClass } from "@/lib/public-ui";
 import { HoneypotField } from "@/components/honeypot-field";
 import { PART_SLUG_LABELS, PART_SLUG_TO_TYPES, formatPartSlugIn } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
+import { trackLead } from "@/lib/tracking";
 
 // Was a fourth hard-coded copy of the category list. Built from the same map
 // the catalog and footer use, so a category can't exist in one place and not
@@ -30,6 +31,12 @@ export function QuoteForm({ id, locale = "en" }: { id?: string; locale?: Locale 
   // don't announce them as field names. useId keeps these unique if the form
   // is ever rendered more than once on a page.
   const uid = useId();
+
+  // Fires once the server action has confirmed the lead is saved, so a blocked
+  // tracker can never cost the shop the lead itself.
+  useEffect(() => {
+    if (state.success) trackLead();
+  }, [state.success]);
 
   return (
     <form

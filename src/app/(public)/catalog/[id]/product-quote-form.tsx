@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { useActionState, useEffect, useId } from "react";
 import { submitQuoteRequest, type QuoteFormState } from "../../actions";
 import { eyebrowClass, primaryButtonClass } from "@/lib/public-ui";
 import { HoneypotField } from "@/components/honeypot-field";
 import type { Locale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
+import { trackLead } from "@/lib/tracking";
 
 const fieldClass =
   "min-h-[44px] w-full border border-[var(--line)] bg-[var(--surface-raised)] px-3.5 py-3 text-[14px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)] focus:outline-none";
@@ -20,6 +21,12 @@ export function ProductQuoteForm({
   const dict = getDictionary(locale);
   const [state, formAction, pending] = useActionState<QuoteFormState, FormData>(submitQuoteRequest, {});
   const uid = useId();
+
+  // Fires once the server action has confirmed the lead is saved, so a blocked
+  // tracker can never cost the shop the lead itself.
+  useEffect(() => {
+    if (state.success) trackLead();
+  }, [state.success]);
 
   return (
     <form action={formAction} className="relative flex flex-col gap-3 border border-[var(--line)] p-5 lg:p-6">

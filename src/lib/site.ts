@@ -78,6 +78,20 @@ export const PHONE_NOTE_IN: Record<Locale, string> = {
 export const BUSINESS_NAME = "ADS Auto Door Store";
 export const LOCALITY = "Orlando, FL";
 
+// Advertising conversion tracking. Both are PUBLIC identifiers — they appear
+// in the page source by design, so they belong here with the shop's other
+// details rather than in an env var pretending to be a secret.
+//
+// Supplied by Connie Lothian (marketing) on 17 Aug 2026. The old Wix site had
+// both; neither was carried across, so two live Google Ads campaigns have been
+// running against a site that reports no conversions at all. Without these the
+// spend cannot be attributed and the campaigns cannot be optimised.
+//
+// An empty string disables that tag entirely — see SiteAnalytics — so a shop
+// that stops advertising can switch tracking off without touching code.
+export const GOOGLE_ADS_ID = "AW-7560399029";
+export const META_PIXEL_ID = "120240474804150214";
+
 // Outbound profile links used by the trust-signals block.
 //
 // ⚠️ NEEDS THE REAL URLS. The spec notes the shop already has Facebook, Yelp
