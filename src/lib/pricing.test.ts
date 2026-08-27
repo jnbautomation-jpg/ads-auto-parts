@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  LEAD_PRODUCT_SELECT,
   PUBLIC_PRODUCT_SELECT,
   RETAIL_MARKUP_USD,
   canSeeWholesale,
@@ -38,6 +39,23 @@ describe("retailMarginPercent", () => {
   it("returns null when wholesale is zero or invalid", () => {
     expect(retailMarginPercent(0, 100)).toBeNull();
     expect(retailMarginPercent(Number.NaN, 100)).toBeNull();
+  });
+});
+
+describe("LEAD_PRODUCT_SELECT", () => {
+  // Same guarantee as PUBLIC_PRODUCT_SELECT below, and a notch more
+  // important: this one feeds an email, which leaves the building and cannot
+  // be unsent.
+  it("never selects a staff-only field", () => {
+    for (const field of ["price", "cost", "binLocation", "supplierId"]) {
+      expect(field in LEAD_PRODUCT_SELECT, `${field} must never reach an outbound email`).toBe(false);
+    }
+  });
+
+  it("selects enough to name the listing in the email", () => {
+    for (const field of ["sku", "make", "model", "yearStart", "yearEnd", "partType", "position"]) {
+      expect(field in LEAD_PRODUCT_SELECT, `${field} is needed to describe the part`).toBe(true);
+    }
   });
 });
 

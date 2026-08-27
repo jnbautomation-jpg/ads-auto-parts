@@ -10,7 +10,8 @@ import { ORG_SLUG } from "@/lib/site";
 import { HONEYPOT_NAME, normalizePhone, validateQuoteInput } from "@/lib/inquiry";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
-import { sendLeadNotification, type LeadProduct } from "@/lib/lead-email";
+import { sendLeadNotification } from "@/lib/lead-email";
+import { LEAD_PRODUCT_SELECT } from "@/lib/pricing";
 
 export type QuoteFormState = { success?: boolean; error?: string };
 
@@ -76,39 +77,19 @@ export async function submitQuoteRequest(
   // Never trust a client-supplied productId directly — re-check it's a real,
   // public product in this org before linking the inquiry to it.
   //
-  // The extra columns are for the notification email, so the shop can see
-  // which listing was being looked at without opening the admin. This is a
-  // public code path: it selects `retailPrice`-free identity fields only, and
-  // must never reach for `price` — see CHANGELOG "Decisions not to undo" 1.
-  let productId: string | null = null;
-  let leadProduct: LeadProduct | null = null;
-  if (requestedProductId) {
-    const product = await prisma.product.findFirst({
-      where: { id: requestedProductId, organizationId: organization.id, isPublic: true },
-      select: {
-        id: true,
-        sku: true,
-        make: true,
-        model: true,
-        yearStart: true,
-        yearEnd: true,
-        partType: true,
-        position: true,
-      },
-    });
-    productId = product?.id ?? null;
-    leadProduct = product
-      ? {
-          sku: product.sku,
-          make: product.make,
-          model: product.model,
-          yearStart: product.yearStart,
-          yearEnd: product.yearEnd,
-          partType: product.partType,
-          position: product.position,
-        }
-      : null;
-  }
+  // The row is also what names the listing in the notification email, so the
+  // shop can see what was being looked at without opening the admin. It is
+  // fetched through LEAD_PRODUCT_SELECT rather than an inline select because
+  // that constant is covered by pricing.test.ts: an email leaves the building
+  // and cannot be unsent, so "never selects `price`" (CHANGELOG "Decisions
+  // not to undo" 1) needs a test behind it and not a comment.
+  const product = requestedProductId
+    ? await prisma.product.findFirst({
+        where: { id: requestedProductId, organizationId: organization.id, isPublic: true },
+        select: LEAD_PRODUCT_SELECT,
+      })
+    : null;
+  const productId = product?.id ?? null;
 
   // These two prefixes stay English in both languages on purpose:
   // parseQuoteMessage() reads them back out for the admin inquiries table, and
@@ -150,7 +131,7 @@ export async function submitQuoteRequest(
       partNeeded: partNeeded || null,
       notes: notes || null,
       locale,
-      product: leadProduct,
+      product,
       receivedAt: inquiry.createdAt,
     }),
   );
