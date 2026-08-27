@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+
 import { prisma } from "@/lib/prisma";
 // Single-tenant public site: this org is the only one the landing page ever
 // files leads against. Looked up by slug rather than passed from the client
@@ -8,6 +10,7 @@ import { ORG_SLUG } from "@/lib/site";
 import { HONEYPOT_NAME, normalizePhone, validateQuoteInput } from "@/lib/inquiry";
 import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
+import { sendLeadNotification, type LeadProduct } from "@/lib/lead-email";
 
 export type QuoteFormState = { success?: boolean; error?: string };
 
@@ -72,13 +75,39 @@ export async function submitQuoteRequest(
 
   // Never trust a client-supplied productId directly — re-check it's a real,
   // public product in this org before linking the inquiry to it.
+  //
+  // The extra columns are for the notification email, so the shop can see
+  // which listing was being looked at without opening the admin. This is a
+  // public code path: it selects `retailPrice`-free identity fields only, and
+  // must never reach for `price` — see CHANGELOG "Decisions not to undo" 1.
   let productId: string | null = null;
+  let leadProduct: LeadProduct | null = null;
   if (requestedProductId) {
     const product = await prisma.product.findFirst({
       where: { id: requestedProductId, organizationId: organization.id, isPublic: true },
-      select: { id: true },
+      select: {
+        id: true,
+        sku: true,
+        make: true,
+        model: true,
+        yearStart: true,
+        yearEnd: true,
+        partType: true,
+        position: true,
+      },
     });
     productId = product?.id ?? null;
+    leadProduct = product
+      ? {
+          sku: product.sku,
+          make: product.make,
+          model: product.model,
+          yearStart: product.yearStart,
+          yearEnd: product.yearEnd,
+          partType: product.partType,
+          position: product.position,
+        }
+      : null;
   }
 
   // These two prefixes stay English in both languages on purpose:
@@ -90,7 +119,7 @@ export async function submitQuoteRequest(
       .filter(Boolean)
       .join("\n") || null;
 
-  await prisma.inquiry.create({
+  const inquiry = await prisma.inquiry.create({
     data: {
       organizationId: organization.id,
       productId,
@@ -100,6 +129,31 @@ export async function submitQuoteRequest(
       message,
     },
   });
+
+  // Tell a human. Until this existed the lead stopped at the row above and
+  // was visible only on /inquiries, which nobody opens — while Google Ads
+  // paid for the click that produced it.
+  //
+  // after() runs the send once the response has already gone back to the
+  // customer, so a slow or unreachable mail provider cannot make the form
+  // feel broken. The row is committed either way: the email is a
+  // notification, not the record of the lead. sendLeadNotification() never
+  // throws, and `after` callbacks run even when the surrounding request
+  // fails, so there is no path where a mail problem costs the shop a lead.
+  after(() =>
+    sendLeadNotification({
+      id: inquiry.id,
+      name,
+      phone,
+      email: email || null,
+      vehicle: vehicle || null,
+      partNeeded: partNeeded || null,
+      notes: notes || null,
+      locale,
+      product: leadProduct,
+      receivedAt: inquiry.createdAt,
+    }),
+  );
 
   return { success: true };
 }
