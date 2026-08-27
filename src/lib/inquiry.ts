@@ -111,9 +111,43 @@ export function validateQuoteInput(
   return { ok: true, value };
 }
 
+/**
+ * Orlando, always.
+ *
+ * A Vercel function runs in UTC, so formatting an inquiry timestamp without a
+ * zone puts a 2 PM lead four hours later than it happened — which reads as
+ * "came in after close, deal with it tomorrow" on exactly the leads worth
+ * calling back inside the hour.
+ */
+export const SHOP_TIME_ZONE = "America/New_York";
+
+/**
+ * Two formatters, both pinned to the shop's zone, hoisted the way
+ * format.ts hoists its currency formatter — formatReceivedDate runs once per
+ * row of the inquiries, customers and alerts tables.
+ *
+ * shopDay exists to answer "is this the same day as now": Date.toDateString()
+ * answers in the *server's* zone, so on Vercel a lead taken at 9 PM Wednesday
+ * is already Thursday, and it never matched Thursday-in-UTC either — the
+ * label was wrong at both ends of that window. Comparing two dates formatted
+ * in the same zone is the only way to ask the question about a zone that
+ * isn't the runtime's. The format itself doesn't matter, only that it is
+ * stable and drops the time of day.
+ */
+const shopDay = new Intl.DateTimeFormat("en-US", {
+  timeZone: SHOP_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const shopMonthDay = new Intl.DateTimeFormat("en-US", {
+  timeZone: SHOP_TIME_ZONE,
+  month: "short",
+  day: "numeric",
+});
+
 export function formatReceivedDate(date: Date): string {
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  if (isToday) return "Today";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (shopDay.format(date) === shopDay.format(new Date())) return "Today";
+  return shopMonthDay.format(date);
 }
