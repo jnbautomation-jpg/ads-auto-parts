@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildLeadEmail, leadRecipients, type Lead } from "./lead-email";
 import { EMAIL } from "./site";
 
@@ -27,7 +27,7 @@ describe("buildLeadEmail — subject", () => {
     expect(subject).toBe("New quote request: Jane Doe");
   });
 
-  it("flags a Spanish lead so whoever picks it up knows to reply in Spanish", () => {
+  it("tags a translated lead with its language, so it is triaged before it is opened", () => {
     expect(buildLeadEmail({ ...LEAD, locale: "es" }).subject).toMatch(/^\[ES\] /);
   });
 
@@ -65,8 +65,11 @@ describe("buildLeadEmail — body", () => {
   });
 
   it("tells staff to call back when no email was given", () => {
-    const { text } = buildLeadEmail({ ...LEAD, email: null });
-    expect(text).toContain("Call back on (407) 743-4644");
+    const { text, html } = buildLeadEmail({ ...LEAD, email: null });
+    expect(text).toContain("No email given — call back on (407) 743-4644.");
+    // Both parts close the same way — they read from one string, so they
+    // cannot drift into saying different things.
+    expect(html).toContain("No email given — call back on (407) 743-4644.");
   });
 
   it("tells staff to reply directly when an email was given", () => {
@@ -112,6 +115,15 @@ describe("buildLeadEmail — body", () => {
     expect(text).not.toContain("Hood (—)");
   });
 
+  it("names the customer's language rather than assuming a two-language world", () => {
+    const { text } = buildLeadEmail({ ...LEAD, locale: "es" });
+    expect(text).toContain("Language: Español — reply in this language");
+  });
+
+  it("says nothing about language on a lead in the site's own language", () => {
+    expect(buildLeadEmail(LEAD).text).not.toContain("Language:");
+  });
+
   it("links back to the admin inquiries list", () => {
     expect(buildLeadEmail(LEAD).text).toContain("/inquiries");
   });
@@ -139,27 +151,37 @@ describe("buildLeadEmail — escaping", () => {
   it("strips non-digits out of the tel: href", () => {
     expect(buildLeadEmail(LEAD).html).toContain('href="tel:4077434644"');
   });
+
+  it("links an email that was given", () => {
+    expect(buildLeadEmail(LEAD).html).toContain('href="mailto:jane@example.com"');
+  });
+
+  // The placeholder is applied when the row renders, not baked into the row's
+  // value, so there is no way for it to end up inside a mailto:.
+  it("never turns the missing-value placeholder into a link", () => {
+    const { html } = buildLeadEmail({ ...LEAD, email: null });
+    expect(html).not.toContain("mailto:—");
+    expect(html).not.toContain("mailto:&#");
+  });
 });
 
 describe("leadRecipients", () => {
-  const original = process.env.LEAD_EMAIL_TO;
   afterEach(() => {
-    if (original === undefined) delete process.env.LEAD_EMAIL_TO;
-    else process.env.LEAD_EMAIL_TO = original;
+    vi.unstubAllEnvs();
   });
 
   it("defaults to the shop's own published address, so it works before anyone configures it", () => {
-    delete process.env.LEAD_EMAIL_TO;
+    vi.stubEnv("LEAD_EMAIL_TO", undefined);
     expect(leadRecipients()).toEqual([EMAIL]);
   });
 
   it("accepts a comma-separated list so marketing can be added without a code change", () => {
-    process.env.LEAD_EMAIL_TO = "shop@example.com, marketing@example.com";
+    vi.stubEnv("LEAD_EMAIL_TO", "shop@example.com, marketing@example.com");
     expect(leadRecipients()).toEqual(["shop@example.com", "marketing@example.com"]);
   });
 
   it("ignores empty entries from a trailing comma", () => {
-    process.env.LEAD_EMAIL_TO = "shop@example.com,";
+    vi.stubEnv("LEAD_EMAIL_TO", "shop@example.com,");
     expect(leadRecipients()).toEqual(["shop@example.com"]);
   });
 });

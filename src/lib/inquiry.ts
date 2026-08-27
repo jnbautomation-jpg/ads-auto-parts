@@ -117,3 +117,35 @@ export function formatReceivedDate(date: Date): string {
   if (isToday) return "Today";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+/**
+ * Orlando, always.
+ *
+ * A Vercel function runs in UTC, so formatting an inquiry timestamp without a
+ * zone puts a 2 PM lead four hours later than it happened — which reads as
+ * "came in after close, deal with it tomorrow" on exactly the leads worth
+ * calling back inside the hour.
+ */
+export const SHOP_TIME_ZONE = "America/New_York";
+
+/**
+ * The same Inquiry.createdAt as formatReceivedDate above, with the time of
+ * day, for the notification email — where "Today" means nothing because the
+ * reader already knows when the mail arrived, and the hour is what tells them
+ * whether to call now.
+ *
+ * Kept beside its sibling deliberately: two functions render this one column
+ * and they disagree about the zone. formatReceivedDate is still UTC, so the
+ * admin table can show yesterday's date on a late-evening lead. Whoever fixes
+ * that should find both at once.
+ */
+export function formatReceivedAt(date: Date): string {
+  return date.toLocaleString("en-US", {
+    timeZone: SHOP_TIME_ZONE,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

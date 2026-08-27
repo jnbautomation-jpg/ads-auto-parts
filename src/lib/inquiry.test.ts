@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   QUOTE_LIMITS,
+  formatReceivedAt,
   formatReceivedDate,
   normalizePhone,
   parseQuoteMessage,
@@ -130,5 +131,24 @@ describe("formatReceivedDate", () => {
 
   it("formats an older date as month and day", () => {
     expect(formatReceivedDate(new Date("2026-03-04T12:00:00Z"))).toMatch(/Mar \d+/);
+  });
+});
+
+describe("formatReceivedAt", () => {
+  // A Vercel function runs in UTC. Formatting without a zone would put a
+  // 2:30 PM lead at 6:30 PM and make it read as after-hours.
+  it("stamps the shop's own timezone, not the server's", () => {
+    expect(formatReceivedAt(new Date("2026-08-27T18:30:00Z"))).toContain("2:30 PM");
+  });
+
+  it("carries the weekday and date, so a lead read the next morning is placeable", () => {
+    const formatted = formatReceivedAt(new Date("2026-08-27T18:30:00Z"));
+    expect(formatted).toContain("Thu");
+    expect(formatted).toContain("Aug 27");
+  });
+
+  it("rolls back a day for a late-evening lead, because Orlando is behind UTC", () => {
+    // 01:30 UTC on the 28th is 9:30 PM on the 27th in Orlando.
+    expect(formatReceivedAt(new Date("2026-08-28T01:30:00Z"))).toContain("Aug 27");
   });
 });

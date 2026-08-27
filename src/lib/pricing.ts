@@ -136,3 +136,23 @@ export const PUBLIC_PRODUCT_SELECT = {
   quantity: true,
   reorderPoint: true,
 } satisfies Prisma.ProductSelect;
+
+/**
+ * Prisma `select` for the product named in an outbound lead notification
+ * email — identity only: which listing the customer was looking at.
+ *
+ * Lives here rather than inline at the call site so the same test that guards
+ * PUBLIC_PRODUCT_SELECT guards this one. An email leaves the building and
+ * cannot be unsent, so "never selects `price`" has to be enforced by
+ * something better than a comment above the query.
+ */
+export const LEAD_PRODUCT_SELECT = {
+  id: true,
+  sku: true,
+  make: true,
+  model: true,
+  yearStart: true,
+  yearEnd: true,
+  partType: true,
+  position: true,
+} satisfies Prisma.ProductSelect;

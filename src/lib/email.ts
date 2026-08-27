@@ -10,8 +10,10 @@
 // Vercel integration guide wires up for Next.js). Installing it on the
 // project injects RESEND_API_KEY automatically.
 //
-// Everything provider-specific stops at this file. Callers pass a message and
-// get a result back; swapping providers is one function body.
+// Everything provider-specific stops at this file — including the name of
+// that env var. Callers pass a message and get a result back; a caller that
+// wants to say "mail isn't set up" reads `reason` rather than re-testing the
+// key, so swapping providers stays one function body rather than a grep.
 
 import { Resend } from "resend";
 import { BUSINESS_NAME } from "@/lib/site";
@@ -28,17 +30,13 @@ import { BUSINESS_NAME } from "@/lib/site";
  *
  *     EMAIL_FROM="ADS Auto Parts <leads@autodoorstoreorlando.com>"
  *
- * Deliberately an env var rather than a constant in site.ts: unlike the ad
- * tracking IDs this is tied to provider account state, and it has to be able
- * to differ between a preview deploy and production.
+ * An env var rather than a constant in site.ts for the same reason SITE_URL
+ * resolves from one (site.ts:24-34): it has to be able to differ between a
+ * preview deploy and production, and it is tied to provider account state
+ * rather than to the shop's own details.
  */
 function emailFrom(): string {
   return process.env.EMAIL_FROM?.trim() || `${BUSINESS_NAME} <onboarding@resend.dev>`;
-}
-
-/** Whether outbound mail can be sent at all. False in CI and in any checkout without a key. */
-export function isEmailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY?.trim());
 }
 
 export type EmailMessage = {
@@ -53,7 +51,15 @@ export type EmailMessage = {
   idempotencyKey?: string;
 };
 
-export type EmailResult = { ok: true; id: string } | { ok: false; error: string };
+/**
+ * `unconfigured` means no mail provider is set up at all — an expected state
+ * (CI, a fresh checkout, a deploy before the integration is installed), and
+ * worth a quieter log than a genuine failure. `failed` is everything else.
+ * Callers distinguish the two without naming the provider or its env var.
+ */
+export type EmailResult =
+  | { ok: true; id: string }
+  | { ok: false; reason: "unconfigured" | "failed"; error: string };
 
 /**
  * Send one message.
@@ -69,10 +75,18 @@ export type EmailResult = { ok: true; id: string } | { ok: false; error: string 
  */
 export async function sendEmail(message: EmailMessage): Promise<EmailResult> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) return { ok: false, error: "RESEND_API_KEY is not set" };
-  if (message.to.length === 0) return { ok: false, error: "no recipients configured" };
+  if (!apiKey) {
+    return { ok: false, reason: "unconfigured", error: "RESEND_API_KEY is not set" };
+  }
+  if (message.to.length === 0) {
+    return { ok: false, reason: "unconfigured", error: "no recipients configured" };
+  }
 
   try {
+    // Constructed per send rather than hoisted: the constructor reads the key
+    // eagerly and throws when it is absent, which would defeat the check
+    // above. It allocates a handful of empty resource wrappers and does no
+    // I/O, so there is nothing to save by reusing one.
     const resend = new Resend(apiKey);
     const { data, error } = await resend.emails.send(
       {
@@ -81,14 +95,38 @@ export async function sendEmail(message: EmailMessage): Promise<EmailResult> {
         subject: message.subject,
         text: message.text,
         html: message.html,
-        ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+        replyTo: message.replyTo,
       },
-      message.idempotencyKey ? { idempotencyKey: message.idempotencyKey } : undefined,
+      { idempotencyKey: message.idempotencyKey },
     );
 
-    if (error) return { ok: false, error: `${error.name}: ${error.message}` };
+    if (error) return { ok: false, reason: "failed", error: `${error.name}: ${error.message}` };
     return { ok: true, id: data?.id ?? "" };
   } catch (cause) {
-    return { ok: false, error: cause instanceof Error ? cause.message : String(cause) };
+    return {
+      ok: false,
+      reason: "failed",
+      error: cause instanceof Error ? cause.message : String(cause),
+    };
   }
+}
+
+const HTML_ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+/**
+ * Escape text for interpolation into an HTML email body.
+ *
+ * Lives with the transport rather than with any one message type: every HTML
+ * email this app ever sends needs it, and the alternative is each new message
+ * module either importing it from an unrelated sibling or writing a second
+ * escaper that these tests do not cover.
+ */
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }

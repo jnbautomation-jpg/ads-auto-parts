@@ -169,7 +169,12 @@ export function normalizeVehicle(
   return { make: canonicalMake(make), model: canonicalModel(model), capa };
 }
 
-function collapse(s: string): string {
+/**
+ * Runs of whitespace — including newlines — become single spaces, and the
+ * ends are trimmed. Exported because it is not specific to vehicle data: the
+ * lead notification email uses it to flatten a subject line.
+ */
+export function collapse(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 

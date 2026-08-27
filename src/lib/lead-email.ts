@@ -10,9 +10,11 @@
 // that and not for looking like a newsletter.
 
 import { formatFit, formatPartType, formatPosition } from "@/lib/format";
+import { formatReceivedAt, normalizePhone } from "@/lib/inquiry";
+import { collapse } from "@/lib/normalize";
 import { EMAIL, SITE_URL } from "@/lib/site";
-import { isEmailConfigured, sendEmail } from "@/lib/email";
-import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
+import { escapeHtml, sendEmail } from "@/lib/email";
+import { DEFAULT_LOCALE, LOCALE_LABEL, type Locale } from "@/lib/i18n";
 
 /**
  * Who gets told about a new lead.
@@ -20,9 +22,7 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
  * Defaults to the shop's own published contact address — the one already in
  * site.ts and already printed on every page — because that is the mailbox the
  * shop actually reads. Override with a comma-separated list to add marketing
- * or a second owner without a code change:
- *
- *     LEAD_EMAIL_TO="autodoorstorewest@gmail.com,connie@example.com"
+ * or a second owner without a code change.
  */
 export function leadRecipients(): string[] {
   const configured = process.env.LEAD_EMAIL_TO?.trim();
@@ -59,45 +59,19 @@ export type Lead = {
   receivedAt: Date;
 };
 
+/** Shown where the customer left a field blank, so the reader isn't interpreting a gap. */
+const NOT_GIVEN = "— not given —";
+
 /**
- * Orlando, always.
+ * One labelled line of the email.
  *
- * A Vercel function runs in UTC, so formatting the timestamp without a zone
- * puts a 2 PM lead in the shop's inbox stamped 6 PM — which reads as "came in
- * after close, deal with it tomorrow" on exactly the leads worth calling back
- * inside the hour.
+ * `kind` is what makes a value tappable in the HTML part. It is carried by the
+ * row rather than re-derived from `label` at render time, so translating or
+ * renaming a label cannot silently drop a `tel:` link — and so a null value
+ * can render its placeholder without the renderer having to sniff whether
+ * "— not given —" looks like a phone number.
  */
-const SHOP_TIME_ZONE = "America/New_York";
-
-function formatReceivedAt(date: Date): string {
-  return date.toLocaleString("en-US", {
-    timeZone: SHOP_TIME_ZONE,
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-/**
- * Everything in a lead is attacker-controlled free text that passed only
- * length and shape validation. It is escaped on the way into the HTML part,
- * and newlines are stripped out of the subject so a crafted name cannot
- * restructure the header.
- */
-function singleLine(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
+type Row = { label: string; value: string | null; kind?: "phone" | "email" };
 
 /** Describe the catalog listing a lead came from, e.g. "ACC-18-DR-L — 2018–2020 Honda Accord, Door (Left Front)". */
 function describeProduct(product: LeadProduct): string {
@@ -114,46 +88,47 @@ function describeProduct(product: LeadProduct): string {
 export function buildLeadEmail(lead: Lead): { subject: string; text: string; html: string } {
   const vehicle = lead.vehicle?.trim() || null;
   const partNeeded = lead.partNeeded?.trim() || null;
-  const isSpanish = lead.locale !== DEFAULT_LOCALE;
+  const notes = lead.notes?.trim() || null;
+  const isTranslated = lead.locale !== DEFAULT_LOCALE;
 
   // Subject is what gets read first and, on a phone, sometimes all that gets
   // read. Vehicle and part lead because that is what the shop triages on; the
   // name follows so two requests for the same part are still distinguishable.
+  //
+  // A lead filed in any language other than the site's default is tagged with
+  // that language's code, so whoever picks it up knows to reply in it before
+  // they open the mail. The body stays English: staff screens are English,
+  // and this is the same call as the "Vehicle:" / "Part needed:" prefixes the
+  // inquiry itself is stored with.
+  //
+  // collapse() is what strips newlines out, so a crafted name cannot
+  // restructure the line. It runs once, over the finished subject.
   const what = [vehicle, partNeeded].filter(Boolean).join(" — ");
-  const summary = what ? `${what} (${singleLine(lead.name)})` : singleLine(lead.name);
-  // Spanish leads are flagged in the subject so whoever picks it up knows to
-  // reply in Spanish before they open it. The body stays English: staff
-  // screens are English, and this is the same call as the "Vehicle:" /
-  // "Part needed:" prefixes the inquiry itself is stored with.
-  const subject = singleLine(`${isSpanish ? "[ES] " : ""}New quote request: ${summary}`);
+  const tag = isTranslated ? `[${lead.locale.toUpperCase()}] ` : "";
+  const subject = collapse(`${tag}New quote request: ${what ? `${what} (${lead.name})` : lead.name}`);
 
-  const rows: [string, string][] = [
-    ["Name", lead.name],
-    ["Phone", lead.phone],
-    ["Email", lead.email || "— not given —"],
-    ["Vehicle", vehicle || "— not given —"],
-    ["Part needed", partNeeded || "— not given —"],
+  const rows: Row[] = [
+    { label: "Name", value: lead.name },
+    { label: "Phone", value: lead.phone, kind: "phone" },
+    { label: "Email", value: lead.email, kind: "email" },
+    { label: "Vehicle", value: vehicle },
+    { label: "Part needed", value: partNeeded },
   ];
-  if (lead.product) rows.push(["Listing", describeProduct(lead.product)]);
-  if (isSpanish) rows.push(["Language", "Spanish — the customer used the Spanish site"]);
-  rows.push(["Received", formatReceivedAt(lead.receivedAt)]);
+  if (lead.product) rows.push({ label: "Listing", value: describeProduct(lead.product) });
+  if (isTranslated) {
+    rows.push({ label: "Language", value: `${LOCALE_LABEL[lead.locale]} — reply in this language` });
+  }
+  rows.push({ label: "Received", value: formatReceivedAt(lead.receivedAt) });
 
   const inquiriesUrl = `${SITE_URL}/inquiries`;
+  const closing = lead.email
+    ? "Reply to this email to answer the customer directly."
+    : `No email given — call back on ${lead.phone}.`;
 
-  const textLines = [
-    "New quote request from the website.",
-    "",
-    ...rows.map(([label, value]) => `${label}: ${value}`),
-  ];
-  if (lead.notes?.trim()) {
-    textLines.push("", "Notes:", lead.notes.trim());
-  }
-  textLines.push(
-    "",
-    lead.email ? "Reply to this email to answer the customer directly." : `Call back on ${lead.phone}.`,
-    "",
-    `All requests: ${inquiriesUrl}`,
-  );
+  const textLines = ["New quote request from the website.", ""];
+  textLines.push(...rows.map(({ label, value }) => `${label}: ${value ?? NOT_GIVEN}`));
+  if (notes) textLines.push("", "Notes:", notes);
+  textLines.push("", closing, "", `All requests: ${inquiriesUrl}`);
   const text = textLines.join("\n");
 
   // Deliberately plain, table-free, inline-styled HTML. Gmail on a phone is
@@ -165,30 +140,21 @@ export function buildLeadEmail(lead: Lead): { subject: string; text: string; htm
   // stylesheets, where a token in globals.css can reach them — an email client
   // has no stylesheet and no custom properties, so inline hex is the only
   // thing that renders. #E31E24 is the same shop red, kept in step by hand.
-  const htmlRows = rows
-    .map(
-      ([label, value]) =>
-        `<p style="margin:0 0 6px"><strong style="display:inline-block;min-width:110px">${escapeHtml(
-          label,
-        )}</strong>${renderValue(label, value)}</p>`,
-    )
-    .join("");
-
-  const notesHtml = lead.notes?.trim()
-    ? `<p style="margin:16px 0 6px"><strong>Notes</strong></p><p style="margin:0;white-space:pre-wrap">${escapeHtml(
-        lead.notes.trim(),
-      )}</p>`
-    : "";
-
   const html = [
     `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a">`,
     `<p style="margin:0 0 16px;font-size:17px"><strong>New quote request from the website</strong></p>`,
-    htmlRows,
-    notesHtml,
-    `<p style="margin:20px 0 0;font-size:13px;color:#666">`,
-    lead.email
-      ? `Reply to this email to answer the customer directly. `
-      : `No email given — call back on ${escapeHtml(lead.phone)}. `,
+    ...rows.map(
+      (row) =>
+        `<p style="margin:0 0 6px"><strong style="display:inline-block;min-width:110px">${escapeHtml(
+          row.label,
+        )}</strong>${renderValue(row)}</p>`,
+    ),
+    notes
+      ? `<p style="margin:16px 0 6px"><strong>Notes</strong></p><p style="margin:0;white-space:pre-wrap">${escapeHtml(
+          notes,
+        )}</p>`
+      : "",
+    `<p style="margin:20px 0 0;font-size:13px;color:#666">${escapeHtml(closing)} `,
     `<a href="${escapeHtml(inquiriesUrl)}" style="color:#E31E24">See all requests</a>`,
     `</p>`,
     `</div>`,
@@ -197,12 +163,12 @@ export function buildLeadEmail(lead: Lead): { subject: string; text: string; htm
   return { subject, text, html };
 }
 
-/** Phone and email become tappable; everything else is escaped text. */
-function renderValue(label: string, value: string): string {
-  const escaped = escapeHtml(value);
-  if (label === "Phone") return `<a href="tel:${escapeHtml(value.replace(/\D/g, ""))}">${escaped}</a>`;
-  if (label === "Email" && value.includes("@")) return `<a href="mailto:${escaped}">${escaped}</a>`;
-  return escaped;
+/** Phone and email become tappable; a missing value renders its placeholder as plain text. */
+function renderValue({ value, kind }: Row): string {
+  if (value === null) return escapeHtml(NOT_GIVEN);
+  if (kind === "phone") return `<a href="tel:${normalizePhone(value)}">${escapeHtml(value)}</a>`;
+  if (kind === "email") return `<a href="mailto:${escapeHtml(value)}">${escapeHtml(value)}</a>`;
+  return escapeHtml(value);
 }
 
 /**
@@ -213,16 +179,13 @@ function renderValue(label: string, value: string): string {
  * true whether or not this email lands, because /inquiries is still the record
  * of it. A failure is logged loudly enough to find in Vercel's logs and
  * otherwise ignored.
+ *
+ * "No provider configured" is warned rather than errored, and warned on every
+ * lead rather than passed over silently: that is precisely the state the shop
+ * was in before this existed — leads arriving and nobody hearing about it —
+ * and it should be visible in the logs, not invisible.
  */
 export async function sendLeadNotification(lead: Lead): Promise<void> {
-  if (!isEmailConfigured()) {
-    // Worth a log line rather than a silent return: this is precisely the
-    // state the shop was in before — leads arriving and nobody hearing about
-    // it — and it should be visible in the logs, not invisible.
-    console.warn(`Lead ${lead.id} saved but no email sent: RESEND_API_KEY is not set`);
-    return;
-  }
-
   const { subject, text, html } = buildLeadEmail(lead);
   const result = await sendEmail({
     to: leadRecipients(),
@@ -230,11 +193,11 @@ export async function sendLeadNotification(lead: Lead): Promise<void> {
     text,
     html,
     // Staff reply to the customer, not to the sending domain.
-    ...(lead.email ? { replyTo: lead.email } : {}),
+    replyTo: lead.email ?? undefined,
     idempotencyKey: `lead-${lead.id}`,
   });
 
-  if (!result.ok) {
-    console.error(`Lead ${lead.id} saved but notification email failed: ${result.error}`);
-  }
+  if (result.ok) return;
+  const report = result.reason === "unconfigured" ? console.warn : console.error;
+  report(`Lead ${lead.id} saved but no notification email sent: ${result.error}`);
 }
