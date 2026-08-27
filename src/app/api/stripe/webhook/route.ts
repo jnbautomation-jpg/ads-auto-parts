@@ -57,9 +57,21 @@ export async function POST(request: Request) {
         await markPaid(event.data.object);
         break;
 
-      case "payment_intent.payment_failed":
+      // NOT payment_failed. A PaymentIntent survives a failed attempt — a
+      // declined card is followed by the customer trying another one on the
+      // same intent, and that retry succeeds against the same order.
+      // Restocking on the failure would put the part back on the shelf while
+      // the customer is still paying for it, and the succeeded event that
+      // follows would then mark the order paid against stock we had already
+      // given away. Only a cancel is terminal.
       case "payment_intent.canceled":
         await releaseOrder(event.data.object);
+        break;
+
+      case "payment_intent.payment_failed":
+        // Logged, not acted on. The order stays reserved until the intent is
+        // either paid or cancelled.
+        console.warn(`Payment attempt failed for ${event.data.object.id}`);
         break;
 
       default:
@@ -103,14 +115,25 @@ async function markPaid(intent: Stripe.PaymentIntent): Promise<void> {
   // customer a second confirmation email.
   if (order.paymentStatus === "PAID") return;
 
+  // A cancelled order that then pays is recorded as paid but deliberately
+  // left CANCELLED. Cancelling put its stock back on the shelf, so quietly
+  // reopening it would sell a part the shop may no longer have. The money is
+  // real and somebody has to look at it, which is what the error log is for.
+  if (order.status === "CANCELLED") {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { paymentStatus: "PAID" },
+    });
+    console.error(
+      `Order ${order.id} was paid after being cancelled — its stock was already ` +
+        `restocked. Reconcile by hand before fulfilling.`,
+    );
+    return;
+  }
+
   await prisma.order.update({
     where: { id: order.id },
-    data: {
-      paymentStatus: "PAID",
-      // A cancelled order that then pays goes back to NEW: the money arrived,
-      // so the shop has to act on it either way.
-      status: order.status === "CANCELLED" ? "NEW" : order.status,
-    },
+    data: { paymentStatus: "PAID" },
   });
 
   await sendOrderConfirmation(order.id, intent.metadata?.locale);
