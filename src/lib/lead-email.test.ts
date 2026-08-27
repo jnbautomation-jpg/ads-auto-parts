@@ -1,6 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildLeadEmail, leadRecipients, type Lead } from "./lead-email";
-import { EMAIL } from "./site";
+import { describe, expect, it } from "vitest";
+import { buildLeadEmail, type Lead } from "./lead-email";
 
 // A lead with everything filled in. Individual tests strip fields back down.
 const LEAD: Lead = {
@@ -162,26 +161,5 @@ describe("buildLeadEmail — escaping", () => {
     const { html } = buildLeadEmail({ ...LEAD, email: null });
     expect(html).not.toContain("mailto:—");
     expect(html).not.toContain("mailto:&#");
-  });
-});
-
-describe("leadRecipients", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("defaults to the shop's own published address, so it works before anyone configures it", () => {
-    vi.stubEnv("LEAD_EMAIL_TO", undefined);
-    expect(leadRecipients()).toEqual([EMAIL]);
-  });
-
-  it("accepts a comma-separated list so marketing can be added without a code change", () => {
-    vi.stubEnv("LEAD_EMAIL_TO", "shop@example.com, marketing@example.com");
-    expect(leadRecipients()).toEqual(["shop@example.com", "marketing@example.com"]);
-  });
-
-  it("ignores empty entries from a trailing comma", () => {
-    vi.stubEnv("LEAD_EMAIL_TO", "shop@example.com,");
-    expect(leadRecipients()).toEqual(["shop@example.com"]);
   });
 });

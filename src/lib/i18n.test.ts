@@ -133,6 +133,8 @@ describe("dictionaries", () => {
     const SAME_IN_BOTH = new Set([
       "fitment.material", // the same word in Spanish
       "vin.label", // an acronym, not a word to translate
+      "checkout.subtotal", // the same word in Spanish
+      "checkout.subtotal", // the same word in Spanish
     ]);
 
     const english = new Map(flatten(en));
