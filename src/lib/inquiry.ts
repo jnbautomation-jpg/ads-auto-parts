@@ -153,16 +153,6 @@ export function formatReceivedDate(date: Date): string {
 }
 
 /**
- * Orlando, always.
- *
- * A Vercel function runs in UTC, so formatting an inquiry timestamp without a
- * zone puts a 2 PM lead four hours later than it happened — which reads as
- * "came in after close, deal with it tomorrow" on exactly the leads worth
- * calling back inside the hour.
- */
-export const SHOP_TIME_ZONE = "America/New_York";
-
-/**
  * The same Inquiry.createdAt as formatReceivedDate above, with the time of
  * day, for the notification email — where "Today" means nothing because the
  * reader already knows when the mail arrived, and the hour is what tells them
