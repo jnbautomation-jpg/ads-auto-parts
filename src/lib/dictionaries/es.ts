@@ -93,6 +93,10 @@ export const es: Dictionary = {
     notFoundTitle: "No encontramos esa pieza",
     notFoundBody:
       "Puede que se haya vendido o que el enlace esté desactualizado. Tenemos mucho más de lo que publicamos en línea — busque en el catálogo o llámenos y revisamos el almacén por usted.",
+    callCta: "Llamar",
+    textCta: "Mensaje",
+    emailCta: "Correo",
+    quoteCta: "Cotizar",
     oftenNeededWith: "Suele necesitarse con esta pieza",
     browseCatalog: "Ver el catálogo",
   },
@@ -463,6 +467,87 @@ export const es: Dictionary = {
     close: "Cerrar el asistente de piezas",
     closeChat: "Cerrar el chat",
     failedBefore: "No pude comunicarme con el taller ahora mismo — por favor llame al",
+  },
+
+  checkout: {
+    // Carrito
+    cartTitle: "Su carrito",
+    cartLabel: "Carrito",
+    cartEmptyTitle: "Todavía no hay nada en su carrito",
+    cartEmptyBody:
+      "Explore el catálogo y agregue las piezas que necesita — o llámenos y se las apartamos.",
+    browseCatalog: "Ver piezas",
+    remove: "Quitar",
+    quantityLabel: "Cant.",
+    subtotal: "Subtotal",
+    orderTotal: "Total a pagar",
+    itemsHeading: "Piezas de este pedido",
+    goToCheckout: "Finalizar compra",
+    addToCart: "Agregar al carrito",
+    added: "Agregado",
+    viewCart: "Ver carrito",
+    soldOut: "Agotado",
+    onlyLeft: "Quedan pocas — redujimos la cantidad",
+
+    // Página de pago
+    title: "Finalizar su compra",
+    intro:
+      "Pague en línea y le dejamos las piezas listas. Todo es inventario nuevo alternativo de nuestro almacén en Orlando.",
+    contactHeading: "Cómo lo contactamos",
+    name: "Nombre completo",
+    phone: "Teléfono",
+    email: "Correo electrónico",
+    emailHelper: "Aquí le enviamos el recibo y el número de pedido.",
+    fulfillmentHeading: "Recoger o recibir a domicilio",
+    pickup: "Recoger en el almacén",
+    pickupNote: "Le enviamos un mensaje apenas esté en el mostrador.",
+    delivery: "Entrega a domicilio",
+    deliveryNote:
+      "Entrega el mismo día en todo el centro de Florida en pedidos hechos antes de las 12 PM.",
+    address: "Dirección",
+    zip: "Código postal",
+    notes: "¿Algo que debamos saber?",
+    notesPlaceholder: "Código de pintura, código del portón, mejor hora para llamar…",
+    paymentHeading: "Pago",
+    pay: "Pagar",
+    paying: "Procesando el pago…",
+    cardSafety:
+      "Los datos de su tarjeta van directo a Stripe. Nosotros nunca los vemos ni los guardamos.",
+    unavailableTitle: "El pago en línea aún no está activado",
+    unavailableBody: "Llámenos o envíenos un mensaje y tomamos el pedido por teléfono.",
+
+    // Confirmación
+    successTitle: "Pedido confirmado",
+    successBody: "Gracias — ya tenemos su pedido y el recibo va en camino a su correo.",
+    orderNumberLabel: "Número de pedido",
+    keepNumber: "Mencione este número si nos llama por el pedido.",
+    processingTitle: "Confirmando su pago",
+    processingBody:
+      "Esto tarda un momento. Deje esta página abierta — se actualiza en cuanto responda el banco.",
+
+    fields: {
+      name: "nombre",
+      phone: "número de teléfono",
+      email: "correo electrónico",
+      deliveryAddress: "dirección",
+      notes: "nota",
+    },
+
+    errors: {
+      nameRequired: "Necesitamos un nombre para el pedido.",
+      phoneRequired: "Necesitamos un teléfono por si hay algún problema con la pieza.",
+      emailRequired: "Necesitamos un correo electrónico para enviarle el recibo.",
+      addressRequired: "Escriba la dirección a donde vamos a entregar.",
+      zipInvalid: "Ese código postal no parece correcto — cinco dígitos, por favor.",
+      zipOutside:
+        "Todavía no tenemos una tarifa fija de entrega para ese código postal. Elija recoger en el almacén, o llámenos y le cotizamos el envío.",
+      cartEmpty: "No hay nada en su carrito.",
+      soldOut: "Una de esas piezas se vendió mientras usted pagaba — revise su carrito e intente de nuevo.",
+      paymentFailed:
+        "Ese pago no se procesó. No se le cobró nada — pruebe otra tarjeta o llámenos.",
+      unavailable:
+        "No podemos aceptar pagos con tarjeta en este momento. Por favor llámenos o envíenos un mensaje.",
+    },
   },
 
   footer: {

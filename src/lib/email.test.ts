@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { escapeHtml, sendEmail } from "./email";
+import { escapeHtml, sendEmail, shopRecipients } from "./email";
+import { EMAIL } from "./site";
 
 const MESSAGE = {
   to: ["shop@example.com"],
@@ -63,5 +64,26 @@ describe("escapeHtml", () => {
 
   it("leaves ordinary text alone", () => {
     expect(escapeHtml("2020 Kia K5 — Doors")).toBe("2020 Kia K5 — Doors");
+  });
+});
+
+describe("shopRecipients", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("defaults to the shop's own published address, so it works before anyone configures it", () => {
+    vi.stubEnv("SHOP_EMAIL_TO", undefined);
+    expect(shopRecipients()).toEqual([EMAIL]);
+  });
+
+  it("accepts a comma-separated list so marketing can be added without a code change", () => {
+    vi.stubEnv("SHOP_EMAIL_TO", "shop@example.com, marketing@example.com");
+    expect(shopRecipients()).toEqual(["shop@example.com", "marketing@example.com"]);
+  });
+
+  it("ignores empty entries from a trailing comma", () => {
+    vi.stubEnv("SHOP_EMAIL_TO", "shop@example.com,");
+    expect(shopRecipients()).toEqual(["shop@example.com"]);
   });
 });

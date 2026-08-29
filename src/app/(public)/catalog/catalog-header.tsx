@@ -6,6 +6,7 @@ import { canSeeWholesale } from "@/lib/pricing";
 import { localePath, type Locale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
 import { LanguageToggle } from "@/components/language-toggle";
+import { CartLink } from "@/components/cart-link";
 
 export async function CatalogHeader({
   locale = "en",
@@ -60,6 +61,8 @@ export async function CatalogHeader({
         >
           {signedIn ? dict.nav.myAccount : dict.nav.signIn}
         </Link>
+
+        <CartLink locale={locale} label={dict.checkout.cartLabel} />
 
         <LanguageToggle locale={locale} path={path} />
 

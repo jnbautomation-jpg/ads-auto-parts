@@ -21,6 +21,10 @@ const PRIVATE_PATHS = [
   // Per-customer pages, some showing trade pricing.
   "/account",
   "/force-password-change",
+  // Per-visitor and nothing to index. The confirmation page is also reachable
+  // by anyone holding the PaymentIntent id, so it should never be crawled.
+  "/cart",
+  "/checkout",
 ];
 
 export default function robots(): MetadataRoute.Robots {
