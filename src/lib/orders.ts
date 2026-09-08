@@ -220,9 +220,18 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         total,
       };
     });
-  } catch {
+  } catch (cause) {
     // A deadlock or serialisation failure rolls back cleanly; nothing was
     // sold, so the customer can simply try again.
+    //
+    // Logged, because this catch is the last thing that ever sees the real
+    // error. The customer is shown a generic message either way — but a
+    // checkout that fails on every attempt with nothing at error level in
+    // the logs is undiagnosable, and that is exactly what happened when a
+    // preview environment's runtime database turned out not to be the one
+    // its migration had run against. The order row's shape is the first
+    // thing to suspect when this fires.
+    console.error("createOrder failed inside the transaction:", cause);
     return { ok: false, error: "We couldn't complete that order — please try again." };
   }
 }

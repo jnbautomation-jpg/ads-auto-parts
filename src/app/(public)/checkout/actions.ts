@@ -262,6 +262,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     // createOrder's own message already distinguishes "sold out" from a
     // transient failure, but it is English-only — the customer gets the
     // translated version and the cart is told to re-read itself.
+    //
+    // The English reason is logged so the two generic outcomes can be told
+    // apart in Vercel's logs: "no longer available" (a cart line that is not
+    // a public product in this org) versus the transaction failing outright,
+    // whose cause createOrder logs separately just above this line.
+    if (!created.outOfStock?.length) {
+      console.error(`placeOrder: createOrder returned not-ok: ${created.error}`);
+    }
     return {
       ok: false,
       error: created.outOfStock?.length ? dict.checkout.errors.soldOut : dict.errors.generic,
