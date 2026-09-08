@@ -17,7 +17,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { restockOrder } from "@/lib/orders";
-import { stripeClient } from "@/lib/stripe";
+import { stripeClient, toStripeAmount } from "@/lib/stripe";
 import { sendOrderConfirmation } from "@/lib/order-email";
 
 /**
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 async function markPaid(intent: Stripe.PaymentIntent): Promise<void> {
   const order = await prisma.order.findUnique({
     where: { stripePaymentIntentId: intent.id },
-    select: { id: true, paymentStatus: true, status: true },
+    select: { id: true, paymentStatus: true, status: true, total: true },
   });
 
   if (!order) {
@@ -114,6 +114,19 @@ async function markPaid(intent: Stripe.PaymentIntent): Promise<void> {
   // Already handled. A repeat delivery stops here rather than re-sending the
   // customer a second confirmation email.
   if (order.paymentStatus === "PAID") return;
+
+  // The amount Stripe took must be the order's own total, tax included. A
+  // mismatch means the row changed after the intent was created, or someone
+  // is replaying an intent against a different order. The money is real
+  // either way, so the order is still marked paid — but loudly, because
+  // somebody has to reconcile it before it ships.
+  const expected = toStripeAmount(order.total.toString());
+  if (intent.amount_received !== expected) {
+    console.error(
+      `Order ${order.id}: Stripe received ${intent.amount_received} cents but the order ` +
+        `total is ${expected}. Marked paid; reconcile by hand before fulfilling.`,
+    );
+  }
 
   // A cancelled order that then pays is recorded as paid but deliberately
   // left CANCELLED. Cancelling put its stock back on the shelf, so quietly

@@ -15,6 +15,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { ViewerTier } from "@/lib/pricing";
 import { canSeeWholesale } from "@/lib/pricing";
+import { calculateTax, taxRateFor } from "@/lib/tax";
 
 export type OrderLineInput = { productId: string; quantity: number };
 
@@ -156,6 +157,17 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       });
       const subtotal = money(items.reduce((sum, i) => sum + i.lineTotal, 0));
 
+      // Tax is computed HERE, inside the transaction, from the same locked
+      // prices — not in placeOrder before the charge. This is where `total`
+      // is written to the row, and everything downstream (the Stripe amount,
+      // the receipt, both confirmation emails, the admin) reads that row.
+      // Computing it anywhere later would leave a pre-tax total in the
+      // database disagreeing with what was charged.
+      const pricedAsTier = wholesale ? ("WHOLESALE" as const) : ("RETAIL" as const);
+      const taxRate = taxRateFor(pricedAsTier);
+      const tax = calculateTax(subtotal, taxRate);
+      const total = money(subtotal + tax);
+
       const order = await tx.order.create({
         data: {
           organizationId: input.organizationId,
@@ -167,9 +179,11 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
           fulfillment: input.fulfillment,
           deliveryAddress: input.fulfillment === "DELIVERY" ? input.deliveryAddress || null : null,
           notes: input.notes || null,
-          pricedAsTier: wholesale ? "WHOLESALE" : "RETAIL",
+          pricedAsTier,
           subtotal,
-          total: subtotal,
+          tax,
+          taxRate,
+          total,
           items: { create: items },
         },
         select: { id: true, orderNumber: true },
@@ -203,7 +217,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         ok: true as const,
         orderId: order.id,
         orderNumber: order.orderNumber,
-        total: subtotal,
+        total,
       };
     });
   } catch {

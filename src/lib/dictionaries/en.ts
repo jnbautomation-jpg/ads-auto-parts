@@ -490,6 +490,7 @@ export const en = {
     remove: "Remove",
     quantityLabel: "Qty",
     subtotal: "Subtotal",
+    tax: "Sales tax",
     orderTotal: "Total to pay",
     itemsHeading: "Parts in this order",
     goToCheckout: "Checkout",

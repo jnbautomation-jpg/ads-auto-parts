@@ -480,6 +480,7 @@ export const es: Dictionary = {
     remove: "Quitar",
     quantityLabel: "Cant.",
     subtotal: "Subtotal",
+    tax: "Impuesto sobre la venta",
     orderTotal: "Total a pagar",
     itemsHeading: "Piezas de este pedido",
     goToCheckout: "Finalizar compra",

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
 import { formatMoneyIn } from "@/lib/format";
+import { formatTaxRate } from "@/lib/tax";
 import { localePath, type Locale } from "@/lib/i18n";
 import { orderNumberLabel } from "@/lib/orders";
 import { ADDRESS, PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
@@ -47,6 +48,9 @@ export async function CheckoutSuccessView({
         select: {
           orderNumber: true,
           paymentStatus: true,
+          subtotal: true,
+          tax: true,
+          taxRate: true,
           total: true,
           fulfillment: true,
         },
@@ -102,11 +106,31 @@ export async function CheckoutSuccessView({
             </p>
             <p className={`mt-3 ${mutedClass}`}>{dict.checkout.keepNumber}</p>
 
-            <div className="mt-6 flex items-baseline justify-between border-t border-[var(--line)] pt-4">
-              <span className={bodyClass}>{dict.checkout.orderTotal}</span>
-              <span className="font-[family-name:var(--font-oswald)] text-[22px] font-semibold">
-                {formatMoneyIn(order.total.toString(), locale)}
-              </span>
+            <div className="mt-6 flex flex-col gap-2 border-t border-[var(--line)] pt-4">
+              <div className="flex items-baseline justify-between">
+                <span className={bodyClass}>{dict.checkout.subtotal}</span>
+                <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                  {formatMoneyIn(order.subtotal.toString(), locale)}
+                </span>
+              </div>
+              {Number(order.tax) > 0 ? (
+                <div className="flex items-baseline justify-between">
+                  <span className={bodyClass}>
+                    {dict.checkout.tax} ({formatTaxRate(Number(order.taxRate))})
+                  </span>
+                  <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                    {formatMoneyIn(order.tax.toString(), locale)}
+                  </span>
+                </div>
+              ) : null}
+              <div className="mt-1 flex items-baseline justify-between border-t border-[var(--line)] pt-3">
+                <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                  {dict.checkout.orderTotal}
+                </span>
+                <span className="font-[family-name:var(--font-oswald)] text-[22px] font-semibold">
+                  {formatMoneyIn(order.total.toString(), locale)}
+                </span>
+              </div>
             </div>
           </div>
 

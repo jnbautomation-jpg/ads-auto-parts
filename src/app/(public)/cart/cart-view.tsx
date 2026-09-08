@@ -7,6 +7,7 @@ import { cartActions, useCart } from "@/components/cart-store";
 import { resolveCart, type ResolvedCart } from "../checkout/actions";
 import { getDictionary } from "@/lib/dictionaries";
 import { formatMoneyIn } from "@/lib/format";
+import { formatTaxRate } from "@/lib/tax";
 import { localePath, type Locale } from "@/lib/i18n";
 import {
   bodyClass,
@@ -18,7 +19,7 @@ import {
   subHeadingClass,
 } from "@/lib/public-ui";
 
-const EMPTY: ResolvedCart = { lines: [], subtotal: 0, changed: false };
+const EMPTY: ResolvedCart = { lines: [], subtotal: 0, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
 
 /**
  * The cart.
@@ -139,11 +140,33 @@ export function CartView({ locale }: { locale: Locale }) {
           </ul>
 
           <div className="mt-6 flex flex-col items-end gap-4">
-            <div className="flex w-full items-baseline justify-between border-t border-[var(--line-strong)] pt-4 lg:w-[320px]">
-              <span className={bodyClass}>{dict.checkout.subtotal}</span>
-              <span className="font-[family-name:var(--font-oswald)] text-[26px] font-semibold">
-                {formatMoneyIn(resolvedCart.subtotal, locale)}
-              </span>
+            <div className="flex w-full flex-col gap-2 border-t border-[var(--line-strong)] pt-4 lg:w-[320px]">
+              <div className="flex items-baseline justify-between">
+                <span className={bodyClass}>{dict.checkout.subtotal}</span>
+                <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                  {formatMoneyIn(resolvedCart.subtotal, locale)}
+                </span>
+              </div>
+              {/* A wholesale viewer is taxed at 0% and sees no line, rather than
+                  a "$0.00" they then have to wonder about. */}
+              {resolvedCart.tax > 0 ? (
+                <div className="flex items-baseline justify-between">
+                  <span className={bodyClass}>
+                    {dict.checkout.tax} ({formatTaxRate(resolvedCart.taxRate)})
+                  </span>
+                  <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                    {formatMoneyIn(resolvedCart.tax, locale)}
+                  </span>
+                </div>
+              ) : null}
+              <div className="mt-1 flex items-baseline justify-between border-t border-[var(--line)] pt-3">
+                <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                  {dict.checkout.orderTotal}
+                </span>
+                <span className="font-[family-name:var(--font-oswald)] text-[26px] font-semibold">
+                  {formatMoneyIn(resolvedCart.total, locale)}
+                </span>
+              </div>
             </div>
 
             <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:justify-end">
