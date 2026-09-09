@@ -14,9 +14,9 @@ describe("taxRateFor", () => {
 });
 
 describe("calculateTax", () => {
-  // The number that ships until JJ confirms it off a real receipt.
-  it("is 7% for now", () => {
-    expect(RETAIL_SALES_TAX_RATE).toBe(0.07);
+   // Orange County's combined rate, confirmed off a shop receipt 9 Sep 2026.
+  it("is 6.5%", () => {
+    expect(RETAIL_SALES_TAX_RATE).toBe(0.065);
   });
 
   it("taxes a plain price to the cent", () => {
