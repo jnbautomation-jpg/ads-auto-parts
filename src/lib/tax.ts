@@ -1,7 +1,7 @@
 // Sales tax — pure, so the rounding is unit-tested without a database.
 //
-// Matthew's rule, via JJ on 29 Aug 2026: 7% for retail, 0% for wholesale
-// accounts. Resale certificates are on file for the wholesale accounts, which
+// Matthew's rule, via JJ on 29 Aug 2026: retail is taxed, wholesale accounts
+// are not. Resale certificates are on file for the wholesale accounts, which
 // is what makes the 0% defensible — that is a records control the shop owns,
 // not something this file can check.
 //
@@ -28,12 +28,11 @@ import type { CustomerTier } from "@/generated/prisma/enums";
 /**
  * The retail rate, as a fraction.
  *
- * ⚠️ PENDING CONFIRMATION off a real receipt. Florida is 6% state plus a
- * county surtax, and JJ is checking the combined figure against a physical
- * receipt from the shop before this goes live. If it comes back as 6.5%,
- * this is the one line to change — everything else reads from here.
+ * Confirmed 9 Sep 2026 off a physical receipt from the shop: $189.00
+ * subtotal, $12.29 tax — 6.5%, which is Orange County's combined rate
+ * (6% state + 0.5% surtax). This is the one line to change if it moves.
  */
-export const RETAIL_SALES_TAX_RATE = 0.07;
+export const RETAIL_SALES_TAX_RATE = 0.065;
 
 /**
  * The rate an order is taxed at, from the tier it was PRICED at.
@@ -53,8 +52,8 @@ export function taxRateFor(pricedAsTier: CustomerTier): number {
  * Tax on a subtotal, in dollars, rounded to the cent.
  *
  * Done in integer cents. `subtotal * rate` in floating point is how $469.00
- * at 7% becomes 32.830000000000005, and a Decimal column will happily store
- * that as 32.83 while a later `===` against the same figure computed a
+ * at 6.5% becomes 30.485000000000003, and a Decimal column will happily store
+ * that as 30.49 while a later `===` against the same figure computed a
  * different way fails. Rounding is half-up on a positive number, which is
  * what Math.round does, and is the convention a customer expects to see on a
  * receipt.
@@ -72,7 +71,7 @@ export function calculateTax(subtotal: number, rate: number): number {
   return taxCents / 100;
 }
 
-/** Percentage label for a receipt or summary line, e.g. "7%". */
+/** Percentage label for a receipt or summary line, e.g. "6.5%". */
 export function formatTaxRate(rate: number): string {
   const percent = rate * 100;
   return `${Number.isInteger(percent) ? percent : percent.toFixed(2).replace(/\.?0+$/, "")}%`;
