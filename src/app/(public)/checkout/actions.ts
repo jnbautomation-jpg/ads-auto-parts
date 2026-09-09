@@ -32,6 +32,7 @@ import { getPartTypeImage } from "@/lib/part-images";
 import { CURRENCY, isStripeConfigured, stripeClient, toStripeAmount } from "@/lib/stripe";
 import { getDictionary } from "@/lib/dictionaries";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n";
+import { describeError } from "@/lib/log-error";
 
 /**
  * One cart line, resolved against the database for display.
@@ -331,7 +332,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     // Stripe refused, or the update failed. Put the stock back — the customer
     // has not paid and nothing should stay reserved for an order that can
     // never be completed.
-    console.error(`Checkout failed after order ${created.orderId} was created:`, cause);
+    console.error(`Checkout failed after order ${created.orderId} was created: ${describeError(cause)}`);
     await releaseOrder(created.orderId, organizationId);
     return { ok: false, error: dict.checkout.errors.paymentFailed };
   }
@@ -349,6 +350,6 @@ async function releaseOrder(orderId: string, organizationId: string): Promise<vo
     // the customer, and a failed rollback must not replace a useful message
     // with a crash. This leaves stock reserved against a cancelled order,
     // which staff can correct from /stock.
-    console.error(`Could not release stock for order ${orderId}:`, cause);
+    console.error(`Could not release stock for order ${orderId}: ${describeError(cause)}`);
   }
 }

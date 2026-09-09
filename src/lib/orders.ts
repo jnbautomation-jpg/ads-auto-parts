@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import type { ViewerTier } from "@/lib/pricing";
 import { canSeeWholesale } from "@/lib/pricing";
 import { calculateTax, taxRateFor } from "@/lib/tax";
+import { describeError } from "@/lib/log-error";
 
 export type OrderLineInput = { productId: string; quantity: number };
 
@@ -231,7 +232,13 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     // preview environment's runtime database turned out not to be the one
     // its migration had run against. The order row's shape is the first
     // thing to suspect when this fires.
-    console.error("createOrder failed inside the transaction:", cause);
+    //
+    // One pre-formatted line, not `console.error("…", cause)`: the first
+    // version of this log passed the raw Error object, and Vercel's log sink
+    // rendered it in a way that read as "no cause at all". describeError
+    // pulls the SQLSTATE and Postgres message out from inside the Prisma
+    // error, which is the part that names a missing column.
+    console.error(`createOrder failed inside the transaction: ${describeError(cause)}`);
     return { ok: false, error: "We couldn't complete that order — please try again." };
   }
 }
