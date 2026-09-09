@@ -16,6 +16,7 @@
 import { prisma } from "@/lib/prisma";
 import { escapeHtml, sendEmail, shopRecipients } from "@/lib/email";
 import { formatMoneyIn } from "@/lib/format";
+import { formatTaxRate } from "@/lib/tax";
 import { orderNumberLabel } from "@/lib/orders";
 import { getDictionary } from "@/lib/dictionaries";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n";
@@ -37,6 +38,10 @@ export type OrderEmailData = {
   fulfillment: "PICKUP" | "DELIVERY";
   deliveryAddress: string | null;
   items: OrderEmailItem[];
+  /** All as stored. taxRate is a fraction ("0.0700"); a wholesale order has "0". */
+  subtotal: string;
+  tax: string;
+  taxRate: string;
   total: string;
 };
 
@@ -92,6 +97,10 @@ export function buildCustomerEmail(
   const label = orderNumberLabel(order.orderNumber);
   const items = itemLines(order.items, locale);
   const total = formatMoneyIn(order.total, locale);
+  // Shown only when something was charged. A wholesale order at 0% gets no
+  // line rather than a "$0.00" one.
+  const taxed = Number(order.tax) > 0;
+  const taxLabel = `${dict.checkout.tax} (${formatTaxRate(Number(order.taxRate))})`;
 
   const collection =
     order.fulfillment === "DELIVERY"
@@ -106,6 +115,8 @@ export function buildCustomerEmail(
     dict.checkout.itemsHeading,
     items.text,
     "",
+    `${dict.checkout.subtotal}: ${formatMoneyIn(order.subtotal, locale)}`,
+    ...(taxed ? [`${taxLabel}: ${formatMoneyIn(order.tax, locale)}`] : []),
     `${dict.checkout.orderTotal}: ${total}`,
     "",
     collection,
@@ -123,6 +134,14 @@ export function buildCustomerEmail(
       `<strong>${escapeHtml(label)}</strong>`,
       `</p>`,
       `<table style="width:100%;border-collapse:collapse;margin:0 0 8px">${items.html}`,
+      `<tr><td style="padding:12px 12px 0 0;color:#545B63">${escapeHtml(dict.checkout.subtotal)}</td>`,
+      `<td style="padding:12px 0 0;text-align:right;color:#545B63">${escapeHtml(formatMoneyIn(order.subtotal, locale))}</td></tr>`,
+      ...(taxed
+        ? [
+            `<tr><td style="padding:4px 12px 0 0;color:#545B63">${escapeHtml(taxLabel)}</td>`,
+            `<td style="padding:4px 0 0;text-align:right;color:#545B63">${escapeHtml(formatMoneyIn(order.tax, locale))}</td></tr>`,
+          ]
+        : []),
       `<tr><td style="padding:12px 12px 0 0"><strong>${escapeHtml(dict.checkout.orderTotal)}</strong></td>`,
       `<td style="padding:12px 0 0;text-align:right"><strong>${escapeHtml(total)}</strong></td></tr>`,
       `</table>`,
@@ -148,11 +167,20 @@ export function buildShopEmail(order: OrderEmailData): { subject: string; text: 
       ? `Deliver to: ${order.deliveryAddress ?? "— no address recorded —"}`
       : "Pickup at the warehouse";
 
+  // Whoever reconciles needs to see a wholesale order was DELIBERATELY
+  // untaxed, not that the line went missing — so the shop's copy states the
+  // split even at 0%.
+  const taxSplit =
+    Number(order.tax) > 0
+      ? `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)} + tax (${formatTaxRate(Number(order.taxRate))}) ${formatMoneyIn(order.tax, DEFAULT_LOCALE)}`
+      : `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}, no tax (wholesale)`;
+
   const rows: [string, string][] = [
     ["Customer", order.customerName],
     ["Phone", order.customerPhone],
     ["Email", order.customerEmail || "— not given —"],
     ["Fulfilment", collection],
+    ["Totals", taxSplit],
   ];
 
   const text = [
@@ -204,6 +232,9 @@ export async function sendOrderConfirmation(orderId: string, rawLocale?: string 
         customerPhone: true,
         fulfillment: true,
         deliveryAddress: true,
+        subtotal: true,
+        tax: true,
+        taxRate: true,
         total: true,
         items: {
           select: { sku: true, description: true, quantity: true, unitPrice: true, lineTotal: true },
@@ -222,6 +253,9 @@ export async function sendOrderConfirmation(orderId: string, rawLocale?: string 
       customerPhone: order.customerPhone,
       fulfillment: order.fulfillment,
       deliveryAddress: order.deliveryAddress,
+      subtotal: order.subtotal.toString(),
+      tax: order.tax.toString(),
+      taxRate: order.taxRate.toString(),
       total: order.total.toString(),
       items: order.items.map((item) => ({
         sku: item.sku,

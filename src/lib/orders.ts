@@ -15,6 +15,8 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { ViewerTier } from "@/lib/pricing";
 import { canSeeWholesale } from "@/lib/pricing";
+import { calculateTax, taxRateFor } from "@/lib/tax";
+import { describeError } from "@/lib/log-error";
 
 export type OrderLineInput = { productId: string; quantity: number };
 
@@ -156,6 +158,17 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       });
       const subtotal = money(items.reduce((sum, i) => sum + i.lineTotal, 0));
 
+      // Tax is computed HERE, inside the transaction, from the same locked
+      // prices — not in placeOrder before the charge. This is where `total`
+      // is written to the row, and everything downstream (the Stripe amount,
+      // the receipt, both confirmation emails, the admin) reads that row.
+      // Computing it anywhere later would leave a pre-tax total in the
+      // database disagreeing with what was charged.
+      const pricedAsTier = wholesale ? ("WHOLESALE" as const) : ("RETAIL" as const);
+      const taxRate = taxRateFor(pricedAsTier);
+      const tax = calculateTax(subtotal, taxRate);
+      const total = money(subtotal + tax);
+
       const order = await tx.order.create({
         data: {
           organizationId: input.organizationId,
@@ -167,9 +180,11 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
           fulfillment: input.fulfillment,
           deliveryAddress: input.fulfillment === "DELIVERY" ? input.deliveryAddress || null : null,
           notes: input.notes || null,
-          pricedAsTier: wholesale ? "WHOLESALE" : "RETAIL",
+          pricedAsTier,
           subtotal,
-          total: subtotal,
+          tax,
+          taxRate,
+          total,
           items: { create: items },
         },
         select: { id: true, orderNumber: true },
@@ -203,12 +218,27 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         ok: true as const,
         orderId: order.id,
         orderNumber: order.orderNumber,
-        total: subtotal,
+        total,
       };
     });
-  } catch {
+  } catch (cause) {
     // A deadlock or serialisation failure rolls back cleanly; nothing was
     // sold, so the customer can simply try again.
+    //
+    // Logged, because this catch is the last thing that ever sees the real
+    // error. The customer is shown a generic message either way — but a
+    // checkout that fails on every attempt with nothing at error level in
+    // the logs is undiagnosable, and that is exactly what happened when a
+    // preview environment's runtime database turned out not to be the one
+    // its migration had run against. The order row's shape is the first
+    // thing to suspect when this fires.
+    //
+    // One pre-formatted line, not `console.error("…", cause)`: the first
+    // version of this log passed the raw Error object, and Vercel's log sink
+    // rendered it in a way that read as "no cause at all". describeError
+    // pulls the SQLSTATE and Postgres message out from inside the Prisma
+    // error, which is the part that names a missing column.
+    console.error(`createOrder failed inside the transaction: ${describeError(cause)}`);
     return { ok: false, error: "We couldn't complete that order — please try again." };
   }
 }

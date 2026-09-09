@@ -35,6 +35,9 @@ export type ReceiptOrder = {
   pricedAsTier: string;
   paymentStatus: string;
   subtotal: string;
+  /** Sales tax charged, and the rate it was charged at, both as stored. */
+  tax: string;
+  taxRate: string;
   total: string;
   items: ReceiptOrderItem[];
 };
@@ -57,6 +60,9 @@ export type ReceiptData = {
   fulfilment: string[];
   lines: ReceiptLine[];
   subtotal: number;
+  tax: number;
+  /** As a fraction (0.07). Zero on a wholesale order, which prints no tax line. */
+  taxRate: number;
   total: number;
   /** Set only for trade orders: what this customer saved against retail. */
   tradeSaving: number | null;
@@ -69,6 +75,7 @@ export type ReceiptData = {
  * moves off a flat markup, this follows automatically.
  */
 import { RETAIL_MARKUP_USD } from "@/lib/pricing";
+import { formatTaxRate } from "@/lib/tax";
 
 function money(value: string | number): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -113,6 +120,8 @@ export function buildReceiptData(order: ReceiptOrder): ReceiptData {
     fulfilment,
     lines,
     subtotal: money(order.subtotal),
+    tax: money(order.tax),
+    taxRate: Number(order.taxRate),
     total: money(order.total),
     tradeSaving:
       order.pricedAsTier === "WHOLESALE" && unitsOrdered > 0
@@ -227,6 +236,14 @@ export async function renderReceiptPdf(
   };
   label("Subtotal", usd(data.subtotal), 10.5);
   y -= 16;
+
+  // A wholesale order is taxed at 0% and prints no line at all, rather than
+  // "Sales tax (0%) $0.00" — a trade customer with a resale certificate does
+  // not need to be told they were not charged tax.
+  if (data.tax > 0) {
+    label(`Sales tax (${formatTaxRate(data.taxRate)})`, usd(data.tax), 10.5);
+    y -= 16;
+  }
 
   if (data.tradeSaving !== null) {
     // The whole point of a trade account is that it visibly saved them money.

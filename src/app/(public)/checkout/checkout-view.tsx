@@ -10,6 +10,7 @@ import { cartActions, useCart } from "@/components/cart-store";
 import { placeOrder, resolveCart, type ResolvedCart } from "./actions";
 import { getDictionary } from "@/lib/dictionaries";
 import { formatMoneyIn } from "@/lib/format";
+import { formatTaxRate } from "@/lib/tax";
 import { localePath, type Locale } from "@/lib/i18n";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 import {
@@ -43,7 +44,7 @@ type Details = {
   notes: string;
 };
 
-const EMPTY_CART: ResolvedCart = { lines: [], subtotal: 0, changed: false };
+const EMPTY_CART: ResolvedCart = { lines: [], subtotal: 0, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
 
 const BLANK: Details = {
   name: "",
@@ -122,7 +123,7 @@ export function CheckoutView({
       <StripeFrame
         locale={locale}
         publishableKey={publishableKey}
-        subtotal={resolvedCart.subtotal}
+        totalCents={resolvedCart.totalCents}
         resolved={resolvedCart}
       />
     </Shell>
@@ -142,12 +143,17 @@ export function CheckoutView({
 function StripeFrame({
   locale,
   publishableKey,
-  subtotal,
+  totalCents,
   resolved,
 }: {
   locale: Locale;
   publishableKey: string;
-  subtotal: number;
+  /**
+   * The server's own integer-cents figure for the tax-inclusive total. It
+   * has to equal the PaymentIntent amount placeOrder later creates or
+   * confirm fails, so it is not recomputed here from a float.
+   */
+  totalCents: number;
   resolved: ResolvedCart;
 }) {
   const appearance = useStripeAppearance();
@@ -155,14 +161,14 @@ function StripeFrame({
   const options = useMemo<StripeElementsOptions>(
     () => ({
       mode: "payment",
-      amount: Math.round(subtotal * 100),
+      amount: totalCents,
       currency: "usd",
       // Stripe's own strings — the card form's labels and errors — follow the
       // page, so a Spanish customer is not handed an English card form.
       locale,
       appearance,
     }),
-    [subtotal, locale, appearance],
+    [totalCents, locale, appearance],
   );
 
   return (
@@ -452,13 +458,31 @@ function CheckoutForm({ locale, resolved }: { locale: Locale; resolved: Resolved
               ))}
           </ul>
 
-          <div className="mt-5 flex items-baseline justify-between border-t border-[var(--line-strong)] pt-4">
-            <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
-              {dict.checkout.orderTotal}
-            </span>
-            <span className="font-[family-name:var(--font-oswald)] text-[24px] font-semibold">
-              {formatMoneyIn(resolved.subtotal, locale)}
-            </span>
+          <div className="mt-5 flex flex-col gap-2 border-t border-[var(--line-strong)] pt-4">
+            <div className="flex items-baseline justify-between">
+              <span className={bodyClass}>{dict.checkout.subtotal}</span>
+              <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                {formatMoneyIn(resolved.subtotal, locale)}
+              </span>
+            </div>
+            {resolved.tax > 0 ? (
+              <div className="flex items-baseline justify-between">
+                <span className={bodyClass}>
+                  {dict.checkout.tax} ({formatTaxRate(resolved.taxRate)})
+                </span>
+                <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                  {formatMoneyIn(resolved.tax, locale)}
+                </span>
+              </div>
+            ) : null}
+            <div className="mt-1 flex items-baseline justify-between border-t border-[var(--line)] pt-3">
+              <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                {dict.checkout.orderTotal}
+              </span>
+              <span className="font-[family-name:var(--font-oswald)] text-[24px] font-semibold">
+                {formatMoneyIn(resolved.total, locale)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -480,7 +504,7 @@ function CheckoutForm({ locale, resolved }: { locale: Locale; resolved: Resolved
         >
           {paying
             ? dict.checkout.paying
-            : `${dict.checkout.pay} ${formatMoneyIn(resolved.subtotal, locale)}`}
+            : `${dict.checkout.pay} ${formatMoneyIn(resolved.total, locale)}`}
         </button>
 
         <Link

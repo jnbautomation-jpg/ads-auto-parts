@@ -24,13 +24,15 @@ import { prisma } from "@/lib/prisma";
 import { normalizeCart, type CartLine } from "@/lib/cart";
 import { validateCheckoutInput, formatDeliveryAddress } from "@/lib/checkout";
 import { createOrder, orderNumberLabel, restockOrder } from "@/lib/orders";
-import { priceForViewer, productSelectFor } from "@/lib/pricing";
+import { canSeeWholesale, priceForViewer, productSelectFor } from "@/lib/pricing";
+import { calculateTax, taxRateFor } from "@/lib/tax";
 import { getCustomerContext, getOrganizationId, getViewerTier } from "@/lib/customer-auth";
 import { formatFit, formatPartTypeIn, formatPositionIn } from "@/lib/format";
 import { getPartTypeImage } from "@/lib/part-images";
 import { CURRENCY, isStripeConfigured, stripeClient, toStripeAmount } from "@/lib/stripe";
 import { getDictionary } from "@/lib/dictionaries";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n";
+import { describeError } from "@/lib/log-error";
 
 /**
  * One cart line, resolved against the database for display.
@@ -57,8 +59,30 @@ export type ResolvedLine = {
 export type ResolvedCart = {
   lines: ResolvedLine[];
   subtotal: number;
+  /** Sales tax at the viewer's tier — the same rule createOrder applies. */
+  tax: number;
+  /** As a fraction; 0 for a wholesale viewer. */
+  taxRate: number;
+  total: number;
+  /**
+   * `total` in integer cents, converted server-side. Stripe Elements needs
+   * the amount up front and it MUST equal the PaymentIntent the server later
+   * creates, or confirm fails — so the client is handed the exact figure
+   * rather than left to multiply a float by 100.
+   */
+  totalCents: number;
   /** True when at least one line changed on the way through. */
   changed: boolean;
+};
+
+const EMPTY_RESOLVED: ResolvedCart = {
+  lines: [],
+  subtotal: 0,
+  tax: 0,
+  taxRate: 0,
+  total: 0,
+  totalCents: 0,
+  changed: false,
 };
 
 function money(n: number): number {
@@ -85,10 +109,10 @@ export async function resolveCart(
   // "Door — Left Rear" under fully translated headings.
   const locale = resolveLocale(rawLocale);
   const lines = normalizeCart(rawLines);
-  if (lines.length === 0) return { lines: [], subtotal: 0, changed: false };
+  if (lines.length === 0) return EMPTY_RESOLVED;
 
   const organizationId = await getOrganizationId();
-  if (!organizationId) return { lines: [], subtotal: 0, changed: false };
+  if (!organizationId) return EMPTY_RESOLVED;
 
   // productSelectFor() decides what the QUERY fetches, by tier. A retail
   // viewer's request never loads the wholesale column at all, so it cannot
@@ -146,9 +170,20 @@ export async function resolveCart(
     };
   });
 
+  const subtotal = money(resolved.reduce((sum, l) => sum + l.lineTotal, 0));
+  // Same mapping createOrder uses, so the cart previews exactly what will be
+  // charged: a viewer who can see wholesale is priced — and taxed — as one.
+  const taxRate = taxRateFor(canSeeWholesale(tier) ? "WHOLESALE" : "RETAIL");
+  const tax = calculateTax(subtotal, taxRate);
+  const total = money(subtotal + tax);
+
   return {
     lines: resolved,
-    subtotal: money(resolved.reduce((sum, l) => sum + l.lineTotal, 0)),
+    subtotal,
+    tax,
+    taxRate,
+    total,
+    totalCents: toStripeAmount(total),
     changed,
   };
 }
@@ -228,6 +263,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     // createOrder's own message already distinguishes "sold out" from a
     // transient failure, but it is English-only — the customer gets the
     // translated version and the cart is told to re-read itself.
+    //
+    // The English reason is logged so the two generic outcomes can be told
+    // apart in Vercel's logs: "no longer available" (a cart line that is not
+    // a public product in this org) versus the transaction failing outright,
+    // whose cause createOrder logs separately just above this line.
+    if (!created.outOfStock?.length) {
+      console.error(`placeOrder: createOrder returned not-ok: ${created.error}`);
+    }
     return {
       ok: false,
       error: created.outOfStock?.length ? dict.checkout.errors.soldOut : dict.errors.generic,
@@ -289,7 +332,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     // Stripe refused, or the update failed. Put the stock back — the customer
     // has not paid and nothing should stay reserved for an order that can
     // never be completed.
-    console.error(`Checkout failed after order ${created.orderId} was created:`, cause);
+    console.error(`Checkout failed after order ${created.orderId} was created: ${describeError(cause)}`);
     await releaseOrder(created.orderId, organizationId);
     return { ok: false, error: dict.checkout.errors.paymentFailed };
   }
@@ -307,6 +350,6 @@ async function releaseOrder(orderId: string, organizationId: string): Promise<vo
     // the customer, and a failed rollback must not replace a useful message
     // with a crash. This leaves stock reserved against a cancelled order,
     // which staff can correct from /stock.
-    console.error(`Could not release stock for order ${orderId}:`, cause);
+    console.error(`Could not release stock for order ${orderId}: ${describeError(cause)}`);
   }
 }

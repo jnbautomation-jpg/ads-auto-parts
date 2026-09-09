@@ -13,6 +13,8 @@ const BASE: ReceiptOrder = {
   pricedAsTier: "RETAIL",
   paymentStatus: "PAID",
   subtotal: "469.00",
+  tax: "0",
+  taxRate: "0",
   total: "469.00",
   items: [{ sku: "CORO-14-19-DR-LF", description: "2014–2019 Corolla door", quantity: 1, unitPrice: "469.00" }],
 };
@@ -82,5 +84,28 @@ describe("buildReceiptData", () => {
 
   it("prefixes the order number so it matches how staff quote it", () => {
     expect(buildReceiptData(BASE).orderNumber).toBe("#1042");
+  });
+});
+
+describe("buildReceiptData — sales tax", () => {
+  it("carries the stored tax and rate through as numbers", () => {
+    const r = buildReceiptData({ ...BASE, tax: "32.83", taxRate: "0.0700", total: "501.83" });
+    expect(r.tax).toBe(32.83);
+    expect(r.taxRate).toBe(0.07);
+    expect(r.total).toBe(501.83);
+  });
+
+  it("reads the rate the order was CHARGED at, not today's", () => {
+    // A receipt reprinted after a rate change must still add up using the
+    // figures that were true when the money moved.
+    const r = buildReceiptData({ ...BASE, tax: "30.49", taxRate: "0.0650", total: "499.49" });
+    expect(r.taxRate).toBe(0.065);
+    expect(r.subtotal + r.tax).toBeCloseTo(r.total, 2);
+  });
+
+  it("carries zero tax for a wholesale order, so no tax line prints", () => {
+    const r = buildReceiptData({ ...BASE, pricedAsTier: "WHOLESALE", tax: "0", taxRate: "0" });
+    expect(r.tax).toBe(0);
+    expect(r.taxRate).toBe(0);
   });
 });

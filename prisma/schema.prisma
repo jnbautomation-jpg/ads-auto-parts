@@ -270,6 +270,15 @@ model Order {
   pricedAsTier CustomerTier @default(RETAIL)
 
   subtotal Decimal @db.Decimal(10, 2)
+
+  // Sales tax on the subtotal, and the RATE it was charged at, both
+  // snapshotted. The rate is kept so a receipt reprinted after the rate
+  // changes still adds up: subtotal + tax = total, using the figures that
+  // were true when the money moved. 7% retail / 0% wholesale, keyed off
+  // pricedAsTier below — see src/lib/tax.ts.
+  tax     Decimal @default(0) @db.Decimal(10, 2)
+  taxRate Decimal @default(0) @db.Decimal(6, 4)
+
   total    Decimal @db.Decimal(10, 2)
 
   notes String?
