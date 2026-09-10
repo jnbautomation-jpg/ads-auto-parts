@@ -13,6 +13,7 @@ const BASE: ReceiptOrder = {
   pricedAsTier: "RETAIL",
   paymentStatus: "PAID",
   subtotal: "469.00",
+  discount: "0",
   tax: "0",
   taxRate: "0",
   total: "469.00",

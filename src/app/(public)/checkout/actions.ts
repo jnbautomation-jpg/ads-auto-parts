@@ -26,6 +26,7 @@ import { validateCheckoutInput, formatDeliveryAddress } from "@/lib/checkout";
 import { createOrder, orderNumberLabel, restockOrder } from "@/lib/orders";
 import { canSeeWholesale, priceForViewer, productSelectFor } from "@/lib/pricing";
 import { calculateTax, taxRateFor } from "@/lib/tax";
+import { qualifiesForVolumeDiscount, volumeDiscountFor } from "@/lib/discount";
 import { getCustomerContext, getOrganizationId, getViewerTier } from "@/lib/customer-auth";
 import { formatFit, formatPartTypeIn, formatPositionIn } from "@/lib/format";
 import { getPartTypeImage } from "@/lib/part-images";
@@ -59,7 +60,15 @@ export type ResolvedLine = {
 export type ResolvedCart = {
   lines: ResolvedLine[];
   subtotal: number;
-  /** Sales tax at the viewer's tier — the same rule createOrder applies. */
+  /** The volume discount this viewer gets — same rule createOrder applies. 0 for a guest. */
+  discount: number;
+  /**
+   * True when a GUEST's subtotal would qualify: the one moment the discount
+   * is worth an account, so the cart and checkout say so. Never true for a
+   * signed-in viewer, who either has the discount or is wholesale.
+   */
+  signInToSave: boolean;
+  /** Sales tax at the viewer's tier, on the subtotal AFTER the discount. */
   tax: number;
   /** As a fraction; 0 for a wholesale viewer. */
   taxRate: number;
@@ -78,6 +87,8 @@ export type ResolvedCart = {
 const EMPTY_RESOLVED: ResolvedCart = {
   lines: [],
   subtotal: 0,
+  discount: 0,
+  signInToSave: false,
   tax: 0,
   taxRate: 0,
   total: 0,
@@ -172,14 +183,22 @@ export async function resolveCart(
 
   const subtotal = money(resolved.reduce((sum, l) => sum + l.lineTotal, 0));
   // Same mapping createOrder uses, so the cart previews exactly what will be
-  // charged: a viewer who can see wholesale is priced — and taxed — as one.
-  const taxRate = taxRateFor(canSeeWholesale(tier) ? "WHOLESALE" : "RETAIL");
-  const tax = calculateTax(subtotal, taxRate);
-  const total = money(subtotal + tax);
+  // charged: a viewer who can see wholesale is priced — and taxed — as one,
+  // and "has an account" is resolved server-side here exactly as placeOrder
+  // resolves it before calling createOrder.
+  const pricedAsTier = canSeeWholesale(tier) ? ("WHOLESALE" as const) : ("RETAIL" as const);
+  const hasAccount = (await getCustomerContext()) !== null;
+  const discount = volumeDiscountFor({ pricedAsTier, hasAccount, subtotal });
+  const taxable = money(subtotal - discount);
+  const taxRate = taxRateFor(pricedAsTier);
+  const tax = calculateTax(taxable, taxRate);
+  const total = money(taxable + tax);
 
   return {
     lines: resolved,
     subtotal,
+    discount,
+    signInToSave: !hasAccount && pricedAsTier === "RETAIL" && qualifiesForVolumeDiscount(subtotal),
     tax,
     taxRate,
     total,

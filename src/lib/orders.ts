@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import type { ViewerTier } from "@/lib/pricing";
 import { canSeeWholesale } from "@/lib/pricing";
 import { calculateTax, taxRateFor } from "@/lib/tax";
+import { volumeDiscountFor } from "@/lib/discount";
 import { describeError } from "@/lib/log-error";
 
 export type OrderLineInput = { productId: string; quantity: number };
@@ -165,9 +166,22 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       // Computing it anywhere later would leave a pre-tax total in the
       // database disagreeing with what was charged.
       const pricedAsTier = wholesale ? ("WHOLESALE" as const) : ("RETAIL" as const);
+
+      // The volume discount comes off the subtotal BEFORE tax is computed,
+      // so tax is charged on what the customer actually pays: a $600 order
+      // is $500 taxed, not $600 taxed and then reduced. "Has an account" is
+      // decided by the customerAccountId the caller resolved server-side —
+      // never by anything the browser claimed.
+      const discount = volumeDiscountFor({
+        pricedAsTier,
+        hasAccount: input.customerAccountId != null,
+        subtotal,
+      });
+      const taxable = money(subtotal - discount);
+
       const taxRate = taxRateFor(pricedAsTier);
-      const tax = calculateTax(subtotal, taxRate);
-      const total = money(subtotal + tax);
+      const tax = calculateTax(taxable, taxRate);
+      const total = money(taxable + tax);
 
       const order = await tx.order.create({
         data: {
@@ -182,6 +196,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
           notes: input.notes || null,
           pricedAsTier,
           subtotal,
+          discount,
           tax,
           taxRate,
           total,

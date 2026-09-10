@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { CartLink } from "@/components/cart-link";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 import { localePath, type Locale } from "@/lib/i18n";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -14,9 +15,17 @@ import { getDictionary } from "@/lib/dictionaries";
 export function SiteHeader({
   heroId,
   locale = "en",
+  signedIn = false,
 }: {
   heroId: string;
   locale?: Locale;
+  /**
+   * Resolved by the PAGE (a server component, via getViewerTier) and passed
+   * down — this header is a client component and cannot look it up itself.
+   * The catalog header does the same lookup inline because it is a server
+   * component; the two must stay in step.
+   */
+  signedIn?: boolean;
 }) {
   const dict = getDictionary(locale);
   const [solid, setSolid] = useState(false);
@@ -64,6 +73,18 @@ export function SiteHeader({
             {dict.landing.nav.contact}
           </a>
         </nav>
+        {/* Account access from the homepage, at Matthew's request (9 Sep 2026):
+            the volume discount now gives people a reason to register, and the
+            landing page is where most of them arrive. Same links, same copy,
+            same colours as the catalog header — on a band, so they state
+            their own colour rather than inherit (CHANGELOG decision 9). */}
+        <Link
+          href={localePath(locale, signedIn ? "/account" : "/account/sign-in")}
+          className="font-[family-name:var(--font-barlow)] text-[13px] font-semibold text-[var(--ink-on-band-muted)] transition-colors hover:text-white"
+        >
+          {signedIn ? dict.nav.myAccount : dict.nav.signIn}
+        </Link>
+        <CartLink locale={locale} label={dict.checkout.cartLabel} />
         {/* Spanish speakers need a visible way in — the landing page is where
             most of them arrive. */}
         <LanguageToggle locale={locale} path="/" />
@@ -74,12 +95,18 @@ export function SiteHeader({
           {PHONE_DISPLAY}
         </a>
       </div>
-      <a
-        href={`tel:${PHONE_HREF}`}
-        className="flex items-center gap-1.5 bg-[var(--accent)] px-3.5 py-2.5 font-[family-name:var(--font-oswald)] text-[13px] font-semibold tracking-[0.08em] text-white transition-colors hover:bg-[var(--accent-hover)] active:scale-[0.97] lg:hidden"
-      >
-        {PHONE_DISPLAY}
-      </a>
+      {/* Mobile: the cart icon sits beside the call button. Sign in stays off
+          the phone header — it already carries the logo, the cart and the
+          number, and the account page is one tap from the cart. */}
+      <div className="flex items-center gap-2 lg:hidden">
+        <CartLink locale={locale} label={dict.checkout.cartLabel} />
+        <a
+          href={`tel:${PHONE_HREF}`}
+          className="flex items-center gap-1.5 bg-[var(--accent)] px-3.5 py-2.5 font-[family-name:var(--font-oswald)] text-[13px] font-semibold tracking-[0.08em] text-white transition-colors hover:bg-[var(--accent-hover)] active:scale-[0.97]"
+        >
+          {PHONE_DISPLAY}
+        </a>
+      </div>
     </div>
   );
 }

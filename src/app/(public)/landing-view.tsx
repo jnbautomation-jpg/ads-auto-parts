@@ -829,7 +829,14 @@ function SiteFooter({ locale }: { locale: Locale }) {
   );
 }
 
-export async function LandingView({ locale }: { locale: Locale }) {
+export async function LandingView({
+  locale,
+  signedIn = false,
+}: {
+  locale: Locale;
+  /** From the page, which can await getViewerTier(); the header cannot. */
+  signedIn?: boolean;
+}) {
   const data = await getSearchData();
   // Same predicate BrowseByPart uses to filter its tiles, so the headline
   // number and the tiles can never disagree.
@@ -844,7 +851,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
         dangerouslySetInnerHTML={{ __html: jsonLdScript(buildLocalBusinessSchema()) }}
       />
       <TopBar locale={locale} />
-      <SiteHeader heroId="hero" locale={locale} />
+      <SiteHeader heroId="hero" locale={locale} signedIn={signedIn} />
       <Hero data={data} locale={locale} />
       <BrowseByPart countBySlug={data.countBySlug} locale={locale} />
       <WhyADS categoryCount={stockedCategoryCount} locale={locale} />
