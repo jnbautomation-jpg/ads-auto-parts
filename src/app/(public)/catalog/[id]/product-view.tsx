@@ -360,7 +360,15 @@ export async function ProductView({
       </div>
 
       {/* sticky mobile call bar */}
-      <div className="sticky bottom-0 grid grid-cols-2 gap-2.5 border-t border-[var(--line)] bg-[var(--surface-page)] p-3 lg:hidden">
+      {/* The chat bubble is fixed at bottom-5 right-4 and is 56px wide, so it
+          sits permanently on top of the right-hand end of this bar. That was
+          survivable when the bar held one full-width Call button whose label
+          was centred; it is not now that the bar is split and the right half
+          IS a button. pe-[76px] reserves the bubble's footprint (16px offset +
+          56px wide + 4px clearance) so neither control ends up underneath it.
+          The reserved strip is empty when the chat is switched off, which is a
+          fair trade against an unreachable Call button when it is on. */}
+      <div className="sticky bottom-0 grid grid-cols-2 gap-2.5 border-t border-[var(--line)] bg-[var(--surface-page)] p-3 pe-[76px] lg:hidden">
         <AddToCartButton
           productId={product.id}
           locale={locale}
@@ -373,7 +381,7 @@ export async function ProductView({
           }}
         />
         <a href={`tel:${PHONE_HREF}`} className={secondaryButtonClass}>
-          {dict.product.callCta} {PHONE_DISPLAY}
+          {dict.product.callCta}
         </a>
       </div>
 
