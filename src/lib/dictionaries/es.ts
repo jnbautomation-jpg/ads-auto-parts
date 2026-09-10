@@ -481,6 +481,8 @@ export const es: Dictionary = {
     quantityLabel: "Cant.",
     subtotal: "Subtotal",
     tax: "Impuesto sobre la venta",
+    discount: "Descuento por volumen",
+    signInToSave: "Inicie sesión y ahorre $100 en este pedido.",
     orderTotal: "Total a pagar",
     itemsHeading: "Piezas de este pedido",
     goToCheckout: "Finalizar compra",

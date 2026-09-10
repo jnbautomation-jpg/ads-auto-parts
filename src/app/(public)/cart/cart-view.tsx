@@ -19,7 +19,7 @@ import {
   subHeadingClass,
 } from "@/lib/public-ui";
 
-const EMPTY: ResolvedCart = { lines: [], subtotal: 0, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
+const EMPTY: ResolvedCart = { lines: [], subtotal: 0, discount: 0, signInToSave: false, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
 
 /**
  * The cart.
@@ -147,6 +147,22 @@ export function CartView({ locale }: { locale: Locale }) {
                   {formatMoneyIn(resolvedCart.subtotal, locale)}
                 </span>
               </div>
+              {resolvedCart.discount > 0 ? (
+                <div className="flex items-baseline justify-between">
+                  <span className={bodyClass}>{dict.checkout.discount}</span>
+                  <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold text-[var(--accent-hover)]">
+                    -{formatMoneyIn(resolvedCart.discount, locale)}
+                  </span>
+                </div>
+              ) : null}
+              {resolvedCart.signInToSave ? (
+                <Link
+                  href={localePath(locale, "/account/sign-in")}
+                  className="mt-1 block border-l-2 border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[var(--ink)] underline-offset-2 hover:underline"
+                >
+                  {dict.checkout.signInToSave}
+                </Link>
+              ) : null}
               {/* A wholesale viewer is taxed at 0% and sees no line, rather than
                   a "$0.00" they then have to wonder about. */}
               {resolvedCart.tax > 0 ? (

@@ -35,6 +35,8 @@ export type ReceiptOrder = {
   pricedAsTier: string;
   paymentStatus: string;
   subtotal: string;
+  /** Volume discount taken off the subtotal before tax, as stored. "0" when none. */
+  discount: string;
   /** Sales tax charged, and the rate it was charged at, both as stored. */
   tax: string;
   taxRate: string;
@@ -60,8 +62,10 @@ export type ReceiptData = {
   fulfilment: string[];
   lines: ReceiptLine[];
   subtotal: number;
+  /** Zero prints no line. */
+  discount: number;
   tax: number;
-  /** As a fraction (0.07). Zero on a wholesale order, which prints no tax line. */
+  /** As a fraction (0.065). Zero on a wholesale order, which prints no tax line. */
   taxRate: number;
   total: number;
   /** Set only for trade orders: what this customer saved against retail. */
@@ -120,6 +124,7 @@ export function buildReceiptData(order: ReceiptOrder): ReceiptData {
     fulfilment,
     lines,
     subtotal: money(order.subtotal),
+    discount: money(order.discount),
     tax: money(order.tax),
     taxRate: Number(order.taxRate),
     total: money(order.total),
@@ -236,6 +241,13 @@ export async function renderReceiptPdf(
   };
   label("Subtotal", usd(data.subtotal), 10.5);
   y -= 16;
+
+  // Money off, before tax — printed in red like the trade discount below,
+  // since both are the customer visibly saving something.
+  if (data.discount > 0) {
+    label("Volume discount", `-${usd(data.discount)}`, 10.5, regular, red);
+    y -= 16;
+  }
 
   // A wholesale order is taxed at 0% and prints no line at all, rather than
   // "Sales tax (0%) $0.00" — a trade customer with a resale certificate does

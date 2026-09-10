@@ -44,7 +44,7 @@ type Details = {
   notes: string;
 };
 
-const EMPTY_CART: ResolvedCart = { lines: [], subtotal: 0, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
+const EMPTY_CART: ResolvedCart = { lines: [], subtotal: 0, discount: 0, signInToSave: false, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
 
 const BLANK: Details = {
   name: "",
@@ -465,6 +465,22 @@ function CheckoutForm({ locale, resolved }: { locale: Locale; resolved: Resolved
                 {formatMoneyIn(resolved.subtotal, locale)}
               </span>
             </div>
+            {resolved.discount > 0 ? (
+              <div className="flex items-baseline justify-between">
+                <span className={bodyClass}>{dict.checkout.discount}</span>
+                <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold text-[var(--accent-hover)]">
+                  -{formatMoneyIn(resolved.discount, locale)}
+                </span>
+              </div>
+            ) : null}
+            {resolved.signInToSave ? (
+              <Link
+                href={localePath(locale, "/account/sign-in")}
+                className="mt-1 block border-l-2 border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 font-[family-name:var(--font-barlow)] text-[14px] font-semibold text-[var(--ink)] underline-offset-2 hover:underline"
+              >
+                {dict.checkout.signInToSave}
+              </Link>
+            ) : null}
             {resolved.tax > 0 ? (
               <div className="flex items-baseline justify-between">
                 <span className={bodyClass}>

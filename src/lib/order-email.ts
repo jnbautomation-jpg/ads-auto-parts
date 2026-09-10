@@ -40,6 +40,8 @@ export type OrderEmailData = {
   items: OrderEmailItem[];
   /** All as stored. taxRate is a fraction ("0.0700"); a wholesale order has "0". */
   subtotal: string;
+  /** Volume discount off the subtotal before tax. "0" when none. */
+  discount: string;
   tax: string;
   taxRate: string;
   total: string;
@@ -101,6 +103,7 @@ export function buildCustomerEmail(
   // line rather than a "$0.00" one.
   const taxed = Number(order.tax) > 0;
   const taxLabel = `${dict.checkout.tax} (${formatTaxRate(Number(order.taxRate))})`;
+  const discounted = Number(order.discount) > 0;
 
   const collection =
     order.fulfillment === "DELIVERY"
@@ -116,6 +119,7 @@ export function buildCustomerEmail(
     items.text,
     "",
     `${dict.checkout.subtotal}: ${formatMoneyIn(order.subtotal, locale)}`,
+    ...(discounted ? [`${dict.checkout.discount}: -${formatMoneyIn(order.discount, locale)}`] : []),
     ...(taxed ? [`${taxLabel}: ${formatMoneyIn(order.tax, locale)}`] : []),
     `${dict.checkout.orderTotal}: ${total}`,
     "",
@@ -136,6 +140,12 @@ export function buildCustomerEmail(
       `<table style="width:100%;border-collapse:collapse;margin:0 0 8px">${items.html}`,
       `<tr><td style="padding:12px 12px 0 0;color:#545B63">${escapeHtml(dict.checkout.subtotal)}</td>`,
       `<td style="padding:12px 0 0;text-align:right;color:#545B63">${escapeHtml(formatMoneyIn(order.subtotal, locale))}</td></tr>`,
+      ...(discounted
+        ? [
+            `<tr><td style="padding:4px 12px 0 0;color:#545B63">${escapeHtml(dict.checkout.discount)}</td>`,
+            `<td style="padding:4px 0 0;text-align:right;color:#E31E24">-${escapeHtml(formatMoneyIn(order.discount, locale))}</td></tr>`,
+          ]
+        : []),
       ...(taxed
         ? [
             `<tr><td style="padding:4px 12px 0 0;color:#545B63">${escapeHtml(taxLabel)}</td>`,
@@ -170,10 +180,12 @@ export function buildShopEmail(order: OrderEmailData): { subject: string; text: 
   // Whoever reconciles needs to see a wholesale order was DELIBERATELY
   // untaxed, not that the line went missing — so the shop's copy states the
   // split even at 0%.
+  const discountNote =
+    Number(order.discount) > 0 ? ` − ${formatMoneyIn(order.discount, DEFAULT_LOCALE)} volume discount` : "";
   const taxSplit =
     Number(order.tax) > 0
-      ? `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)} + tax (${formatTaxRate(Number(order.taxRate))}) ${formatMoneyIn(order.tax, DEFAULT_LOCALE)}`
-      : `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}, no tax (wholesale)`;
+      ? `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}${discountNote} + tax (${formatTaxRate(Number(order.taxRate))}) ${formatMoneyIn(order.tax, DEFAULT_LOCALE)}`
+      : `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}${discountNote}, no tax (wholesale)`;
 
   const rows: [string, string][] = [
     ["Customer", order.customerName],
@@ -233,6 +245,7 @@ export async function sendOrderConfirmation(orderId: string, rawLocale?: string 
         fulfillment: true,
         deliveryAddress: true,
         subtotal: true,
+        discount: true,
         tax: true,
         taxRate: true,
         total: true,
@@ -254,6 +267,7 @@ export async function sendOrderConfirmation(orderId: string, rawLocale?: string 
       fulfillment: order.fulfillment,
       deliveryAddress: order.deliveryAddress,
       subtotal: order.subtotal.toString(),
+      discount: order.discount.toString(),
       tax: order.tax.toString(),
       taxRate: order.taxRate.toString(),
       total: order.total.toString(),

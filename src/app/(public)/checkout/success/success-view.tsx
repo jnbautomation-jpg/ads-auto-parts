@@ -49,6 +49,7 @@ export async function CheckoutSuccessView({
           orderNumber: true,
           paymentStatus: true,
           subtotal: true,
+          discount: true,
           tax: true,
           taxRate: true,
           total: true,
@@ -113,6 +114,14 @@ export async function CheckoutSuccessView({
                   {formatMoneyIn(order.subtotal.toString(), locale)}
                 </span>
               </div>
+              {Number(order.discount) > 0 ? (
+                <div className="flex items-baseline justify-between">
+                  <span className={bodyClass}>{dict.checkout.discount}</span>
+                  <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold text-[var(--accent-hover)]">
+                    -{formatMoneyIn(order.discount.toString(), locale)}
+                  </span>
+                </div>
+              ) : null}
               {Number(order.tax) > 0 ? (
                 <div className="flex items-baseline justify-between">
                   <span className={bodyClass}>

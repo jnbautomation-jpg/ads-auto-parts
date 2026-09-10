@@ -491,6 +491,9 @@ export const en = {
     quantityLabel: "Qty",
     subtotal: "Subtotal",
     tax: "Sales tax",
+    discount: "Volume discount",
+    // Guest at $500+: the exact moment the discount is worth an account.
+    signInToSave: "Sign in to save $100 on this order.",
     orderTotal: "Total to pay",
     itemsHeading: "Parts in this order",
     goToCheckout: "Checkout",

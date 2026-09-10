@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/metadata";
+import { getViewerTier } from "@/lib/customer-auth";
 import { LandingView } from "../landing-view";
 
 // The English landing page deliberately has no title/description of its own:
@@ -13,5 +14,8 @@ export const metadata: Metadata = pageMetadata("es", "/", {
 });
 
 export default async function LandingPageEs() {
-  return <LandingView locale="es" />;
+  // Same predicate the catalog header uses, so "Sign in" versus "My account"
+  // cannot disagree between the homepage and the catalog.
+  const signedIn = (await getViewerTier()) !== "GUEST";
+  return <LandingView locale="es" signedIn={signedIn} />;
 }
