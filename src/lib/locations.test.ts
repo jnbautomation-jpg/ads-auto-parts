@@ -70,10 +70,12 @@ describe("deliveryForLocation", () => {
     }
   });
 
-  it("does not claim free delivery outside Orlando city limits", () => {
-    // Free is an Orlando-only rule; none of these six are in it.
+  it("promises free delivery to every city in the same-day region", () => {
+    // Matthew confirmed 10 Sep 2026: free across the whole same-day area,
+    // Daytona and Lakeland included, not Orlando city limits only. These six
+    // pages advertise it, so the rule and the copy have to agree.
     for (const l of SERVICE_LOCATIONS) {
-      expect(deliveryForLocation(l).free, `${l.name}`).toBe(false);
+      expect(deliveryForLocation(l).free, `${l.name}`).toBe(true);
     }
   });
 });
