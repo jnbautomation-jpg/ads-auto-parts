@@ -1,7 +1,7 @@
 # Changelog — Phase 2
 
-**Last updated:** 25 August 2026
-**Branch:** `main` (deployed). One PR open: #11.
+**Last updated:** 9 September 2026
+**Branch:** `main` (deployed). Two PRs open: #18, #19 — both mobile fixes.
 **Live at:** https://www.autodoorstoreorlando.com
 
 > **Reading this to pick up work?** Start at [Where we left off](#where-we-left-off), then
@@ -13,36 +13,53 @@
 
 ## Where we left off
 
-**The site is live and everything built is deployed.** Eleven PRs merged. What follows is the
-state on 25 August 2026.
+**The site is live and everything built is deployed.** Seventeen PRs merged. What follows is the
+state on 29 August 2026.
 
 ### Live and working
 
 Light theme, Spanish site at `/es`, VIN lookup, insurance-estimate upload, returns page, customer
 accounts, orders, catalogue-grounded AI chat (answering in both languages against real stock),
-mobile navigation, order receipts, 592 products across 10 part types.
+mobile navigation, order receipts, 592 products across 10 part types — and, since 27–29 Aug:
 
-### Open PR
+- **Lead notification email** (#12). A quote request now emails the shop, with Reply-To set to
+  the customer. Provider is Resend. `src/lib/email.ts` is the only file that knows that.
+- **Ad conversion tracking + favicon** (#11). Google Ads and Meta Pixel tags restored; a lead
+  event fires after the server confirms the lead is saved.
+- **Cart and Stripe checkout** (#17). Card / Apple Pay / Google Pay via the on-site Payment
+  Element. The **webhook is the source of truth for payment**, per the spec; the order is created
+  and its stock reserved under a row lock the moment the customer commits, and only a cancelled
+  intent releases it. Confirmed working end to end in test mode, including a declined card
+  followed by a successful retry.
+- **`www` → apex redirect** (#15), in `next.config.ts`, derived from the same resolution the
+  canonical tags use. Query strings survive it, which is what the `gclid` on an ad click needs.
+- Inquiry dates in the admin now stamp Orlando time, not UTC (#13).
 
-**#11 — ad conversion tracking + favicon.** Google Ads and Meta Pixel were never carried over from
-the old Wix site, so two live campaigns have been reporting zero conversions since launch. Adds
-both tags plus a `generate_lead` / `Lead` event on quote submission, and replaces Next.js's default
-favicon with the shop's logo mark. Needs JJ to merge.
+### Two things are built but switched off until JJ sets keys
 
-### The one that is costing money right now
+Both degrade cleanly with no key — the site behaves exactly as before, plus a log line — so
+merging never depended on them. But **neither does anything until these are done**, and both live
+on the Vercel project, which is JJ's account:
 
-**Form leads reach nobody.** `submitQuoteRequest` writes an Inquiry row and returns. There is no
-mail library in the project at all — no email is ever sent, to anyone. Leads are visible only on
-`/inquiries` in the admin, which nobody opens.
+| Feature | What switches it on |
+| --- | --- |
+| Lead email | `vercel integration add resend` (sets `RESEND_API_KEY`); verify `autodoorstoreorlando.com` in Resend, then set `EMAIL_FROM`. Until the domain is verified, Resend's fallback sender only delivers to the account owner. |
+| Checkout | `vercel integration add stripe`; **the webhook endpoint** at `/api/stripe/webhook` subscribed to `payment_intent.succeeded`, `.payment_failed`, `.canceled`, and `STRIPE_WEBHOOK_SECRET`. Without the webhook, checkout looks like it works and customers get charged, but **no order is ever marked paid.** |
 
-The marketing director (Connie Lothian) reported this on 10, 13 and 17 August and twice offered to
-pause the Google Ads over it. Her test leads are sitting in `/inquiries`. **This is the highest
-priority item in the project** — ad spend is buying leads that nobody sees.
+The Stripe account must be Matthew's, not JJ's or Luca's — money lands wherever it points.
 
-Fixing it needs an email provider chosen and credentialed. Resend is the obvious fit on Vercel.
-Nothing is built yet; this is a green field.
+### Open PRs
+
+- **#18** — the product page's sticky Call button was clipped on phones and half-covered by the
+  chat bubble; a regression from #17.
+- **#19** — the site declared no `color-scheme`, so Android Chrome's auto-dark theme was free to
+  invert it. On a dark hero with white text that reads as a black, empty screen. Best-supported
+  explanation for the "black screen on mobile" report; not reproduced.
 
 ### Also raised by marketing, not yet addressed
+
+*Status 29 Aug:* an email to Connie asking for the Google Ads conversion label, the old-URL
+export from Search Console, and the sitemap submission is drafted and with JJ to send.
 
 - **No blog.** The old Wix site had blog pages Google had indexed. That SEO is lost. Rebuilding
   needs the old post content — exportable from Wix, or recoverable from Google's cache.
@@ -80,7 +97,7 @@ the business domain) still stands whenever the shop wants it, and it is a one-li
 
 | Check | State |
 | --- | --- |
-| Unit tests | 348 passing across 27 files |
+| Unit tests | 460 passing across 33 files |
 | CI | Green — lint, typecheck, tests, production build, on Node 20 and 24 |
 | Live-site regression sweep | 46 checks passing — predates the i18n completion pass, not re-run since |
 | Working tree | Clean |
@@ -292,33 +309,65 @@ These were deliberate. Changing them re-introduces a bug that was specifically f
 
 ### JJ
 
-- **Merge PR #11.**
-- **Stripe checkout.** Not started. Customers still cannot pay on the site — this is the single
-  largest gap between "live site" and "working business". Everything around it exists: orders,
-  stock that cannot oversell, statuses, labels, receipts. `Order.stripePaymentIntentId` is on the
-  model and unique so a replayed webhook cannot double-create. The spec wants card / Apple Pay /
-  Google Pay and the **webhook** as the source of truth for payment, not the client callback.
-- **Fix `DIRECT_URL` in Vercel Production.** The build no longer fails on it — `prisma.config.ts`
-  derives the session pooler from `DATABASE_URL` when `DIRECT_URL` points at the IPv6-only host —
-  but it prints a warning on every deploy until it is corrected.
+- **Switch on lead email and checkout** — the two-row table under
+  [Where we left off](#where-we-left-off). The webhook is the step that silently breaks things if
+  skipped.
+- **Merge #18 and #19** (mobile fixes). Independent of each other and of everything else.
+- **Fix `DIRECT_URL` in Vercel Production.** Still the wrong host. The build survives it and, since
+  #15, the warning names the exact value to paste (password redacted). The value itself is one
+  edit in the Vercel dashboard.
 - Make the `verify` checks required before merging to `main`. They run on every PR; nothing blocks
-  a merge while they are red.
-- `www` → non-www redirect.
+  a merge while they are red. Luca cannot see whether this is set — it needs repo admin.
 - Confirm the Preview environment points at the dev database, not production.
+- **Sales tax** — scoped, not built. See the Matthew section below.
 
 ### Matthew
 
 - Real business hours. Site says Mon–Fri 9–5; Facebook says always open. Both languages read from
   `HOURS_DISPLAY_IN` in `src/lib/site.ts`, so it is one edit.
 - Sign-off on the returns policy — `/returns` is live with draft terms.
-- Delivery ZIP zones and the out-of-city fee (`src/lib/delivery.ts` currently says "call for a
-  quote" rather than guessing).
 - Google / Facebook / Yelp / eBay URLs (`REVIEW_LINKS` in `src/lib/site.ts` — links are hidden
   while empty rather than shipped broken).
 - **Rewards earn/redeem rates** and the **reserve-now deposit and hold expiry**. Both features are
   unbuilt and blocked entirely on these numbers.
 - *Settled 25 Aug:* the flat $100 markup stays (`RETAIL_MARKUP_USD`). The client confirmed it when
   asking for the trade discount display.
+
+- *Settled 29 Aug, via JJ — delivery fees.* **$90 flat per part** anywhere in Florida outside
+  the free local zone; **$250 flat per part** outside Florida. **Per part, not per order** — three
+  doors to Tampa is $270. Not built; JJ asked for it to be written down first.
+
+  Before building it: `src/lib/delivery.ts` has three zones — `ORLANDO` (free), `CENTRAL_FL`, and
+  `OUTSIDE`, where `OUTSIDE` means "not Central Florida" and so lumps Tampa in with Texas. Matthew's
+  structure needs a fourth: rest-of-Florida ($90) split from out-of-state ($250), or the $250 lands
+  on Florida customers. The checkout currently **refuses** any `OUTSIDE` ZIP
+  (`validateCheckoutInput`, `dict.checkout.errors.zipOutside`) precisely because the fee was
+  unknown — that refusal is what this replaces. The ZIP lists themselves are still the unconfirmed
+  reconstruction described at the top of `delivery.ts`.
+
+- *Settled 29 Aug, via JJ — sales tax.* **6.5% for retail, 0% for wholesale accounts.** Built
+  (#21) and confirmed off a physical receipt on 9 Sep — $189.00 subtotal, $12.29 tax, Orange
+  County's combined rate — then corrected from the 7% first quoted (#22). Both merged and live.
+  Resale certificates are on file for the wholesale accounts (Matthew, 8 Sep), which is what makes
+  the 0% defensible. Flat rate in config (`RETAIL_SALES_TAX_RATE`), applied in `createOrder` so the order row's `total` is authoritative, keyed off the snapshotted `pricedAsTier`. Not Stripe Tax — `automatic_tax` does not exist on PaymentIntents. Flat across counties is a knowing simplification Matthew OK'd.
+
+- *Asked for 29 Aug, via JJ — "just wanted it written." Two of three now built (9 Sep):*
+  - ~~Accounts reachable from the landing page.~~ **Built in #23.** Sign in / My account and the
+    cart are on the landing header in both languages, resolved the same way the catalog header
+    does it so the two cannot disagree. Behavioural, not a restyle.
+  - ~~The wholesale rate needs a $500 minimum order and a logged-in account.~~ **Settled 9 Sep,
+    built in #23 — and it is neither reading above.** JJ pushed back on Matthew's framing ("spend
+    $500 and unlock wholesale") because it would have granted 0% tax to anyone without a resale
+    certificate, and the shop eats that tax. It is a **flat volume discount** instead: $100 off
+    when a logged-in customer's pre-tax subtotal is $500 or more; guests get nothing; retail
+    pricing throughout; **the discount comes off the subtotal before tax**, so a $600 order is $500
+    taxed. Wholesale tier unchanged. `src/lib/discount.ts`.
+    **One question still open, defaulted to no:** whether an approved wholesale account also gets
+    this on top of trade pricing (that would be $200 off). `WHOLESALE_ALSO_ELIGIBLE` is the one
+    line to flip if Matthew says yes.
+  - **A "call us about cheaper shipping" prompt** at checkout, for customers who might qualify
+    for a better rate than the flat fee. Probably the existing quote form with a preset subject,
+    surfaced beside the delivery fee.
 
 ### Legwork — not code
 
