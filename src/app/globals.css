@@ -68,7 +68,18 @@
 
 /* No prefers-color-scheme block: this is a designed light theme, not a
    system-following one. A storefront that changes colour with the visitor's
-   OS setting cannot hold a brand. */
+   OS setting cannot hold a brand.
+
+   color-scheme states that to the BROWSER, which is a different thing from
+   stating it to ourselves. Without it, Android Chrome's auto dark theme is
+   free to invert the page — and inverting a light theme whose ink is a
+   near-black token gives dark text on a darkened ground, which reads as a
+   blank black screen. It also keeps native controls and scrollbars out of
+   the OS's dark palette. Both surfaces are light (public and admin), so this
+   belongs at the root rather than per-layout. */
+:root {
+  color-scheme: light;
+}
 
 body {
   background: var(--background);
