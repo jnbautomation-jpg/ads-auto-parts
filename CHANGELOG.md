@@ -1,6 +1,6 @@
 # Changelog — Phase 2
 
-**Last updated:** 29 August 2026
+**Last updated:** 9 September 2026
 **Branch:** `main` (deployed). Two PRs open: #18, #19 — both mobile fixes.
 **Live at:** https://www.autodoorstoreorlando.com
 
@@ -345,28 +345,26 @@ These were deliberate. Changing them re-introduces a bug that was specifically f
   unknown — that refusal is what this replaces. The ZIP lists themselves are still the unconfirmed
   reconstruction described at the top of `delivery.ts`.
 
-- *Settled 29 Aug, via JJ — sales tax.* **7% for retail, 0% for wholesale accounts.** Not
-  built. Recommended shape: a flat rate in config, applied in `createOrder` (so the order row's
-  `total` is authoritative and the receipt, the emails and the Stripe charge all read from it),
-  keyed off the order's snapshotted `pricedAsTier` rather than the live tier. Not Stripe Tax:
-  `automatic_tax` does not exist on PaymentIntents, the `tax.calculations` API costs per
-  transaction, and it returns $0 silently without a Florida registration. Two things to confirm
-  first: that 7% is Orange County's current combined rate (Florida is 6% state plus a county
-  surtax — check the Florida DOR rather than assume), and that the shop knowingly accepts a flat
-  rate for deliveries into other counties, since Florida is destination-based. JJ is checking
-  whether **resale certificates** are on file for the wholesale accounts; the 0% is only
-  defensible for accounts that have one, and that is a records control, not code.
+- *Settled 29 Aug, via JJ — sales tax.* **6.5% for retail, 0% for wholesale accounts.** Built
+  (#21) and confirmed off a physical receipt on 9 Sep — $189.00 subtotal, $12.29 tax, Orange
+  County's combined rate — then corrected from the 7% first quoted (#22). Both merged and live.
+  Resale certificates are on file for the wholesale accounts (Matthew, 8 Sep), which is what makes
+  the 0% defensible. Flat rate in config (`RETAIL_SALES_TAX_RATE`), applied in `createOrder` so the order row's `total` is authoritative, keyed off the snapshotted `pricedAsTier`. Not Stripe Tax — `automatic_tax` does not exist on PaymentIntents. Flat across counties is a knowing simplification Matthew OK'd.
 
-- *Asked for 29 Aug, via JJ — not yet built. "Just wanted it written."*
-  - **Accounts reachable from the landing page.** The landing header has no sign-in link; the
-    catalog header does. The landing page is not to be restyled (CLAUDE.md), so this is one
-    link, not a redesign.
-  - **The wholesale rate needs a $500 minimum order and a logged-in account.** The $100 off is
-    `RETAIL_MARKUP_USD`. Today `priceForViewer` gives the trade price to any `WHOLESALE`-tier
-    viewer regardless of order size, and the tier is set by staff approval. **Unclear whether the
-    $500 minimum sits on top of staff approval or replaces it** (any account, any $500+ order).
-    That changes the approval flow and needs an answer before building. It also touches tax: if
-    the 0% follows the account's resale status, it should not switch on and off with order size.
+- *Asked for 29 Aug, via JJ — "just wanted it written." Two of three now built (9 Sep):*
+  - ~~Accounts reachable from the landing page.~~ **Built in #23.** Sign in / My account and the
+    cart are on the landing header in both languages, resolved the same way the catalog header
+    does it so the two cannot disagree. Behavioural, not a restyle.
+  - ~~The wholesale rate needs a $500 minimum order and a logged-in account.~~ **Settled 9 Sep,
+    built in #23 — and it is neither reading above.** JJ pushed back on Matthew's framing ("spend
+    $500 and unlock wholesale") because it would have granted 0% tax to anyone without a resale
+    certificate, and the shop eats that tax. It is a **flat volume discount** instead: $100 off
+    when a logged-in customer's pre-tax subtotal is $500 or more; guests get nothing; retail
+    pricing throughout; **the discount comes off the subtotal before tax**, so a $600 order is $500
+    taxed. Wholesale tier unchanged. `src/lib/discount.ts`.
+    **One question still open, defaulted to no:** whether an approved wholesale account also gets
+    this on top of trade pricing (that would be $200 off). `WHOLESALE_ALSO_ELIGIBLE` is the one
+    line to flip if Matthew says yes.
   - **A "call us about cheaper shipping" prompt** at checkout, for customers who might qualify
     for a better rate than the flat fee. Probably the existing quote form with a preset subject,
     surfaced beside the delivery fee.
