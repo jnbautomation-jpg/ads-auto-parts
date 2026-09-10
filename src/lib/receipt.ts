@@ -37,6 +37,9 @@ export type ReceiptOrder = {
   subtotal: string;
   /** Volume discount taken off the subtotal before tax, as stored. "0" when none. */
   discount: string;
+  /** Per-part delivery, as stored; "0" for pickup. Zone is null for pickup. */
+  deliveryFee: string;
+  deliveryZone: string | null;
   /** Sales tax charged, and the rate it was charged at, both as stored. */
   tax: string;
   taxRate: string;
@@ -64,6 +67,7 @@ export type ReceiptData = {
   subtotal: number;
   /** Zero prints no line. */
   discount: number;
+  deliveryFee: number;
   tax: number;
   /** As a fraction (0.065). Zero on a wholesale order, which prints no tax line. */
   taxRate: number;
@@ -125,6 +129,7 @@ export function buildReceiptData(order: ReceiptOrder): ReceiptData {
     lines,
     subtotal: money(order.subtotal),
     discount: money(order.discount),
+    deliveryFee: money(order.deliveryFee),
     tax: money(order.tax),
     taxRate: Number(order.taxRate),
     total: money(order.total),
@@ -246,6 +251,13 @@ export async function renderReceiptPdf(
   // since both are the customer visibly saving something.
   if (data.discount > 0) {
     label("Volume discount", `-${usd(data.discount)}`, 10.5, regular, red);
+    y -= 16;
+  }
+
+  // Delivery sits between the discount and tax because that is the order
+  // the money is computed in: it is added to the taxable amount.
+  if (data.deliveryFee > 0) {
+    label("Delivery", usd(data.deliveryFee), 10.5);
     y -= 16;
   }
 

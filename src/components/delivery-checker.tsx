@@ -10,6 +10,11 @@ import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/site";
 
 // Runs entirely in the browser: the zone tables are static and public, so a
 // round-trip would add latency for nothing.
+//
+// Every zone now has a rate (Matthew, 9 Sep 2026), so this states it rather
+// than sending the customer to the phone for a quote. The fee is PER PART —
+// two doors is two parts — and the checkout multiplies it by the cart; this
+// checker only knows the ZIP, so it quotes the per-part rate and says so.
 export function DeliveryChecker() {
   const [zip, setZip] = useState("");
   const [result, setResult] = useState<DeliveryEstimate | null | "invalid">(null);
@@ -50,40 +55,47 @@ export function DeliveryChecker() {
         </p>
       ) : result ? (
         <div aria-live="polite" className="flex flex-col gap-1 text-[13.5px]">
+          {/* --stock-in, not the old #4ADE80: that green was picked for a
+              black ground and fails contrast on this one. */}
           {result.zone === "ORLANDO" ? (
-            <p className="font-semibold text-[#4ADE80]">Free delivery — you&apos;re in Orlando.</p>
+            <p className="font-semibold text-[var(--stock-in)]">Free delivery — you&apos;re in Orlando.</p>
           ) : result.zone === "CENTRAL_FL" ? (
+            <p className="font-semibold text-[var(--stock-in)]">
+              Free delivery — you&apos;re in our Central Florida area.
+            </p>
+          ) : result.zone === "FLORIDA" ? (
             <p className="font-semibold text-[var(--ink)]">
-              We deliver to you across Central Florida.
+              We deliver across Florida — ${result.perPartUsd} per part.
             </p>
           ) : (
-            <p className="font-semibold text-[var(--stock-low)]">
-              You&apos;re outside our delivery area — call and we&apos;ll work something out.
+            <p className="font-semibold text-[var(--ink)]">
+              We ship out of state — ${result.perPartUsd} per part.
             </p>
           )}
 
-          {result.zone !== "OUTSIDE" ? (
+          {result.free ? (
             <p className="text-[var(--ink-muted)]">
               {result.sameDayAvailable
                 ? `Order in the next few hours and it goes out today — the cutoff is ${result.cutoffLabel}.`
                 : `Today's ${result.cutoffLabel} cutoff has passed, so this would go out tomorrow.`}
             </p>
-          ) : null}
-
-          {/* An unknown fee is never guessed — the shop quotes it. */}
-          {result.zone !== "ORLANDO" ? (
-            <p className="text-[var(--ink-faint)]">
-              Delivery cost depends on the address —{" "}
-              <a href={`tel:${PHONE_HREF}`} className="text-[var(--ink)] underline">
-                call {PHONE_DISPLAY}
-              </a>{" "}
-              for an exact quote.
+          ) : (
+            <p className="text-[var(--ink-muted)]">
+              Per part means per unit — two doors is two parts. The exact total shows at checkout.
             </p>
-          ) : null}
+          )}
+
+          <p className="text-[var(--ink-faint)]">
+            Questions?{" "}
+            <a href={`tel:${PHONE_HREF}`} className="text-[var(--ink)] underline">
+              Call {PHONE_DISPLAY}
+            </a>
+            .
+          </p>
         </div>
       ) : (
         <p className="text-[12.5px] text-[var(--ink-faint)]">
-          Free in Orlando · same-day across Central FL before {SAME_DAY_CUTOFF_LABEL}
+          Free across Central FL · same-day before {SAME_DAY_CUTOFF_LABEL} · $90/part elsewhere in FL · $250/part out of state
         </p>
       )}
     </div>

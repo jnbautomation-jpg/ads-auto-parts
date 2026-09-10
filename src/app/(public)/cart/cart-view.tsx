@@ -19,7 +19,7 @@ import {
   subHeadingClass,
 } from "@/lib/public-ui";
 
-const EMPTY: ResolvedCart = { lines: [], subtotal: 0, discount: 0, signInToSave: false, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
+const EMPTY: ResolvedCart = { lines: [], subtotal: 0, discount: 0, signInToSave: false, deliveryFee: 0, deliveryZone: null, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
 
 /**
  * The cart.

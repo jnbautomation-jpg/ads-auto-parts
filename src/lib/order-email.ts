@@ -42,6 +42,8 @@ export type OrderEmailData = {
   subtotal: string;
   /** Volume discount off the subtotal before tax. "0" when none. */
   discount: string;
+  /** Per-part delivery, taxable. "0" for pickup. */
+  deliveryFee: string;
   tax: string;
   taxRate: string;
   total: string;
@@ -104,6 +106,7 @@ export function buildCustomerEmail(
   const taxed = Number(order.tax) > 0;
   const taxLabel = `${dict.checkout.tax} (${formatTaxRate(Number(order.taxRate))})`;
   const discounted = Number(order.discount) > 0;
+  const delivered = Number(order.deliveryFee) > 0;
 
   const collection =
     order.fulfillment === "DELIVERY"
@@ -120,6 +123,7 @@ export function buildCustomerEmail(
     "",
     `${dict.checkout.subtotal}: ${formatMoneyIn(order.subtotal, locale)}`,
     ...(discounted ? [`${dict.checkout.discount}: -${formatMoneyIn(order.discount, locale)}`] : []),
+    ...(delivered ? [`${dict.checkout.deliveryFee}: ${formatMoneyIn(order.deliveryFee, locale)}`] : []),
     ...(taxed ? [`${taxLabel}: ${formatMoneyIn(order.tax, locale)}`] : []),
     `${dict.checkout.orderTotal}: ${total}`,
     "",
@@ -144,6 +148,12 @@ export function buildCustomerEmail(
         ? [
             `<tr><td style="padding:4px 12px 0 0;color:#545B63">${escapeHtml(dict.checkout.discount)}</td>`,
             `<td style="padding:4px 0 0;text-align:right;color:#E31E24">-${escapeHtml(formatMoneyIn(order.discount, locale))}</td></tr>`,
+          ]
+        : []),
+      ...(delivered
+        ? [
+            `<tr><td style="padding:4px 12px 0 0;color:#545B63">${escapeHtml(dict.checkout.deliveryFee)}</td>`,
+            `<td style="padding:4px 0 0;text-align:right;color:#545B63">${escapeHtml(formatMoneyIn(order.deliveryFee, locale))}</td></tr>`,
           ]
         : []),
       ...(taxed
@@ -182,10 +192,12 @@ export function buildShopEmail(order: OrderEmailData): { subject: string; text: 
   // split even at 0%.
   const discountNote =
     Number(order.discount) > 0 ? ` − ${formatMoneyIn(order.discount, DEFAULT_LOCALE)} volume discount` : "";
+  const deliveryNote =
+    Number(order.deliveryFee) > 0 ? ` + ${formatMoneyIn(order.deliveryFee, DEFAULT_LOCALE)} delivery` : "";
   const taxSplit =
     Number(order.tax) > 0
-      ? `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}${discountNote} + tax (${formatTaxRate(Number(order.taxRate))}) ${formatMoneyIn(order.tax, DEFAULT_LOCALE)}`
-      : `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}${discountNote}, no tax (wholesale)`;
+      ? `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}${discountNote}${deliveryNote} + tax (${formatTaxRate(Number(order.taxRate))}) ${formatMoneyIn(order.tax, DEFAULT_LOCALE)}`
+      : `${formatMoneyIn(order.subtotal, DEFAULT_LOCALE)}${discountNote}${deliveryNote}, no tax (wholesale)`;
 
   const rows: [string, string][] = [
     ["Customer", order.customerName],
@@ -246,6 +258,7 @@ export async function sendOrderConfirmation(orderId: string, rawLocale?: string 
         deliveryAddress: true,
         subtotal: true,
         discount: true,
+        deliveryFee: true,
         tax: true,
         taxRate: true,
         total: true,
@@ -268,6 +281,7 @@ export async function sendOrderConfirmation(orderId: string, rawLocale?: string 
       deliveryAddress: order.deliveryAddress,
       subtotal: order.subtotal.toString(),
       discount: order.discount.toString(),
+      deliveryFee: order.deliveryFee.toString(),
       tax: order.tax.toString(),
       taxRate: order.taxRate.toString(),
       total: order.total.toString(),
