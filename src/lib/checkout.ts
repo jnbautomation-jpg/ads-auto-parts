@@ -13,7 +13,7 @@
 import { getDictionary } from "@/lib/dictionaries";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 import { isValidEmail, normalizePhone } from "@/lib/inquiry";
-import { isValidZip, normalizeZip, zoneForZip } from "@/lib/delivery";
+import { isValidZip, normalizeZip } from "@/lib/delivery";
 
 export type Fulfillment = "PICKUP" | "DELIVERY";
 
@@ -108,15 +108,10 @@ export function validateCheckoutInput(
     if (!isValidZip(value.deliveryZip)) {
       return { ok: false, error: dict.checkout.errors.zipInvalid, field: "deliveryZip" };
     }
-    // A ZIP outside the delivery zones is refused rather than quietly
-    // accepted at $0 shipping. src/lib/delivery.ts already declines to guess
-    // an out-of-city fee — it says "call for a quote" — because the fee is
-    // still one of Matthew's outstanding decisions. Taking payment for a
-    // delivery whose cost nobody has set would be that guess, made silently
-    // and with the shop's money.
-    if (zoneForZip(value.deliveryZip) === "OUTSIDE") {
-      return { ok: false, error: dict.checkout.errors.zipOutside, field: "deliveryZip" };
-    }
+    // Any valid ZIP is accepted. This used to refuse out-of-zone ZIPs because
+    // the fee was unknown; Matthew has since set every zone's rate
+    // (src/lib/delivery.ts), so an out-of-state address is priced — $250 a
+    // part — not turned away.
   }
 
   return { ok: true, value };

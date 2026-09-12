@@ -492,6 +492,7 @@ export const en = {
     subtotal: "Subtotal",
     tax: "Sales tax",
     discount: "Volume discount",
+    deliveryFee: "Delivery",
     // Guest at $500+: the exact moment the discount is worth an account.
     signInToSave: "Sign in to save $100 on this order.",
     orderTotal: "Total to pay",
@@ -553,8 +554,6 @@ export const en = {
       emailRequired: "We need an email address to send your receipt to.",
       addressRequired: "Enter the street address we're delivering to.",
       zipInvalid: "That ZIP code doesn't look right — five digits, please.",
-      zipOutside:
-        "We don't have a set delivery rate for that ZIP yet. Choose pickup, or call us and we'll quote the freight.",
       cartEmpty: "There's nothing in your cart.",
       soldOut: "One of those parts sold while you were checking out — check your cart and try again.",
       paymentFailed:

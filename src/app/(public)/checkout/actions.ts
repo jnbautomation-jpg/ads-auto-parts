@@ -27,6 +27,7 @@ import { createOrder, orderNumberLabel, restockOrder } from "@/lib/orders";
 import { canSeeWholesale, priceForViewer, productSelectFor } from "@/lib/pricing";
 import { calculateTax, taxRateFor } from "@/lib/tax";
 import { qualifiesForVolumeDiscount, volumeDiscountFor } from "@/lib/discount";
+import { deliveryFeeFor, isValidZip, normalizeZip, zoneForZip, type DeliveryZone } from "@/lib/delivery";
 import { getCustomerContext, getOrganizationId, getViewerTier } from "@/lib/customer-auth";
 import { formatFit, formatPartTypeIn, formatPositionIn } from "@/lib/format";
 import { getPartTypeImage } from "@/lib/part-images";
@@ -68,7 +69,10 @@ export type ResolvedCart = {
    * signed-in viewer, who either has the discount or is wholesale.
    */
   signInToSave: boolean;
-  /** Sales tax at the viewer's tier, on the subtotal AFTER the discount. */
+  /** Per-part delivery for the chosen fulfilment and ZIP. 0 for pickup or until a valid ZIP is typed. */
+  deliveryFee: number;
+  deliveryZone: DeliveryZone | null;
+  /** Sales tax at the viewer's tier, on subtotal − discount + delivery. */
   tax: number;
   /** As a fraction; 0 for a wholesale viewer. */
   taxRate: number;
@@ -89,6 +93,8 @@ const EMPTY_RESOLVED: ResolvedCart = {
   subtotal: 0,
   discount: 0,
   signInToSave: false,
+  deliveryFee: 0,
+  deliveryZone: null,
   tax: 0,
   taxRate: 0,
   total: 0,
@@ -111,9 +117,14 @@ function resolveLocale(value: string): Locale {
  * a part can sell, drop in price or be unpublished while the cart sits open,
  * and the customer should see that before they pay rather than after.
  */
+export type DeliveryChoice = { fulfillment: string; deliveryZip: string };
+
 export async function resolveCart(
   rawLines: CartLine[],
   rawLocale: string = DEFAULT_LOCALE,
+  // The cart page has no fulfilment yet and passes nothing; the checkout
+  // passes what the customer has chosen so the fee re-prices as they type.
+  delivery: DeliveryChoice = { fulfillment: "PICKUP", deliveryZip: "" },
 ): Promise<ResolvedCart> {
   // Part names and positions are rendered here rather than in the component,
   // so they have to be translated here too — otherwise the Spanish cart lists
@@ -189,7 +200,17 @@ export async function resolveCart(
   const pricedAsTier = canSeeWholesale(tier) ? ("WHOLESALE" as const) : ("RETAIL" as const);
   const hasAccount = (await getCustomerContext()) !== null;
   const discount = volumeDiscountFor({ pricedAsTier, hasAccount, subtotal });
-  const taxable = money(subtotal - discount);
+  // Same zone/fee rule createOrder applies, so the summary is the charge.
+  let deliveryZone: DeliveryZone | null = null;
+  let deliveryFee = 0;
+  if (delivery.fulfillment === "DELIVERY") {
+    const zip = normalizeZip(delivery.deliveryZip);
+    if (isValidZip(zip)) {
+      deliveryZone = zoneForZip(zip);
+      deliveryFee = deliveryFeeFor(deliveryZone, resolved.reduce((n, l) => n + l.quantity, 0));
+    }
+  }
+  const taxable = money(subtotal - discount + deliveryFee);
   const taxRate = taxRateFor(pricedAsTier);
   const tax = calculateTax(taxable, taxRate);
   const total = money(taxable + tax);
@@ -199,6 +220,8 @@ export async function resolveCart(
     subtotal,
     discount,
     signInToSave: !hasAccount && pricedAsTier === "RETAIL" && qualifiesForVolumeDiscount(subtotal),
+    deliveryFee,
+    deliveryZone,
     tax,
     taxRate,
     total,
@@ -270,6 +293,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     customerPhone: details.phone,
     fulfillment: details.fulfillment,
     deliveryAddress: formatDeliveryAddress(details),
+    deliveryZip: details.deliveryZip,
     notes: details.notes || null,
     lines,
     tier,

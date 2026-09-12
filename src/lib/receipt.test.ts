@@ -14,6 +14,8 @@ const BASE: ReceiptOrder = {
   paymentStatus: "PAID",
   subtotal: "469.00",
   discount: "0",
+  deliveryFee: "0",
+  deliveryZone: null,
   tax: "0",
   taxRate: "0",
   total: "469.00",
@@ -108,5 +110,16 @@ describe("buildReceiptData — sales tax", () => {
     const r = buildReceiptData({ ...BASE, pricedAsTier: "WHOLESALE", tax: "0", taxRate: "0" });
     expect(r.tax).toBe(0);
     expect(r.taxRate).toBe(0);
+  });
+});
+
+describe("buildReceiptData — delivery", () => {
+  it("carries the stored fee through", () => {
+    const r = buildReceiptData({ ...BASE, deliveryFee: "180.00", deliveryZone: "FLORIDA", total: "691.18" });
+    expect(r.deliveryFee).toBe(180);
+  });
+
+  it("is zero for a pickup, so no line prints", () => {
+    expect(buildReceiptData(BASE).deliveryFee).toBe(0);
   });
 });

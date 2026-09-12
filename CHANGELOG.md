@@ -1,6 +1,6 @@
 # Changelog — Phase 2
 
-**Last updated:** 9 September 2026
+**Last updated:** 10 September 2026
 **Branch:** `main` (deployed). Two PRs open: #18, #19 — both mobile fixes.
 **Live at:** https://www.autodoorstoreorlando.com
 
@@ -333,17 +333,26 @@ These were deliberate. Changing them re-introduces a bug that was specifically f
 - *Settled 25 Aug:* the flat $100 markup stays (`RETAIL_MARKUP_USD`). The client confirmed it when
   asking for the trade discount display.
 
-- *Settled 29 Aug, via JJ — delivery fees.* **$90 flat per part** anywhere in Florida outside
-  the free local zone; **$250 flat per part** outside Florida. **Per part, not per order** — three
-  doors to Tampa is $270. Not built; JJ asked for it to be written down first.
+- *Settled 9–10 Sep, via JJ — delivery zones and fees. **Built.*** Zones confirmed with Matthew:
+  **Orlando free; Central Florida free** (Daytona and Lakeland included — the same-day region);
+  **rest of Florida $90 per part; out of state $250 per part.** Per part means **per unit**, not per
+  line — two doors is two parts. No cap: four doors to Texas is $1,000, and Matthew says that is
+  right. **Delivery is taxable.** The sequence is subtotal − volume discount + delivery, **then**
+  tax on all of it — so a delivery to Miami carries more tax than the same parts collected.
 
-  Before building it: `src/lib/delivery.ts` has three zones — `ORLANDO` (free), `CENTRAL_FL`, and
-  `OUTSIDE`, where `OUTSIDE` means "not Central Florida" and so lumps Tampa in with Texas. Matthew's
-  structure needs a fourth: rest-of-Florida ($90) split from out-of-state ($250), or the $250 lands
-  on Florida customers. The checkout currently **refuses** any `OUTSIDE` ZIP
-  (`validateCheckoutInput`, `dict.checkout.errors.zipOutside`) precisely because the fee was
-  unknown — that refusal is what this replaces. The ZIP lists themselves are still the unconfirmed
-  reconstruction described at the top of `delivery.ts`.
+  JJ built the zones (`src/lib/delivery.ts` — the fourth zone `FLORIDA` splits the rest of the
+  state from out-of-state, and fees are a property of the order, not the ZIP). The wiring into
+  `createOrder`, `resolveCart`, the receipt, both emails and the success page is this PR; the
+  checkout re-prices as the customer switches to delivery or types a ZIP, and the Stripe amount
+  moves with it. The `OUTSIDE`-ZIP refusal in `validateCheckoutInput` is **gone** — an out-of-state
+  address is priced, not turned away. `Order.deliveryFee` and `Order.deliveryZone` are snapshotted
+  so an old receipt still adds up if the rates move.
+
+  Verified through the real `createOrder` on the dev database, 2 × $399 with a signed-in retail
+  account: pickup 743.37; Orlando 743.37; Miami +$180 → 935.07; Texas +$500 → 1,275.87 — tax
+  rising with delivery, per part, after the discount. The ZIP lists are still the county
+  reconstruction described at the top of `delivery.ts`; Matthew confirmed the county list, not
+  every ZIP.
 
 - *Settled 29 Aug, via JJ — sales tax.* **6.5% for retail, 0% for wholesale accounts.** Built
   (#21) and confirmed off a physical receipt on 9 Sep — $189.00 subtotal, $12.29 tax, Orange

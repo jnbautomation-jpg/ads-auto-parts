@@ -482,6 +482,7 @@ export const es: Dictionary = {
     subtotal: "Subtotal",
     tax: "Impuesto sobre la venta",
     discount: "Descuento por volumen",
+    deliveryFee: "Entrega",
     signInToSave: "Inicie sesión y ahorre $100 en este pedido.",
     orderTotal: "Total a pagar",
     itemsHeading: "Piezas de este pedido",
@@ -542,8 +543,6 @@ export const es: Dictionary = {
       emailRequired: "Necesitamos un correo electrónico para enviarle el recibo.",
       addressRequired: "Escriba la dirección a donde vamos a entregar.",
       zipInvalid: "Ese código postal no parece correcto — cinco dígitos, por favor.",
-      zipOutside:
-        "Todavía no tenemos una tarifa fija de entrega para ese código postal. Elija recoger en el almacén, o llámenos y le cotizamos el envío.",
       cartEmpty: "No hay nada en su carrito.",
       soldOut: "Una de esas piezas se vendió mientras usted pagaba — revise su carrito e intente de nuevo.",
       paymentFailed:

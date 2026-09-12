@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Appearance, type StripeElementsOptions } from "@stripe/stripe-js";
 import { cartActions, useCart } from "@/components/cart-store";
-import { placeOrder, resolveCart, type ResolvedCart } from "./actions";
+import { placeOrder, resolveCart, type DeliveryChoice, type ResolvedCart } from "./actions";
 import { getDictionary } from "@/lib/dictionaries";
 import { formatMoneyIn } from "@/lib/format";
 import { formatTaxRate } from "@/lib/tax";
@@ -44,7 +44,7 @@ type Details = {
   notes: string;
 };
 
-const EMPTY_CART: ResolvedCart = { lines: [], subtotal: 0, discount: 0, signInToSave: false, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
+const EMPTY_CART: ResolvedCart = { lines: [], subtotal: 0, discount: 0, signInToSave: false, deliveryFee: 0, deliveryZone: null, tax: 0, taxRate: 0, total: 0, totalCents: 0, changed: false };
 
 const BLANK: Details = {
   name: "",
@@ -66,6 +66,12 @@ export function CheckoutView({
   const dict = getDictionary(locale);
   const cart = useCart();
   const [resolved, setResolved] = useState<ResolvedCart | null>(null);
+  // The fulfilment choice lives HERE, not only in the form, because the
+  // delivery fee is part of the total and the total is resolved here. The
+  // form reports every change up and this effect re-prices — so the summary,
+  // the Pay button and the Stripe Elements amount all move together when the
+  // customer switches to delivery or types a ZIP.
+  const [delivery, setDelivery] = useState<DeliveryChoice>({ fulfillment: "PICKUP", deliveryZip: "" });
 
   useEffect(() => {
     // See cart-view: the empty case is derived, not stored, so there is no
@@ -73,13 +79,13 @@ export function CheckoutView({
     if (cart.length === 0) return;
 
     let current = true;
-    void resolveCart([...cart], locale).then((next) => {
+    void resolveCart([...cart], locale, delivery).then((next) => {
       if (current) setResolved(next);
     });
     return () => {
       current = false;
     };
-  }, [cart, locale]);
+  }, [cart, locale, delivery]);
 
   const resolvedCart = cart.length === 0 ? EMPTY_CART : resolved;
 
@@ -125,6 +131,7 @@ export function CheckoutView({
         publishableKey={publishableKey}
         totalCents={resolvedCart.totalCents}
         resolved={resolvedCart}
+        onDeliveryChange={setDelivery}
       />
     </Shell>
   );
@@ -145,9 +152,11 @@ function StripeFrame({
   publishableKey,
   totalCents,
   resolved,
+  onDeliveryChange,
 }: {
   locale: Locale;
   publishableKey: string;
+  onDeliveryChange: (choice: DeliveryChoice) => void;
   /**
    * The server's own integer-cents figure for the tax-inclusive total. It
    * has to equal the PaymentIntent amount placeOrder later creates or
@@ -173,7 +182,7 @@ function StripeFrame({
 
   return (
     <Elements stripe={getStripe(publishableKey)} options={options}>
-      <CheckoutForm locale={locale} resolved={resolved} />
+      <CheckoutForm locale={locale} resolved={resolved} onDeliveryChange={onDeliveryChange} />
     </Elements>
   );
 }
@@ -249,7 +258,15 @@ function buildAppearance(): Appearance {
   };
 }
 
-function CheckoutForm({ locale, resolved }: { locale: Locale; resolved: ResolvedCart }) {
+function CheckoutForm({
+  locale,
+  resolved,
+  onDeliveryChange,
+}: {
+  locale: Locale;
+  resolved: ResolvedCart;
+  onDeliveryChange: (choice: DeliveryChoice) => void;
+}) {
   const dict = getDictionary(locale);
   const router = useRouter();
   const stripe = useStripe();
@@ -264,8 +281,16 @@ function CheckoutForm({ locale, resolved }: { locale: Locale; resolved: Resolved
 
   const set = useCallback(
     <K extends keyof Details>(key: K, value: Details[K]) =>
-      setDetails((current) => ({ ...current, [key]: value })),
-    [],
+      setDetails((current) => {
+        const next = { ...current, [key]: value };
+        // Only these two change the price. Reporting from inside the updater
+        // means the parent sees the same value this form will render.
+        if (key === "fulfillment" || key === "deliveryZip") {
+          onDeliveryChange({ fulfillment: next.fulfillment, deliveryZip: next.deliveryZip });
+        }
+        return next;
+      }),
+    [onDeliveryChange],
   );
 
   // Move focus to the problem rather than leaving the customer to find it —
@@ -480,6 +505,14 @@ function CheckoutForm({ locale, resolved }: { locale: Locale; resolved: Resolved
               >
                 {dict.checkout.signInToSave}
               </Link>
+            ) : null}
+            {resolved.deliveryFee > 0 ? (
+              <div className="flex items-baseline justify-between">
+                <span className={bodyClass}>{dict.checkout.deliveryFee}</span>
+                <span className="font-[family-name:var(--font-barlow)] text-[15px] font-semibold">
+                  {formatMoneyIn(resolved.deliveryFee, locale)}
+                </span>
+              </div>
             ) : null}
             {resolved.tax > 0 ? (
               <div className="flex items-baseline justify-between">

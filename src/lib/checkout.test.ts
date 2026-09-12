@@ -107,11 +107,11 @@ describe("validateCheckoutInput", () => {
     // Well-formed but nowhere near Orlando. Accepting it would take payment
     // for a delivery at no delivery charge, into a zone whose fee is still
     // one of Matthew's open decisions.
-    it("refuses a delivery to a ZIP outside the served zones", () => {
-      const result = validateCheckoutInput({ ...DELIVERY, deliveryZip: "90210" });
-      if (result.ok) throw new Error("expected a rejection");
-      expect(result.error).toBe(en.checkout.errors.zipOutside);
-      expect(result.field).toBe("deliveryZip");
+    it("accepts a delivery to an out-of-state ZIP — it is priced, not refused", () => {
+      // This used to be refused because the fee was unknown. Matthew has set
+      // every zone's rate, so an out-of-state address is $250 a part.
+      const result = validateCheckoutInput({ ...DELIVERY, deliveryZip: "75001" });
+      expect(result.ok).toBe(true);
     });
 
     it("accepts a Central Florida ZIP", () => {

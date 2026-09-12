@@ -17,6 +17,7 @@ import type { ViewerTier } from "@/lib/pricing";
 import { canSeeWholesale } from "@/lib/pricing";
 import { calculateTax, taxRateFor } from "@/lib/tax";
 import { volumeDiscountFor } from "@/lib/discount";
+import { deliveryFeeFor, isValidZip, normalizeZip, zoneForZip, type DeliveryZone } from "@/lib/delivery";
 import { describeError } from "@/lib/log-error";
 
 export type OrderLineInput = { productId: string; quantity: number };
@@ -29,6 +30,8 @@ export type CreateOrderInput = {
   customerPhone: string;
   fulfillment: "PICKUP" | "DELIVERY";
   deliveryAddress?: string | null;
+  /** Five-digit ZIP for a DELIVERY order — what the zone, and so the fee, is read from. */
+  deliveryZip?: string | null;
   notes?: string | null;
   lines: OrderLineInput[];
   /** Decides which price column the order is billed at. */
@@ -177,7 +180,22 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         hasAccount: input.customerAccountId != null,
         subtotal,
       });
-      const taxable = money(subtotal - discount);
+      // Delivery is priced per PART (per unit — two doors is two parts) by
+      // the ZIP's zone, and it is TAXABLE: Matthew confirmed the sequence is
+      // subtotal − discount + delivery, then tax on all of it. Pickup is
+      // free with no zone. The zone name is stored beside the fee so a
+      // receipt reprinted after the rates move still adds up.
+      let deliveryZone: DeliveryZone | null = null;
+      let deliveryFee = 0;
+      if (input.fulfillment === "DELIVERY") {
+        const zip = normalizeZip(input.deliveryZip ?? "");
+        if (isValidZip(zip)) {
+          deliveryZone = zoneForZip(zip);
+          deliveryFee = deliveryFeeFor(deliveryZone, lines.reduce((n, l) => n + l.quantity, 0));
+        }
+      }
+
+      const taxable = money(subtotal - discount + deliveryFee);
 
       const taxRate = taxRateFor(pricedAsTier);
       const tax = calculateTax(taxable, taxRate);
@@ -197,6 +215,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
           pricedAsTier,
           subtotal,
           discount,
+          deliveryFee,
+          deliveryZone,
           tax,
           taxRate,
           total,

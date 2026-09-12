@@ -42,6 +42,8 @@ export async function GET(
     paymentStatus: order.paymentStatus,
     subtotal: order.subtotal.toString(),
     discount: order.discount.toString(),
+    deliveryFee: order.deliveryFee.toString(),
+    deliveryZone: order.deliveryZone,
     tax: order.tax.toString(),
     taxRate: order.taxRate.toString(),
     total: order.total.toString(),
