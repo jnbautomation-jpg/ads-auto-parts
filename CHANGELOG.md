@@ -1,6 +1,6 @@
 # Changelog — Phase 2
 
-**Last updated:** 10 September 2026
+**Last updated:** 14 September 2026
 **Branch:** `main` (deployed). Two PRs open: #18, #19 — both mobile fixes.
 **Live at:** https://www.autodoorstoreorlando.com
 
@@ -138,7 +138,7 @@ npx tsx scripts/backfill-retail-price.ts   # dry run; --apply to write
 | 1.1 | 404 page; unknown URLs no longer hit the staff login | Done (301 map deferred — needs the URL list) |
 | 1.2 | Canonical tags | Done (www→non-www is a Vercel setting) |
 | 1.3 | Wholesale price exposed publicly | Done |
-| 1.4 | DB-driven dropdowns + cascading filters | Done |
+| 1.4 | DB-driven dropdowns + cascading filters | Done — but **catalog only** until 14 Sep 2026. The landing hero was a plain GET form over three flat lists, so picking Toyota still offered every model; a customer who chose Altima under Toyota searched and got nothing. Both forms now narrow from the same fit rows (`src/lib/fit-rows.ts`) through the same engine (`src/lib/catalog-filter.ts`), so they cannot disagree. Part type is deliberately not cascaded on the hero — it submits marketing labels the catalog resolves server-side, and that contract is what search depends on. |
 | 1.5 | Dead category tiles | Done (was already on `main`) |
 | 1.6 | Dirty model data | Done (unique constraint deferred — needs a canonical model table) |
 | 1.7 | VW / Volkswagen split | Done |

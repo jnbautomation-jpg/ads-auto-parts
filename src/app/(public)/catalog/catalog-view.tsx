@@ -14,7 +14,8 @@ import { getViewerTier } from "@/lib/customer-auth";
 import { CatalogHeader } from "./catalog-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PartCard } from "./part-card";
-import { CatalogFilters, type FitRow } from "./catalog-filters";
+import { CatalogFilters } from "./catalog-filters";
+import { loadFitRows } from "@/lib/fit-rows";
 import { PartAlertForm } from "@/components/part-alert-form";
 import type { Locale } from "@/lib/i18n";
 import { localePath } from "@/lib/i18n";
@@ -138,7 +139,7 @@ export async function CatalogView({
     product: { isPublic: true },
   };
 
-  const [makeCounts, partTypeCounts, fitMatrixRows, products] = await Promise.all([
+  const [makeCounts, partTypeCounts, fitRows, products] = await Promise.all([
     prisma.vehicleFit.groupBy({
       by: ["make"],
       where: publicFitWhere,
@@ -151,19 +152,9 @@ export async function CatalogView({
       _count: { _all: true },
       orderBy: { partType: "asc" },
     }),
-    // Fit matrix for the cascading selects: every public vehicle fit paired
-    // with its product's part type. A few hundred rows, deduped below, so the
-    // dropdowns can narrow instantly without a round-trip per change.
-    prisma.vehicleFit.findMany({
-      where: publicFitWhere,
-      select: {
-        make: true,
-        model: true,
-        yearStart: true,
-        yearEnd: true,
-        product: { select: { partType: true } },
-      },
-    }),
+    // Fit matrix for the cascading selects — shared with the landing hero,
+    // so the two forms narrow from the same rows. See src/lib/fit-rows.ts.
+    loadFitRows(organization.id),
     prisma.product.findMany({
       where: {
         organizationId: organization.id,
@@ -179,23 +170,6 @@ export async function CatalogView({
       orderBy: { createdAt: "desc" },
     }),
   ]);
-
-  // Deduped so the payload carries distinct combinations, not one row per
-  // product — the selects only care about which combinations exist.
-  const fitRows: FitRow[] = [
-    ...new Map(
-      fitMatrixRows.map((r) => [
-        `${r.make}|${r.model}|${r.yearStart}|${r.yearEnd}|${r.product.partType}`,
-        {
-          make: r.make,
-          model: r.model,
-          yearStart: r.yearStart,
-          yearEnd: r.yearEnd,
-          partType: r.product.partType as string,
-        },
-      ]),
-    ).values(),
-  ];
 
   const partTypeOptions = partTypeCounts
     .map((row) => ({ value: row.partType, label: formatPartTypeIn(row.partType, locale), count: row._count._all }))
