@@ -26,19 +26,20 @@ import {
 } from "@/lib/site";
 import { QuoteForm } from "./quote-form";
 import { SiteHeader } from "./site-header";
+import { HeroSearch } from "./hero-search";
+import { loadFitRows, type FitRow } from "@/lib/fit-rows";
 
 // Search options come from the catalog itself. The hardcoded lists this
 // replaced offered six makes with no stock (RAM, Subaru, BMW, Mercedes-Benz,
 // Lexus, Acura) while omitting VW, Tesla and Chrysler, which do have stock —
 // so the primary CTA could route a shopper straight into an empty result.
 type SearchData = {
-  makes: string[];
-  models: string[];
-  years: number[];
+  /** The fit matrix the hero's cascading selects narrow from. Shared with the catalog. */
+  rows: FitRow[];
   countBySlug: Record<string, number>;
 };
 
-const EMPTY_SEARCH_DATA: SearchData = { makes: [], models: [], years: [], countBySlug: {} };
+const EMPTY_SEARCH_DATA: SearchData = { rows: [], countBySlug: {} };
 
 async function getSearchData(): Promise<SearchData> {
   // Prisma reads would otherwise resolve during prerendering and freeze these
@@ -48,20 +49,12 @@ async function getSearchData(): Promise<SearchData> {
   const organization = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!organization) return EMPTY_SEARCH_DATA;
 
-  const fitWhere = { organizationId: organization.id, product: { isPublic: true } };
-  const [makeRows, modelRows, yearBounds, partTypeCounts] = await Promise.all([
-    prisma.vehicleFit.groupBy({ by: ["make"], where: fitWhere, orderBy: { make: "asc" } }),
-    prisma.vehicleFit.findMany({
-      where: fitWhere,
-      distinct: ["model"],
-      select: { model: true },
-      orderBy: { model: "asc" },
-    }),
-    prisma.vehicleFit.aggregate({
-      where: fitWhere,
-      _min: { yearStart: true },
-      _max: { yearEnd: true },
-    }),
+  // Three flat queries (distinct makes, distinct models, a year range) used
+  // to feed the hero. A flat list of every model cannot know which belong to
+  // Toyota — which is why the hero never cascaded (spec 1.4). The same fit
+  // rows the catalog narrows from replace all three.
+  const [rows, partTypeCounts] = await Promise.all([
+    loadFitRows(organization.id),
     prisma.product.groupBy({
       by: ["partType"],
       where: { organizationId: organization.id, isPublic: true },
@@ -70,16 +63,9 @@ async function getSearchData(): Promise<SearchData> {
   ]);
 
   const countByType = new Map(partTypeCounts.map((r) => [String(r.partType), r._count._all]));
-  const minYear = yearBounds._min.yearStart;
-  const maxYear = yearBounds._max.yearEnd;
 
   return {
-    makes: makeRows.map((r) => r.make),
-    models: modelRows.map((r) => r.model),
-    years:
-      minYear != null && maxYear != null
-        ? Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
-        : [],
+    rows,
     // A tile spanning two enum values (Tailgates & Trunks) sums both.
     countBySlug: Object.fromEntries(
       Object.entries(PART_SLUG_TO_TYPES).map(([slug, types]) => [
@@ -349,55 +335,10 @@ function Hero({ data, locale }: { data: SearchData; locale: Locale }) {
           <div className="font-[family-name:var(--font-barlow-condensed)] text-[12px] font-semibold tracking-[0.26em] text-[#888] lg:text-[13px] lg:tracking-[0.28em]">
             {dict.landing.hero.searchByVehicle}
           </div>
-          <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[1fr_1fr_1fr_1fr_230px] lg:gap-2.5">
-            <select name="year" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                {dict.catalog.year}
-              </option>
-              {data.years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <select name="make" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                {dict.catalog.make}
-              </option>
-              {data.makes.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <select name="model" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                {dict.catalog.model}
-              </option>
-              <option value="">{dict.landing.allModels}</option>
-              {data.models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <select name="partType" defaultValue="" className={selectClass}>
-              <option value="" disabled>
-                {dict.catalog.partType}
-              </option>
-              {parts.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="h-[56px] bg-[var(--accent)] font-[family-name:var(--font-oswald)] text-[16px] font-bold tracking-[0.2em] text-white transition-colors hover:bg-[var(--accent-hover)] active:scale-[0.97]"
-            >
-              {dict.landing.hero.searchParts}
-            </button>
-          </div>
+          {/* The selects cascade Year → Make → Model (spec 1.4) — the same
+              engine and the same rows as the catalog band. Markup unchanged;
+              see hero-search.tsx. */}
+          <HeroSearch rows={data.rows} parts={parts} locale={locale} selectClass={selectClass} />
 
           {/* The landing page never mentioned the VIN lookup — it was reachable
               only from the catalog header, where it is hidden below 640px. This
