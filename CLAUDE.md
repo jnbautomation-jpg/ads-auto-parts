@@ -1,9 +1,14 @@
 @AGENTS.md
 
-> **Picking up work on this project? Read [`CHANGELOG.md`](CHANGELOG.md) first.**
-> It records exactly where Phase 2 left off, what is blocked and on whom, and the
-> design decisions that must not be undone. It is kept current — trust it over
-> assumptions about the code.
+> **Picking up work on this project? [`STATE.md`](STATE.md) says where it stands** —
+> what is waiting on whom, and what is built but switched off. A `SessionStart`
+> hook (`.claude/settings.json`) normally prints it, plus the live branch, `main`
+> and open PRs, at the top of every session; read the file directly if you did
+> not see that. **Keep it current — a stale one is worse than none.**
+>
+> [`CHANGELOG.md`](CHANGELOG.md) is the history behind it: what was built, and
+> the design decisions that must not be undone. Trust both over assumptions
+> about the code.
 
 
 # ADS Auto Parts
