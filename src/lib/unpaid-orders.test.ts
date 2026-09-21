@@ -133,15 +133,18 @@ describe("releaseStaleUnpaidOrders", () => {
         createdAt: { lt: minutesAgo(UNPAID_HOLD_MINUTES) },
       },
       select: { id: true, stripePaymentIntentId: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
       take: 10,
     });
   });
 
-  it("cancels at most one batch per sweep, newest first", async () => {
+  it("cancels at most one batch per sweep, oldest first", async () => {
+    // o0 is the newest of the stale set, o11 the oldest.
     for (let i = 0; i < 12; i++) table.push(order(`o${i}`, { createdAt: minutesAgo(UNPAID_HOLD_MINUTES + 1 + i) }));
     await releaseStaleUnpaidOrders(ORG, NOW);
-    expect(cancelledIds()).toEqual(Array.from({ length: 10 }, (_, i) => `pi_o${i}`));
+    // The ten that have held their stock longest, not the ten most recent:
+    // taking the newest would leave the backlog permanently unreached.
+    expect(cancelledIds()).toEqual(Array.from({ length: 10 }, (_, i) => `pi_o${11 - i}`));
   });
 
   it("never throws when Stripe refuses a cancel, and carries on with the rest", async () => {
@@ -152,7 +155,9 @@ describe("releaseStaleUnpaidOrders", () => {
     });
 
     await expect(releaseStaleUnpaidOrders(ORG, NOW)).resolves.toBeUndefined();
-    expect(cancelledIds()).toEqual(["pi_a", "pi_b"]);
+    // b is the older of the two, so oldest-first reaches it first; the throw
+    // on that one must not stop a from being cancelled after it.
+    expect(cancelledIds()).toEqual(["pi_b", "pi_a"]);
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();
   });

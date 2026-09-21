@@ -35,8 +35,10 @@ const SWEEP_BATCH = 10;
  * already moved on is theirs to handle. Stripe refuses to cancel a payment
  * that has succeeded or is processing, so a real sale is never unwound.
  *
- * Newest first, so a payment Stripe will not cancel cannot stall the sweep for
- * the orders behind it. Never throws.
+ * Oldest first: these have held their stock longest, and a batch that took
+ * the newest would keep skipping the backlog and never reach them. A payment
+ * Stripe will not cancel cannot stall the sweep either way — each cancel is
+ * caught individually. Never throws.
  */
 export async function releaseStaleUnpaidOrders(
   organizationId: string,
@@ -56,7 +58,7 @@ export async function releaseStaleUnpaidOrders(
         createdAt: { lt: cutoff },
       },
       select: { id: true, stripePaymentIntentId: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
       take: SWEEP_BATCH,
     });
 
