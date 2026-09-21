@@ -27,7 +27,8 @@ export const UNPAID_HOLD_MINUTES = 30;
 const SWEEP_BATCH = 10;
 
 /**
- * Cancel the Stripe payments behind unpaid orders older than the hold.
+ * Cancel the Stripe payments behind this organisation's unpaid orders older
+ * than the hold. Scoped by organisation, as cancelPendingPayment is.
  *
  * Only orders still NEW and carrying a PaymentIntent are touched: staff phone
  * orders and account reorders have no PaymentIntent, and an order staff have
@@ -37,7 +38,10 @@ const SWEEP_BATCH = 10;
  * Newest first, so a payment Stripe will not cancel cannot stall the sweep for
  * the orders behind it. Never throws.
  */
-export async function releaseStaleUnpaidOrders(now: Date = new Date()): Promise<void> {
+export async function releaseStaleUnpaidOrders(
+  organizationId: string,
+  now: Date = new Date(),
+): Promise<void> {
   const stripe = stripeClient();
   if (!stripe) return;
 
@@ -45,6 +49,7 @@ export async function releaseStaleUnpaidOrders(now: Date = new Date()): Promise<
     const cutoff = new Date(now.getTime() - UNPAID_HOLD_MINUTES * 60_000);
     const stale = await prisma.order.findMany({
       where: {
+        organizationId,
         paymentStatus: "UNPAID",
         status: "NEW",
         stripePaymentIntentId: { not: null },

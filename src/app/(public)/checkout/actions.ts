@@ -263,10 +263,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     return { ok: false, error: dict.checkout.errors.unavailable };
   }
 
-  // Free the stock held by checkouts nobody finished. Runs after the response
-  // has gone back, so it never slows this customer down.
-  after(() => releaseStaleUnpaidOrders());
-
   const validation = validateCheckoutInput(
     {
       name: input.name,
@@ -287,6 +283,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   const organizationId = await getOrganizationId();
   if (!organizationId) return { ok: false, error: dict.errors.generic };
+
+  // Free the stock held by checkouts nobody finished. Runs after the response
+  // has gone back, so it never slows this customer down.
+  after(() => releaseStaleUnpaidOrders(organizationId));
 
   const tier = await getViewerTier();
   const customer = await getCustomerContext();
