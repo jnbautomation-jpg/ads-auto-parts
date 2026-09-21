@@ -3,6 +3,8 @@ import { BUSINESS_NAME, LOCALITY, PHONE_DISPLAY, PHONE_HREF, REVIEW_LINKS } from
 import { badgeClass, bodyClass, eyebrowClass, subHeadingClass } from "@/lib/public-ui";
 import { localePath, type Locale } from "@/lib/i18n";
 import { getDictionary } from "@/lib/dictionaries";
+import { getReviews } from "@/lib/reviews";
+import { ReviewCarousel } from "@/components/review-carousel";
 
 // Trust signals — Phase 2B.
 //
@@ -13,12 +15,15 @@ import { getDictionary } from "@/lib/dictionaries";
 // nothing to a customer who hasn't heard of it, and it is the shop's main
 // quality claim), the seller/warehouse credentials, and review links.
 //
-// NOT built: pulling review CONTENT in from Facebook and Yelp. Both require
-// API access tied to the shop's own business accounts, and Yelp's terms
-// restrict republishing review text. Linking out is the honest version until
-// someone connects those accounts — see REVIEW_LINKS in src/lib/site.ts.
-export function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) {
+// Review CONTENT is not pulled in automatically — Facebook and Yelp both need
+// API access tied to the shop's own business accounts. Instead, reviews are
+// copied by hand into src/lib/reviews.ts and rotate in ReviewCarousel; that
+// list ships empty and renders nothing until real reviews are added. Read the
+// warning at the top of reviews.ts first (FTC fake-review rule; Yelp's terms
+// on republishing). Profile links are REVIEW_LINKS in src/lib/site.ts.
+export async function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) {
   const dict = getDictionary(locale);
+  const reviews = await getReviews();
   const links = [
     // Brand names stay as they are in both languages; only "eBay store" is a
     // description rather than a name.
@@ -68,6 +73,8 @@ export function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) {
             </p>
           </div>
         </div>
+
+        <ReviewCarousel reviews={reviews} locale={locale} />
 
         {links.length > 0 ? (
           <div className="flex flex-wrap items-center gap-3">
