@@ -20,6 +20,7 @@
 // paid. That split is the spec's, and it is what makes "customer paid and
 // closed the tab" a case that still works.
 
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeCart, type CartLine } from "@/lib/cart";
 import { validateCheckoutInput, formatDeliveryAddress } from "@/lib/checkout";
@@ -35,6 +36,7 @@ import { CURRENCY, isStripeConfigured, stripeClient, toStripeAmount } from "@/li
 import { getDictionary } from "@/lib/dictionaries";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n";
 import { describeError } from "@/lib/log-error";
+import { releaseStaleUnpaidOrders } from "@/lib/unpaid-orders";
 
 /**
  * One cart line, resolved against the database for display.
@@ -261,6 +263,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     return { ok: false, error: dict.checkout.errors.unavailable };
   }
 
+  // Free the stock held by checkouts nobody finished. Runs after the response
+  // has gone back, so it never slows this customer down.
+  after(() => releaseStaleUnpaidOrders());
+
   const validation = validateCheckoutInput(
     {
       name: input.name,
@@ -378,6 +384,47 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     console.error(`Checkout failed after order ${created.orderId} was created: ${describeError(cause)}`);
     await releaseOrder(created.orderId, organizationId);
     return { ok: false, error: dict.checkout.errors.paymentFailed };
+  }
+}
+
+/**
+ * Cancel the payment behind a checkout attempt the customer has moved on
+ * from: they changed the cart or their details after a failed attempt.
+ *
+ * Only cancels in Stripe. The payment_intent.canceled webhook then cancels
+ * the order and puts its stock back, so there is one release path rather
+ * than two that could both restock the same order.
+ *
+ * Keyed on the PaymentIntent id, which only the browser that opened the
+ * payment holds. Stripe refuses to cancel a payment that has succeeded or is
+ * processing, so this cannot unwind a real sale.
+ */
+export async function cancelPendingPayment(paymentIntentId: string): Promise<void> {
+  if (typeof paymentIntentId !== "string" || !/^pi_[A-Za-z0-9]{8,64}$/.test(paymentIntentId)) return;
+
+  const organizationId = await getOrganizationId();
+  if (!organizationId) return;
+
+  const order = await prisma.order.findFirst({
+    where: {
+      stripePaymentIntentId: paymentIntentId,
+      organizationId,
+      paymentStatus: "UNPAID",
+      status: { not: "CANCELLED" },
+    },
+    select: { id: true },
+  });
+  if (!order) return;
+
+  const stripe = stripeClient();
+  if (!stripe) return;
+
+  try {
+    await stripe.paymentIntents.cancel(paymentIntentId);
+  } catch (cause) {
+    // Logged, not thrown: the customer is about to retry, and the stale-order
+    // sweep will try this payment again later.
+    console.warn(`cancelPendingPayment: could not cancel ${paymentIntentId}: ${describeError(cause)}`);
   }
 }
 

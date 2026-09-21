@@ -294,12 +294,20 @@ export async function restockOrder(
     if (!item.productId) continue;
     const product = await client.product.findFirst({
       where: { id: item.productId, organizationId },
-      select: { id: true, quantity: true },
+      select: { id: true },
     });
     if (!product) continue;
 
-    const resulting = product.quantity + item.quantity;
-    await client.product.update({ where: { id: product.id }, data: { quantity: resulting } });
+    // An increment, not a value computed from a read: a checkout can sell
+    // this part between a read and the write, and writing back `read + n`
+    // would wipe that sale out. The UPDATE adds to whatever the row holds
+    // when it runs, and returns the result for the log.
+    const updated = await client.product.update({
+      where: { id: product.id },
+      data: { quantity: { increment: item.quantity } },
+      select: { quantity: true },
+    });
+    const resulting = updated.quantity;
     await client.stockMovement.create({
       data: {
         organizationId,
