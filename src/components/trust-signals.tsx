@@ -29,6 +29,7 @@ export async function TrustSignals({ locale = "en" }: { locale?: Locale } = {}) 
     // description rather than a name.
     { key: "google", label: "Google", href: REVIEW_LINKS.google },
     { key: "facebook", label: "Facebook", href: REVIEW_LINKS.facebook },
+    { key: "instagram", label: "Instagram", href: REVIEW_LINKS.instagram },
     { key: "yelp", label: "Yelp", href: REVIEW_LINKS.yelp },
     { key: "ebay", label: dict.trust.ebayStore, href: REVIEW_LINKS.ebay },
   ].filter((l) => Boolean(l.href));

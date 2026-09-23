@@ -23,6 +23,8 @@
 // to load under any other NODE_ENV, and reviews.test.ts fails the build if
 // anything else imports it. Never import it directly.
 
+import { REVIEW_LINKS } from "@/lib/site";
+
 export const REVIEW_SOURCES = ["Google", "Facebook", "Yelp"] as const;
 export type ReviewSource = (typeof REVIEW_SOURCES)[number];
 
@@ -45,7 +47,11 @@ export type Review = {
    * approximate and the page displays month and year only.
    */
   date: string;
-  /** Link to the original review, so a visitor can check it is real. */
+  /**
+   * Link to where the review can be checked, so a visitor can see it is real.
+   * Google gives individual reviews no stable URL, so Google reviews link to
+   * the shop's Maps listing (REVIEW_LINKS.google).
+   */
   sourceUrl?: string;
   /**
    * Language of `text`, when it differs from the page's — so a screen reader
@@ -61,6 +67,7 @@ export const REVIEWS: readonly Review[] = [
     text: "Couldn't find a hood for my car anywhere online for under $500 shipped. Was referred here by my buddy Angel. Marcus took care of me, found me a hood & got me all squared away in like 10 mins. $352 out the door shipped. Great experience!",
     source: "Google",
     date: "2025-10",
+    sourceUrl: REVIEW_LINKS.google,
   },
   {
     author: "Israel G.",
@@ -68,6 +75,7 @@ export const REVIEWS: readonly Review[] = [
     text: "I would like to say thank you very much for the outstanding service I recommend Auto Door store to anyone e looking for body parts the fenders and bumpers came in on time and in excellent condition great work and great delivery service 👍",
     source: "Google",
     date: "2026-08",
+    sourceUrl: REVIEW_LINKS.google,
   },
   {
     author: "Michel K.",
@@ -75,6 +83,7 @@ export const REVIEWS: readonly Review[] = [
     text: "Great prices , way cheaper than any where else, awesome customer service, fast response and very fast delivery\nFully recommend\nThank you guys 🙏🙏🙏",
     source: "Google",
     date: "2025-09",
+    sourceUrl: REVIEW_LINKS.google,
   },
   {
     author: "Alwayz Ready Auto Collision",
@@ -83,6 +92,7 @@ export const REVIEWS: readonly Review[] = [
     text: "Best PRICES and great quality parts in Orlando hands down!!",
     source: "Google",
     date: "2026-06",
+    sourceUrl: REVIEW_LINKS.google,
   },
   {
     author: "MocaCity M.",
@@ -90,6 +100,7 @@ export const REVIEWS: readonly Review[] = [
     text: "Got my part deliver to me today !! Awesome service great flexibility and good delivery services !!!!",
     source: "Google",
     date: "2025-10",
+    sourceUrl: REVIEW_LINKS.google,
   },
 ];
 
