@@ -1,6 +1,6 @@
 # Changelog — Phase 2
 
-**Last updated:** 14 September 2026
+**Last updated:** 21 September 2026
 **Branch:** `main` (deployed). Two PRs open: #18, #19 — both mobile fixes.
 **Live at:** https://www.autodoorstoreorlando.com
 
@@ -35,18 +35,34 @@ mobile navigation, order receipts, 592 products across 10 part types — and, si
   canonical tags use. Query strings survive it, which is what the `gclid` on an ad click needs.
 - Inquiry dates in the admin now stamp Orlando time, not UTC (#13).
 
-### Two things are built but switched off until JJ sets keys
+### Checkout is live, webhook included
 
-Both degrade cleanly with no key — the site behaves exactly as before, plus a log line — so
-merging never depended on them. But **neither does anything until these are done**, and both live
-on the Vercel project, which is JJ's account:
+*Confirmed 21 Sep:* the Stripe webhook at `/api/stripe/webhook` is **live in production** and
+handles `payment_intent.canceled` — cancelling a PaymentIntent restocks its order. (Earlier
+versions of this file listed the webhook as not yet set up; that was stale.) The webhook is what
+marks an order paid, so if it is ever re-created, it must subscribe to
+`payment_intent.succeeded`, `.payment_failed` and `.canceled` and match `STRIPE_WEBHOOK_SECRET`.
+Without it, checkout looks like it works and customers get charged, but no order is marked paid.
+
+**Abandoned checkouts are released** (`src/lib/unpaid-orders.ts`). An order holds its stock from
+the moment the customer clicks Pay, and Stripe never cancels an unfinished PaymentIntent by itself.
+After each `placeOrder`, the sweep cancels in Stripe the PaymentIntents behind that organisation's
+unpaid NEW orders older than `UNPAID_HOLD_MINUTES`, ten per run; the webhook then restocks them, so
+there is still one restock path. Two limits worth knowing: it only runs when somebody checks out,
+so on a quiet day a hold can outlast the timeout; and the **30-minute hold is a default, not a
+number Matthew has confirmed**.
+
+The Stripe account must be Matthew's, not JJ's or Luca's — money lands wherever it points.
+
+### Built but switched off until JJ sets keys
+
+Lead email degrades cleanly with no key — the site behaves exactly as before, plus a log line — so
+merging never depended on it. But **it does nothing until this is done**, on the Vercel project,
+which is JJ's account:
 
 | Feature | What switches it on |
 | --- | --- |
 | Lead email | `vercel integration add resend` (sets `RESEND_API_KEY`); verify `autodoorstoreorlando.com` in Resend, then set `EMAIL_FROM`. Until the domain is verified, Resend's fallback sender only delivers to the account owner. |
-| Checkout | `vercel integration add stripe`; **the webhook endpoint** at `/api/stripe/webhook` subscribed to `payment_intent.succeeded`, `.payment_failed`, `.canceled`, and `STRIPE_WEBHOOK_SECRET`. Without the webhook, checkout looks like it works and customers get charged, but **no order is ever marked paid.** |
-
-The Stripe account must be Matthew's, not JJ's or Luca's — money lands wherever it points.
 
 ### Open PRs
 
@@ -159,8 +175,10 @@ finished (see [Where we left off](#where-we-left-off)). Spanish now covers the r
 footers, the trust band, both quote forms and their server-side validation messages, the 404 and
 error pages, the chat bubble's own chrome, `<html lang>`, and the social cards.
 
-Not done: **Stripe checkout** (JJ's, by Luca's decision) and **reserve-now / pay-at-pickup** (the
-spec marks it "not finalized"; needs Matthew's deposit amount and hold expiry).
+Also done: **Stripe checkout** (#17; webhook live — see [Where we left off](#where-we-left-off)).
+
+Not done: **reserve-now / pay-at-pickup** (the spec marks it "not finalized"; needs Matthew's
+deposit amount and hold expiry).
 
 ### Section 3 — Phase 2B growth
 
@@ -309,9 +327,8 @@ These were deliberate. Changing them re-introduces a bug that was specifically f
 
 ### JJ
 
-- **Switch on lead email and checkout** — the two-row table under
-  [Where we left off](#where-we-left-off). The webhook is the step that silently breaks things if
-  skipped.
+- **Switch on lead email** — the table under [Where we left off](#where-we-left-off). (Checkout
+  and its webhook are live.)
 - **Merge #18 and #19** (mobile fixes). Independent of each other and of everything else.
 - **Fix `DIRECT_URL` in Vercel Production.** Still the wrong host. The build survives it and, since
   #15, the warning names the exact value to paste (password redacted). The value itself is one

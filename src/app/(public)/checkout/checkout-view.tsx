@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Appearance, type StripeElementsOptions } from "@stripe/stripe-js";
 import { cartActions, useCart } from "@/components/cart-store";
-import { placeOrder, resolveCart, type DeliveryChoice, type ResolvedCart } from "./actions";
+import { cancelPendingPayment, placeOrder, resolveCart, type DeliveryChoice, type ResolvedCart } from "./actions";
 import { getDictionary } from "@/lib/dictionaries";
 import { formatMoneyIn } from "@/lib/format";
 import { formatTaxRate } from "@/lib/tax";
@@ -278,6 +278,12 @@ function CheckoutForm({
   const [errorField, setErrorField] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  // The order and payment opened by the last Pay click, and the exact cart
+  // and details they were opened for. A retry after a declined card reuses
+  // them instead of opening a second order: a second order would take the
+  // stock off the shelf again while the first still holds it, so on a part
+  // with one left the retry would fail as "sold out".
+  const pendingRef = useRef<{ key: string; clientSecret: string; paymentIntentId: string } | null>(null);
 
   const set = useCallback(
     <K extends keyof Details>(key: K, value: Details[K]) =>
@@ -317,25 +323,43 @@ function CheckoutForm({
         return;
       }
 
-      const placed = await placeOrder({
-        lines: [...cart],
-        ...details,
-        locale,
-      });
+      const key = JSON.stringify({ cart, details, locale });
+      let pending = pendingRef.current;
 
-      if (!placed.ok) {
-        setError(placed.error);
-        setErrorField(placed.field ?? null);
-        // Stock moved under us — the cart page will re-resolve and show what
-        // changed, so send them back to look rather than leaving them on a
-        // total that is no longer true.
-        if (placed.cartChanged) router.push(localePath(locale, "/cart"));
-        return;
+      if (pending && pending.key !== key) {
+        // The cart or details changed since the last attempt, so that order no
+        // longer matches what is on screen. Cancel its payment (the webhook
+        // then cancels the order and restocks it) and open a fresh one.
+        const stale = pending;
+        pendingRef.current = null;
+        pending = null;
+        await cancelPendingPayment(stale.paymentIntentId);
+      }
+
+      if (!pending) {
+        const placed = await placeOrder({
+          lines: [...cart],
+          ...details,
+          locale,
+        });
+
+        if (!placed.ok) {
+          setError(placed.error);
+          setErrorField(placed.field ?? null);
+          // Stock moved under us — the cart page will re-resolve and show what
+          // changed, so send them back to look rather than leaving them on a
+          // total that is no longer true.
+          if (placed.cartChanged) router.push(localePath(locale, "/cart"));
+          return;
+        }
+
+        pending = { key, clientSecret: placed.clientSecret, paymentIntentId: placed.paymentIntentId };
+        pendingRef.current = pending;
       }
 
       const { error: stripeError } = await stripe.confirmPayment({
         elements,
-        clientSecret: placed.clientSecret,
+        clientSecret: pending.clientSecret,
         confirmParams: {
           return_url: `${window.location.origin}${localePath(locale, "/checkout/success")}`,
         },
@@ -345,15 +369,34 @@ function CheckoutForm({
       });
 
       if (stripeError) {
+        if (stripeError.code === "payment_intent_unexpected_state") {
+          // This payment can no longer be confirmed. If it already went
+          // through, show the confirmation rather than letting a second click
+          // charge the customer twice; otherwise (it was cancelled) forget it
+          // so the next click opens a new one.
+          const status = stripeError.payment_intent?.status;
+          if (status === "succeeded" || status === "processing") {
+            const paidIntentId = pending.paymentIntentId;
+            pendingRef.current = null;
+            cartActions.clear();
+            router.push(
+              `${localePath(locale, "/checkout/success")}?payment_intent=${encodeURIComponent(paidIntentId)}`,
+            );
+            return;
+          }
+          pendingRef.current = null;
+        }
         setError(stripeError.message ?? dict.checkout.errors.paymentFailed);
         return;
       }
 
       // Paid without a redirect. The webhook is what actually marks the order
       // paid, so the success page reads the order rather than trusting this.
+      const paidIntentId = pending.paymentIntentId;
+      pendingRef.current = null;
       cartActions.clear();
       router.push(
-        `${localePath(locale, "/checkout/success")}?payment_intent=${encodeURIComponent(placed.paymentIntentId)}`,
+        `${localePath(locale, "/checkout/success")}?payment_intent=${encodeURIComponent(paidIntentId)}`,
       );
     } catch (cause) {
       console.error("Checkout failed:", cause);

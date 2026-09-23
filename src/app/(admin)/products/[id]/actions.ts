@@ -28,9 +28,15 @@ export async function recordStockMovement(
 
   try {
     await prisma.$transaction(async (tx) => {
-      const product = await tx.product.findFirst({
-        where: { id: productId, organizationId: organization.id },
-      });
+      // Row-locked, as recordStockCount and createOrder lock it. Without the
+      // lock a checkout can sell this part between this read and the write
+      // below, and the write would put the sold unit back on the shelf.
+      const locked = await tx.$queryRaw<{ id: string; quantity: number }[]>`
+        SELECT id, quantity FROM products
+        WHERE id = ${productId} AND "organizationId" = ${organization.id}
+        FOR UPDATE
+      `;
+      const product = locked[0];
       if (!product) throw new Error("Product not found.");
 
       const delta = direction === "OUT" ? -amount : amount;
