@@ -2,7 +2,7 @@
 //
 // ⚠️ REAL REVIEWS ONLY. Every entry in REVIEWS must be copied word for word
 // from a review a real customer left on the shop's public Google, Facebook or
-// Yelp profile, with the name shown there and the date it was posted. Never
+// Yelp profile, with the name shown there and the month it was posted. Never
 // write, generate, "tidy up", translate or seed one — not as a placeholder,
 // not temporarily. The FTC's rule on fake reviews and testimonials (16 CFR
 // Part 465, in force since October 2024) prohibits fabricated or misattributed
@@ -27,14 +27,23 @@ export const REVIEW_SOURCES = ["Google", "Facebook", "Yelp"] as const;
 export type ReviewSource = (typeof REVIEW_SOURCES)[number];
 
 export type Review = {
-  /** As shown on the profile: first name and last initial, e.g. "Maria G." */
+  /**
+   * As shown on the profile: first name and last initial, e.g. "Maria G.", or
+   * a business's name as-is when `business` is set.
+   */
   author: string;
+  /** The reviewer is a business (e.g. a body shop), not a person. */
+  business?: true;
   /** Whole stars, 1–5, as left by the customer. */
   rating: 1 | 2 | 3 | 4 | 5;
   /** Verbatim, in the language the customer wrote it. Never translated. */
   text: string;
   source: ReviewSource;
-  /** When the review was posted, as an ISO date: "2026-08-14". */
+  /**
+   * The month the review was posted, as ISO year-month: "2026-08". Never a
+   * day — Google shows only relative dates ("a month ago"), so the month is
+   * approximate and the page displays month and year only.
+   */
   date: string;
   /** Link to the original review, so a visitor can check it is real. */
   sourceUrl?: string;
@@ -45,7 +54,44 @@ export type Review = {
   lang?: "en" | "es";
 };
 
-export const REVIEWS: readonly Review[] = [];
+export const REVIEWS: readonly Review[] = [
+  {
+    author: "TJ D.",
+    rating: 5,
+    text: "Couldn't find a hood for my car anywhere online for under $500 shipped. Was referred here by my buddy Angel. Marcus took care of me, found me a hood & got me all squared away in like 10 mins. $352 out the door shipped. Great experience!",
+    source: "Google",
+    date: "2025-10",
+  },
+  {
+    author: "Israel G.",
+    rating: 5,
+    text: "I would like to say thank you very much for the outstanding service I recommend Auto Door store to anyone e looking for body parts the fenders and bumpers came in on time and in excellent condition great work and great delivery service 👍",
+    source: "Google",
+    date: "2026-08",
+  },
+  {
+    author: "Michel K.",
+    rating: 5,
+    text: "Great prices , way cheaper than any where else, awesome customer service, fast response and very fast delivery\nFully recommend\nThank you guys 🙏🙏🙏",
+    source: "Google",
+    date: "2025-09",
+  },
+  {
+    author: "Alwayz Ready Auto Collision",
+    business: true,
+    rating: 5,
+    text: "Best PRICES and great quality parts in Orlando hands down!!",
+    source: "Google",
+    date: "2026-06",
+  },
+  {
+    author: "MocaCity M.",
+    rating: 5,
+    text: "Got my part deliver to me today !! Awesome service great flexibility and good delivery services !!!!",
+    source: "Google",
+    date: "2025-10",
+  },
+];
 
 /**
  * The reviews to render. In production and in tests this is always REVIEWS.
