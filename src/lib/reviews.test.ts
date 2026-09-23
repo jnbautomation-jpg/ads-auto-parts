@@ -70,15 +70,16 @@ describe("production cannot reach the sample reviews", () => {
 });
 
 describe("REVIEWS entries are well formed", () => {
-  // Vacuous while the array is empty; it starts biting with the first review.
   it("has an author, rating, text, source and date on every entry", () => {
     for (const r of REVIEWS) {
-      expect(r.author, r.author).toMatch(/^\S.* \p{Lu}\.$/u); // first name + last initial
+      // A person is first name + last initial; a business keeps its own name.
+      if (!r.business) expect(r.author, r.author).toMatch(/^\S.* \p{Lu}\.$/u);
+      expect(r.author.trim(), r.author).not.toBe("");
       expect([1, 2, 3, 4, 5], r.author).toContain(r.rating);
       expect(r.text.trim(), r.author).not.toBe("");
       expect(REVIEW_SOURCES, r.author).toContain(r.source);
-      expect(r.date, r.author).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(Number.isNaN(new Date(r.date).getTime()), r.author).toBe(false);
+      // Month precision only — a day would claim more than Google tells us.
+      expect(r.date, r.author).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);
       if (r.sourceUrl) expect(r.sourceUrl, r.author).toMatch(/^https:\/\//);
     }
   });

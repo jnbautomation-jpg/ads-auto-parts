@@ -135,8 +135,9 @@ function ReviewBody({ review, locale, t }: { review: Review; locale: Locale; t: 
           {t.ratedBefore} {review.rating} {t.ratedAfter}
         </span>
       </p>
-      {/* The customer's own words, in their own language — never translated. */}
-      <blockquote lang={review.lang} className={`${bodyClass} text-[var(--ink)]`}>
+      {/* The customer's own words, in their own language — never translated.
+          pre-line keeps any line breaks they wrote. */}
+      <blockquote lang={review.lang} className={`${bodyClass} whitespace-pre-line text-[var(--ink)]`}>
         <p>“{review.text}”</p>
       </blockquote>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-[family-name:var(--font-barlow)] text-[13.5px] text-[var(--ink-muted)]">
@@ -159,11 +160,12 @@ function ReviewBody({ review, locale, t }: { review: Review; locale: Locale; t: 
   );
 }
 
-// Month and year is as precise as a review date needs to be. Pinned to UTC so
-// the server and the browser can't render different months for the same date.
-function formatReviewDate(iso: string, locale: Locale): string {
-  const date = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return iso;
+// Review dates are stored as year-month ("2026-08") and shown as month and
+// year, never a day. Pinned to UTC so the server and the browser can't render
+// different months for the same date.
+function formatReviewDate(yearMonth: string, locale: Locale): string {
+  const date = new Date(`${yearMonth}-01T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return yearMonth;
   return new Intl.DateTimeFormat(locale === "es" ? "es-US" : "en-US", {
     month: "long",
     year: "numeric",

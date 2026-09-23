@@ -54,8 +54,8 @@ describe("ReviewCarousel", () => {
       createElement(ReviewCarousel, {
         locale: "en",
         reviews: [
-          { author: "Test A.", rating: 5, text: "one", source: "Google", date: "2026-01-05", sourceUrl: "https://example.com/1" },
-          { author: "Test B.", rating: 3, text: "two", source: "Yelp", date: "2026-02-05", lang: "es" },
+          { author: "Test A.", rating: 5, text: "one", source: "Google", date: "2026-01", sourceUrl: "https://example.com/1" },
+          { author: "Test B.", rating: 3, text: "two", source: "Yelp", date: "2026-02", lang: "es" },
         ],
       }),
     );
@@ -65,5 +65,6 @@ describe("ReviewCarousel", () => {
     expect(html).toContain("Read on Google");
     expect(html).toContain('lang="es"');
     expect(html).toContain('aria-label="Next review"');
+    expect(html).toContain("January 2026"); // month and year, never a day
   });
 });
