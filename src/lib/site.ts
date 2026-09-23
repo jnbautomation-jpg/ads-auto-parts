@@ -78,14 +78,18 @@ export const META_PIXEL_ID = "120240474804150214";
 
 // Outbound profile links used by the trust-signals block.
 //
-// ⚠️ NEEDS THE REAL URLS. The spec notes the shop already has Facebook, Yelp
-// and eBay presences and that the eBay store "isn't linked from the site" —
-// but the document doesn't contain the URLs. An empty string hides that link
-// rather than shipping a dead one, so filling these in is a one-line change
-// each and requires no code.
+// An empty string hides that link rather than shipping a dead one. Yelp and
+// eBay stay empty until the shop confirms which profiles are theirs — the spec
+// says both exist (the eBay store "isn't linked from the site") but doesn't
+// give the URLs, and linking a stranger's listing is worse than no link.
+//
+// The Google URL is the Maps listing, not a search: it is also where each
+// review's "Read on Google" link points (see reviews.ts).
 export const REVIEW_LINKS = {
-  google: "",
-  facebook: "",
+  google:
+    "https://www.google.com/maps/place/Auto+Door+Store+Orlando+%2F+ADS+Central+Florida/@28.5776183,-81.2967261,17z/data=!3m1!4b1!4m6!3m5!1s0x88e7659727bb85d7:0x35cb0ebce1f668ed!8m2!3d28.5776183!4d-81.2967261!16s%2Fg%2F11y5s1sqlz",
+  facebook: "https://www.facebook.com/AutoDoorStoreOrlando/",
+  instagram: "https://www.instagram.com/autodoorstoreorlando/",
   yelp: "",
   ebay: "",
 } as const;
