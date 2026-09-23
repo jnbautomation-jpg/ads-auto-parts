@@ -456,6 +456,20 @@ export const es: Dictionary = {
     returnsLink: "Lea la política de devoluciones y garantía",
   },
 
+  reviews: {
+    heading: "Lo que dicen los clientes",
+    carousel: "carrusel",
+    slide: "reseña",
+    of: "de",
+    previous: "Reseña anterior",
+    next: "Reseña siguiente",
+    pause: "Pausar",
+    play: "Reanudar",
+    readOn: "Leer en",
+    ratedBefore: "Calificación:",
+    ratedAfter: "de 5",
+  },
+
   chat: {
     title: "Asistente de piezas",
     subtitle: "Consulta existencias en vivo · Español e inglés",

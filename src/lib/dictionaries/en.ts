@@ -461,6 +461,22 @@ export const en = {
     returnsLink: "Read the returns & warranty policy",
   },
 
+  // The reviews carousel inside the trust block. Chrome only — the reviews
+  // themselves stay in whatever language the customer wrote them in.
+  reviews: {
+    heading: "What customers say",
+    carousel: "carousel",
+    slide: "review",
+    of: "of",
+    previous: "Previous review",
+    next: "Next review",
+    pause: "Pause",
+    play: "Resume",
+    readOn: "Read on",
+    ratedBefore: "Rated",
+    ratedAfter: "out of 5",
+  },
+
   // The chat bubble. Only rendered when ANTHROPIC_API_KEY is set; the
   // assistant's own replies come back in whatever language the customer
   // writes in (see the Language section of the system prompt in
